@@ -266,10 +266,10 @@
         contenedorContactoReferido.innerHTML =
             '<div class="linkage-referred-contact-box">' +
                 '<div class="linkage-referred-contact-head">' +
-                    '<strong>Nuevo contacto proporcionado</strong>' +
-                    '<span>El teléfono original se conservará como teléfono fuente.</span>' +
+                    '<strong>Datos de contacto para el expediente</strong><input type="hidden" name="actualizar_datos_llamada" value="1">' +
+                    '<span>Al guardar el resultado se actualizará la ficha. Los campos vacíos conservan los datos actuales.</span>' +
                 '</div>' +
-                '<div class="row g-2">' +
+                '<div class="row g-2"><div class="col-12"><label class="form-label" for="work_institution_update">Nombre institucional actualizado (opcional)</label><input id="work_institution_update" name="nombre_entidad_actualizado" maxlength="180" class="form-control"></div>' +
                     '<div class="col-12 col-md-6">' +
                         '<label class="form-label" for="work_referred_phone">Nuevo teléfono de contacto</label>' +
                         '<input class="form-control" id="work_referred_phone" name="nuevo_telefono_contacto" maxlength="80" autocomplete="tel">' +
@@ -313,7 +313,7 @@
             const canal = String(
                 formulario.querySelector('[name="canal"]')?.value || ''
             ).toUpperCase();
-            const visible = resultado === 'CONTACTO_REFERIDO' && canal === 'LLAMADA';
+            const visible = ['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'].includes(resultado) && canal === 'LLAMADA';
 
             contenedorContactoReferido.classList.toggle('d-none', !visible);
 
@@ -321,14 +321,7 @@
                 campoTelefonoReferido.required = false;
             }
 
-            if (!visible) {
-                [campoTelefonoReferido, campoCorreoReferido, campoNombreReferido, campoCargoReferido]
-                    .forEach(function (campo) {
-                        if (campo) {
-                            campo.value = '';
-                        }
-                    });
-            }
+            contenedorContactoReferido.querySelectorAll('input').forEach(input=>input.disabled=!visible);
         };
 
         const bloqueEvidenciaVerificacion = formulario.querySelector(
@@ -783,6 +776,7 @@
                     );
                 }
 
+                window.IMPE_CALL_DRAFTS?.actualizarFicha(formData);
                 agregarActividadInformativa(datos.interaccion);
                 formulario.classList.add('d-none');
                 formulario.reset();

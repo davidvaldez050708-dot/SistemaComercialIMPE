@@ -575,6 +575,8 @@ class TelefoniaEntrantesAnalistaService
     /** Uso interno: el llamador aporta la llamada comprobada por el servidor y mantiene la transacción. */
     public function registrarAtencionEnExpediente(int $usuarioId,array $call,array $datos,bool $sdk=false,string $id='',string $aliasSdk=''): array
     {
+        require_once __DIR__.'/DatosContactoLlamadaService.php';
+        $contactoLlamada=DatosContactoLlamadaService::extraer($datos,'LLAMADA',strtoupper(trim((string)($datos['resultado']??''))));
         $decision=strtolower(trim((string)($datos['decision']??'')));
         if(!in_array($decision,['existente','nueva'],true))throw new DomainException('Selecciona una institución con seguimiento o una institución nueva.');
         $model=new SeguimientoVinculacionModel($this->db);$extension=(string)$call['extension'];
@@ -751,6 +753,7 @@ class TelefoniaEntrantesAnalistaService
                 $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : ''
             ])));
 
+            $notas=trim($notas."\n".DatosContactoLlamadaService::nota($contactoLlamada));
             $interaccionId = $model->registrarInteraccionManual(
                 $seguimientoId, $usuarioId, [
                     'canal' => 'LLAMADA_IP',
@@ -762,6 +765,7 @@ class TelefoniaEntrantesAnalistaService
                     'proxima_accion_at' => $fechaProxima,
                     'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0),
                     'preservar_estado'=>true,
+                    'contacto_llamada'=>$contactoLlamada,
                     'nuevo_telefono_contacto'=>$referido['nuevo_telefono_contacto'] ?? '',
                     'nuevo_correo_contacto'=>$referido['nuevo_correo_contacto'] ?? '',
                     'nuevo_contacto_nombre'=>$referido['nuevo_contacto_nombre'] ?? '',

@@ -1146,6 +1146,9 @@ class SeguimientoVinculacionController
             ], 422);
         }
 
+        require_once __DIR__.'/../services/DatosContactoLlamadaService.php';
+        try { $contactoLlamada=DatosContactoLlamadaService::extraer($_POST,$canalFormulario,$resultadoFormulario); }
+        catch (InvalidArgumentException $e) { $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422); }
         $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['persona_atendio'] ?? ''));
         $proximaAccion = trim((string)($_POST['proxima_accion'] ?? ''));
         $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
@@ -1343,7 +1346,9 @@ class SeguimientoVinculacionController
             $descartar ? 'Motivo de descarte: ' . $motivoDescarte : ''
         ])));
 
+        $notas=trim($notas."\n".DatosContactoLlamadaService::nota($contactoLlamada));
         $datosInteraccion = [
+            'contacto_llamada'=>$contactoLlamada,
             'canal' => $canal,
             'resultado' => $resultado,
             'fecha_inicio' => $fechaInicio,

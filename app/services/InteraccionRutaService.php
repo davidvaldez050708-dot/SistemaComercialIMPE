@@ -80,6 +80,9 @@ class InteraccionRutaService
             return $this->error('No se pudo confirmar la llamada. No se guardó la interacción. Intenta nuevamente.',503);
         }
 
+        require_once __DIR__.'/DatosContactoLlamadaService.php';
+        try { $contactoLlamada=DatosContactoLlamadaService::extraer($datos,$canalFormulario,$resultadoFormulario); }
+        catch (InvalidArgumentException $e) { return $this->error($e->getMessage(),422); }
         $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($datos['persona_atendio'] ?? ''));
         $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion'] ?? ''));
         $origenLlamada = strtoupper(trim((string)($datos['origen_llamada'] ?? 'MANUAL')));
@@ -259,6 +262,7 @@ class InteraccionRutaService
             $observacion
         ])));
 
+        $notas=trim($notas."\n".DatosContactoLlamadaService::nota($contactoLlamada));
         if ($notas === '') {
             $notas = 'Interacción informativa registrada durante la ruta de vinculación.';
         }
@@ -343,6 +347,7 @@ class InteraccionRutaService
             );
             $stmtSeguimiento->execute();
 
+            DatosContactoLlamadaService::guardar($this->connection,$seguimientoId,$usuarioId,$contactoLlamada);
             $this->connection->commit();
 
             return [

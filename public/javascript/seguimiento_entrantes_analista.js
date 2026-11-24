@@ -130,7 +130,7 @@
             'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'
         ].includes(result);
         evidence.hidden = !allowEvidence;
-        referred.hidden=!enabled || result!=='CONTACTO_REFERIDO';
+        referred.hidden=!allowEvidence;
         referred.querySelectorAll('input').forEach(el=>el.disabled=referred.hidden);
         sdkConfirm.hidden=!isSdkCall || !allowEvidence;
         sdkCheck.required=!sdkConfirm.hidden;
@@ -317,7 +317,7 @@
             }
             if(values.telefono && !form.elements.nuevo_telefono_contacto.value)form.elements.nuevo_telefono_contacto.value=values.telefono;
             if(values.correo && !form.elements.nuevo_correo_contacto.value)form.elements.nuevo_correo_contacto.value=values.correo;
-            renderDecision();void loadMunicipalities(values.municipio_id||'');draftStatus.hidden=false;draftStatus.textContent='Borrador recuperado. Revisa los datos antes de guardar.';
+            renderDecision();void loadMunicipalities(values.municipio_id||'');draftStatus.hidden=false;draftStatus.textContent='Borrador recuperado. Revisa el contacto: al guardar se actualizará la ficha del expediente seleccionado.';
         };
         void restore();
         modal.show();
@@ -562,7 +562,7 @@
         if (isSubmitting) return;
         clearError();
         if (!form.reportValidity()) return;
-        if(resultInput.value==='CONTACTO_REFERIDO' && !Array.from(referred.querySelectorAll('input')).some(e=>e.value.trim())) {showError('Captura algún dato de la persona o área referida.');return;}
+        if(resultInput.value==='CONTACTO_REFERIDO' && !Array.from(referred.querySelectorAll('input')).some(e=>e.type!=='hidden' && e.name!=='nombre_entidad_actualizado' && e.value.trim())) {showError('Captura algún dato de la persona o área referida.');return;}
         clearTimeout(draftTimer);
         const requestBody=new FormData(form);
         if(callbackMode)requestBody.set('accion','RESULTADO');

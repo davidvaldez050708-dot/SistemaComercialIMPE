@@ -1,0 +1,153 @@
+{
+  "release": "contacto-llamada-analista-v1",
+  "files": [
+    {
+      "path": "app/services/DatosContactoLlamadaService.php",
+      "new_file": true,
+      "content": "PD9waHAKCi8qKiBEYXRvcyByZXZpc2Fkb3MgYWwgY2VycmFyIHVuYSBsbGFtYWRhLiBObyBhY3JlZGl0YSB2ZXJpZmljYWNpb25lcyB0ZWxlZsOzbmljYXMuICovCmZpbmFsIGNsYXNzIERhdG9zQ29udGFjdG9MbGFtYWRhU2VydmljZQp7CiAgICBwdWJsaWMgc3RhdGljIGZ1bmN0aW9uIGV4dHJhZXIoYXJyYXkgJGRhdG9zLCBzdHJpbmcgJGNhbmFsLCBzdHJpbmcgJHJlc3VsdGFkbyk6IGFycmF5CiAgICB7CiAgICAgICAgaWYgKCgkZGF0b3NbJ2FjdHVhbGl6YXJfZGF0b3NfbGxhbWFkYSddID8/ICcnKSAhPT0gJzEnIHx8ICRjYW5hbCAhPT0gJ0xMQU1BREEnIHx8CiAgICAgICAgICAgICFpbl9hcnJheSgkcmVzdWx0YWRvLCBbJ0NPTlRBQ1RPX0NPUlJFQ1RPJywgJ0NPTlRBQ1RPX1JFRkVSSURPJywgJ1NPTElDSVRPX0lORk9STUFDSU9OJywKICAgICAgICAgICAgICAgICdTT0xJQ0lUT19MTEFNQVJfREVTUFVFUycsICdOT19JTlRFUkVTQURPJ10sIHRydWUpKSByZXR1cm4gW107CiAgICAgICAgJGNhbXBvcyA9IFsKICAgICAgICAgICAgJ25vbWJyZV9lbnRpZGFkX2FjdHVhbGl6YWRvJz0+Wydub21icmVfZW50aWRhZCcsMTgwXSwKICAgICAgICAgICAgJ251ZXZvX3RlbGVmb25vX2NvbnRhY3RvJz0+Wyd0ZWxlZm9ub192ZXJpZmljYWRvJyw0MF0sCiAgICAgICAgICAgICdudWV2b19jb3JyZW9fY29udGFjdG8nPT5bJ2NvcnJlb192ZXJpZmljYWRvJywxNjBdLAogICAgICAgICAgICAnbnVldm9fY29udGFjdG9fbm9tYnJlJz0+Wydjb250YWN0b19ub21icmUnLDE0MF0sCiAgICAgICAgICAgICdudWV2b19jb250YWN0b19jYXJnbyc9PlsnY29udGFjdG9fY2FyZ28nLDE1MF0KICAgICAgICBdOwogICAgICAgICRvdXQgPSBbXTsKICAgICAgICBmb3JlYWNoICgkY2FtcG9zIGFzICRpbnB1dD0+WyRjb2x1bW5hLCRtYXhdKSB7CiAgICAgICAgICAgIGlmICghaXNzZXQoJGRhdG9zWyRpbnB1dF0pKSBjb250aW51ZTsKICAgICAgICAgICAgaWYgKCFpc19zdHJpbmcoJGRhdG9zWyRpbnB1dF0pKSB0aHJvdyBuZXcgSW52YWxpZEFyZ3VtZW50RXhjZXB0aW9uKCdMb3MgZGF0b3MgZGUgY29udGFjdG8gbm8gc29uIHbDoWxpZG9zLicpOwogICAgICAgICAgICAkdmFsb3IgPSBWZXJpZmljYWNpb25JbnN0aXR1Y2lvbmFsU2VydmljZTo6bGltcGlhck9ic2VydmFjaW9uKCRkYXRvc1skaW5wdXRdKTsKICAgICAgICAgICAgaWYgKG1iX3N0cmxlbigkdmFsb3IsJ1VURi04JykgPiAkbWF4KSB0aHJvdyBuZXcgSW52YWxpZEFyZ3VtZW50RXhjZXB0aW9uKCdVbm8gZGUgbG9zIGRhdG9zIGRlIGNvbnRhY3RvIGVzIGRlbWFzaWFkbyBsYXJnby4nKTsKICAgICAgICAgICAgaWYgKCR2YWxvciA9PT0gJycpIGNvbnRpbnVlOyAvLyBVbiBjYW1wbyB2YWPDrW8gbnVuY2EgYm9ycmEgdW4gZGF0byBkZWwgZXhwZWRpZW50ZS4KICAgICAgICAgICAgaWYgKCRjb2x1bW5hID09PSAnY29ycmVvX3ZlcmlmaWNhZG8nICYmICFmaWx0ZXJfdmFyKCR2YWxvcixGSUxURVJfVkFMSURBVEVfRU1BSUwpKQogICAgICAgICAgICAgICAgdGhyb3cgbmV3IEludmFsaWRBcmd1bWVudEV4Y2VwdGlvbignRWwgY29ycmVvIGRlIGNvbnRhY3RvIG5vIGVzIHbDoWxpZG8uJyk7CiAgICAgICAgICAgIGlmICgkY29sdW1uYSA9PT0gJ3RlbGVmb25vX3ZlcmlmaWNhZG8nICYmICFwcmVnX21hdGNoKCcvXlsrMC05KClcLSAuXXs3LDQwfSQvRCcsJHZhbG9yKSkKICAgICAgICAgICAgICAgIHRocm93IG5ldyBJbnZhbGlkQXJndW1lbnRFeGNlcHRpb24oJ0VsIHRlbMOpZm9ubyBkZSBjb250YWN0byBubyBlcyB2w6FsaWRvLicpOwogICAgICAgICAgICAkb3V0WyRjb2x1bW5hXSA9ICR2YWxvcjsKICAgICAgICB9CiAgICAgICAgcmV0dXJuICRvdXQ7CiAgICB9CgogICAgcHVibGljIHN0YXRpYyBmdW5jdGlvbiBub3RhKGFycmF5ICRkYXRvcyk6IHN0cmluZwogICAgewogICAgICAgICRsYWJlbHM9Wydub21icmVfZW50aWRhZCc9PidJbnN0aXR1Y2nDs24nLCd0ZWxlZm9ub192ZXJpZmljYWRvJz0+J1RlbMOpZm9ubycsCiAgICAgICAgICAgICdjb3JyZW9fdmVyaWZpY2Fkbyc9PidDb3JyZW8nLCdjb250YWN0b19ub21icmUnPT4nQ29udGFjdG8gaW5zdGl0dWNpb25hbCcsJ2NvbnRhY3RvX2NhcmdvJz0+J0NhcmdvIG8gw6FyZWEnXTsKICAgICAgICAkcGFydGVzPVtdOwogICAgICAgIGZvcmVhY2ggKCRsYWJlbHMgYXMgJGNhbXBvPT4kbGFiZWwpIGlmIChpc3NldCgkZGF0b3NbJGNhbXBvXSkpICRwYXJ0ZXNbXT0kbGFiZWwuJzogJy4kZGF0b3NbJGNhbXBvXTsKICAgICAgICByZXR1cm4gJHBhcnRlcyA/ICdEYXRvcyBkZSBjb250YWN0byBndWFyZGFkb3MgZW4gbGEgZmljaGE6ICcuaW1wbG9kZSgnIMK3ICcsJHBhcnRlcykgOiAnJzsKICAgIH0KCiAgICAvKiogRWwgbGxhbWFkb3IgbWFudGllbmUgbGEgbWlzbWEgdHJhbnNhY2Npw7NuIGRlIGxhIGludGVyYWNjacOzbi4gKi8KICAgIHB1YmxpYyBzdGF0aWMgZnVuY3Rpb24gZ3VhcmRhcihteXNxbGkgJGRiLCBpbnQgJHNlZ3VpbWllbnRvLCBpbnQgJHVzdWFyaW8sIGFycmF5ICRkYXRvcyk6IHZvaWQKICAgIHsKICAgICAgICBpZiAoISRkYXRvcykgcmV0dXJuOwogICAgICAgICRwZXJtaXRpZG9zPVsnbm9tYnJlX2VudGlkYWQnLCd0ZWxlZm9ub192ZXJpZmljYWRvJywnY29ycmVvX3ZlcmlmaWNhZG8nLCdjb250YWN0b19ub21icmUnLCdjb250YWN0b19jYXJnbyddOwogICAgICAgIGlmIChhcnJheV9kaWZmKGFycmF5X2tleXMoJGRhdG9zKSwkcGVybWl0aWRvcykpIHRocm93IG5ldyBJbnZhbGlkQXJndW1lbnRFeGNlcHRpb24oJ0NhbXBvcyBkZSBjb250YWN0byBubyBwZXJtaXRpZG9zLicpOwogICAgICAgICRzY29wZT1TZWd1aW1pZW50b1RlcnJpdG9yaWFsU2NvcGU6OmFuYWxpc3RhKCdzZWd1aW1pZW50b3NfdmluY3VsYWNpb24nKTsKICAgICAgICAkbG9jaz0kZGItPnByZXBhcmUoJ1NFTEVDVCBpZCBGUk9NIHNlZ3VpbWllbnRvc192aW5jdWxhY2lvbiBXSEVSRSBpZD0/IEFORCAnLiRzY29wZS4nIEFORCBhY3Rpdm89MSBGT1IgVVBEQVRFJyk7CiAgICAgICAgJGxvY2stPmJpbmRfcGFyYW0oJ2lpJywkc2VndWltaWVudG8sJHVzdWFyaW8pOyRsb2NrLT5leGVjdXRlKCk7CiAgICAgICAgJGFjdHVhbD0kbG9jay0+Z2V0X3Jlc3VsdCgpLT5mZXRjaF9hc3NvYygpOyRsb2NrLT5jbG9zZSgpOwogICAgICAgIGlmICghJGFjdHVhbCkgdGhyb3cgbmV3IERvbWFpbkV4Y2VwdGlvbignRWwgZXhwZWRpZW50ZSB5YSBubyBwZXJ0ZW5lY2UgYWwgQW5hbGlzdGEgbyBubyBlc3TDoSBhY3Rpdm8uJyk7CiAgICAgICAgJGFzaWduYWNpb25lcz1bXTskdmFsb3Jlcz1bXTsKICAgICAgICBmb3JlYWNoICgkZGF0b3MgYXMgJGNhbXBvPT4kdmFsb3IpIHskYXNpZ25hY2lvbmVzW109JGNhbXBvLic9Pyc7JHZhbG9yZXNbXT0kdmFsb3I7fQogICAgICAgICR0aXBvcz1zdHJfcmVwZWF0KCdzJyxjb3VudCgkdmFsb3JlcykpLidpaSc7JHZhbG9yZXNbXT0kc2VndWltaWVudG87JHZhbG9yZXNbXT0kdXN1YXJpbzsKICAgICAgICAkc3RtdD0kZGItPnByZXBhcmUoJ1VQREFURSBzZWd1aW1pZW50b3NfdmluY3VsYWNpb24gU0VUICcuaW1wbG9kZSgnLCcsJGFzaWduYWNpb25lcykuJyBXSEVSRSBpZD0/IEFORCAnLiRzY29wZS4nIEFORCBhY3Rpdm89MScpOwogICAgICAgICRzdG10LT5iaW5kX3BhcmFtKCR0aXBvcywuLi4kdmFsb3Jlcyk7JHN0bXQtPmV4ZWN1dGUoKTskc3RtdC0+Y2xvc2UoKTsKICAgIH0KfQo=",
+      "after_sha": "872580fcea963afa43a994c9664c2f15d972a15c849db6c81be4de49da551421"
+    },
+    {
+      "path": "app/controllers/SeguimientoVinculacionController.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        }\n\n        $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['persona_atendio'] ?? ''));\n        $proximaAccion = $programacion['accion'];\n",
+          "after": "        }\n\n        require_once __DIR__.'/../services/DatosContactoLlamadaService.php';\n        try { $contactoLlamada=DatosContactoLlamadaService::extraer($_POST,$canalFormulario,$resultadoFormulario); }\n        catch (InvalidArgumentException $e) { $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422); }\n        $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['persona_atendio'] ?? ''));\n        $proximaAccion = $programacion['accion'];\n"
+        },
+        {
+          "before": "        ])));\n\n        $datosInteraccion = [\n            'canal' => $canal,\n            'resultado' => $resultado,\n",
+          "after": "        ])));\n\n        $notas=trim($notas.\"\\n\".DatosContactoLlamadaService::nota($contactoLlamada));\n        $datosInteraccion = [\n            'contacto_llamada'=>$contactoLlamada,\n            'canal' => $canal,\n            'resultado' => $resultado,\n"
+        }
+      ]
+    },
+    {
+      "path": "app/models/SeguimientoVinculacionModel.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "            }\n\n            $etapaPersistencia = 'actualizar el seguimiento';\n            $sqlSeguimiento = \"UPDATE seguimientos_vinculacion\n",
+          "after": "            }\n\n            if (!empty($datos['contacto_llamada'])) {\n                require_once __DIR__.'/../services/DatosContactoLlamadaService.php';\n                DatosContactoLlamadaService::guardar($this->connection,(int)$seguimientoId,(int)$usuarioId,$datos['contacto_llamada']);\n            }\n            $etapaPersistencia = 'actualizar el seguimiento';\n            $sqlSeguimiento = \"UPDATE seguimientos_vinculacion\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/InteraccionRutaService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        }\n\n        $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($datos['persona_atendio'] ?? ''));\n        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion'] ?? ''));\n",
+          "after": "        }\n\n        require_once __DIR__.'/DatosContactoLlamadaService.php';\n        try { $contactoLlamada=DatosContactoLlamadaService::extraer($datos,$canalFormulario,$resultadoFormulario); }\n        catch (InvalidArgumentException $e) { return $this->error($e->getMessage(),422); }\n        $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($datos['persona_atendio'] ?? ''));\n        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion'] ?? ''));\n"
+        },
+        {
+          "before": "        ])));\n\n        if ($notas === '') {\n            $notas = 'Interacción informativa registrada durante la ruta de vinculación.';\n",
+          "after": "        ])));\n\n        $notas=trim($notas.\"\\n\".DatosContactoLlamadaService::nota($contactoLlamada));\n        if ($notas === '') {\n            $notas = 'Interacción informativa registrada durante la ruta de vinculación.';\n"
+        },
+        {
+          "before": "            $stmtSeguimiento->execute();\n\n            $this->connection->commit();\n\n",
+          "after": "            $stmtSeguimiento->execute();\n\n            DatosContactoLlamadaService::guardar($this->connection,$seguimientoId,$usuarioId,$contactoLlamada);\n            $this->connection->commit();\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaEntrantesAnalistaService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    public function registrarAtencionEnExpediente(int $usuarioId,array $call,array $datos,bool $sdk=false,string $id='',string $aliasSdk=''): array\n    {\n        $decision=strtolower(trim((string)($datos['decision']??'')));\n        if(!in_array($decision,['existente','nueva'],true))throw new DomainException('Selecciona una institución con seguimiento o una institución nueva.');\n",
+          "after": "    public function registrarAtencionEnExpediente(int $usuarioId,array $call,array $datos,bool $sdk=false,string $id='',string $aliasSdk=''): array\n    {\n        require_once __DIR__.'/DatosContactoLlamadaService.php';\n        $contactoLlamada=DatosContactoLlamadaService::extraer($datos,'LLAMADA',strtoupper(trim((string)($datos['resultado']??''))));\n        $decision=strtolower(trim((string)($datos['decision']??'')));\n        if(!in_array($decision,['existente','nueva'],true))throw new DomainException('Selecciona una institución con seguimiento o una institución nueva.');\n"
+        },
+        {
+          "before": "            ])));\n\n            $interaccionId = $model->registrarInteraccionManual(\n                $seguimientoId, $usuarioId, [\n",
+          "after": "            ])));\n\n            $notas=trim($notas.\"\\n\".DatosContactoLlamadaService::nota($contactoLlamada));\n            $interaccionId = $model->registrarInteraccionManual(\n                $seguimientoId, $usuarioId, [\n"
+        },
+        {
+          "before": "                    'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0),\n                    'preservar_estado'=>true,\n                    'nuevo_telefono_contacto'=>$referido['nuevo_telefono_contacto'] ?? '',\n                    'nuevo_correo_contacto'=>$referido['nuevo_correo_contacto'] ?? '',\n",
+          "after": "                    'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0),\n                    'preservar_estado'=>true,\n                    'contacto_llamada'=>$contactoLlamada,\n                    'nuevo_telefono_contacto'=>$referido['nuevo_telefono_contacto'] ?? '',\n                    'nuevo_correo_contacto'=>$referido['nuevo_correo_contacto'] ?? '',\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_atencion.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    window.IMPE_CALL_DRAFTS={\n        refs,localSave,\n        resultValues(values={}) {\n            const out={...values};\n",
+          "after": "    window.IMPE_CALL_DRAFTS={\n        refs,localSave,\n        actualizarFicha(datos) {\n            const form=document.querySelector('[data-work-interaction-form]');\n            if(!form || Number(form.elements.namedItem('seguimiento_id')?.value)!==Number(datos.get('seguimiento_id')))return;\n            if(datos.get('actualizar_datos_llamada')!=='1' || !['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'].includes(datos.get('resultado')))return;\n            const campos=[['nombre_entidad_actualizado','data-work-title',null],['nuevo_telefono_contacto','data-work-phone','telefono_verificado'],['nuevo_correo_contacto','data-work-email','correo_verificado'],['nuevo_contacto_nombre','data-work-contact-name','contacto_nombre'],['nuevo_contacto_cargo','data-work-contact-role','contacto_cargo']];\n            for(const [nombre,selector,inputName] of campos) {\n                const valor=String(datos.get(nombre)||'').trim();if(!valor)continue;\n                const label=document.querySelector('['+selector+']');if(label)label.textContent=valor;\n                const input=inputName && document.querySelector('[data-work-contact-form] [name=\"'+inputName+'\"]');if(input)input.value=valor;\n            }\n            const correo=String(datos.get('nuevo_correo_contacto')||'').trim(),boton=document.querySelector('[data-work-email-button]');\n            if(correo && boton){boton.disabled=false;boton.title='Enviar correo a '+correo;}\n        },\n        resultValues(values={}) {\n            const out={...values};\n"
+        },
+        {
+          "before": "                delete out[alias];\n            }\n            return out;\n        },\n",
+          "after": "                delete out[alias];\n            }\n            for(const [source,target] of [['telefono_capturado','nuevo_telefono_contacto'],['correo_capturado','nuevo_correo_contacto'],['nombre_entidad','nombre_entidad_actualizado']]) {\n                if(!(target in out) && out[source])out[target]=out[source];\n            }\n            return out;\n        },\n"
+        },
+        {
+          "before": "                correo_capturado:'correo',observacion:'notas',nuevo_contacto_nombre:'contacto_nombre',nuevo_contacto_cargo:'contacto_cargo'};\n            for(const [name,alias] of Object.entries(names))if(name in values)out[alias]=values[name];\n            return out;\n        },\n",
+          "after": "                correo_capturado:'correo',observacion:'notas',nuevo_contacto_nombre:'contacto_nombre',nuevo_contacto_cargo:'contacto_cargo'};\n            for(const [name,alias] of Object.entries(names))if(name in values)out[alias]=values[name];\n            for(const [source,target] of [['nuevo_telefono_contacto','telefono'],['nuevo_correo_contacto','correo'],['nombre_entidad_actualizado','nombre']]) {\n                if(source in values)out[target]=values[source];\n            }\n            return out;\n        },\n"
+        },
+        {
+          "before": "            const input=form.elements.namedItem(name);if(input&&!input.value&&value)input.value=String(value);\n        }\n        window.IMPE_TELEPHONY_NOTIFY?.('Datos de la llamada recuperados. Revisa el resultado y confirma los datos verificados.');\n    });\n    window.IMPE_TELEPHONY_NOTIFY=(message,error=false)=>{\n",
+          "after": "            const input=form.elements.namedItem(name);if(input&&!input.value&&value)input.value=String(value);\n        }\n        form.querySelector('[name=\"resultado\"]')?.dispatchEvent(new Event('change',{bubbles:true}));\n        window.IMPE_TELEPHONY_NOTIFY?.('Borrador recuperado. Revisa los datos de contacto: se guardarán en la ficha al registrar el resultado.');\n    });\n    window.IMPE_TELEPHONY_NOTIFY=(message,error=false)=>{\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_entrantes_analista.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        ].includes(result);\n        evidence.hidden = !allowEvidence;\n        referred.hidden=!enabled || result!=='CONTACTO_REFERIDO';\n        referred.querySelectorAll('input').forEach(el=>el.disabled=referred.hidden);\n        sdkConfirm.hidden=!isSdkCall || !allowEvidence;\n",
+          "after": "        ].includes(result);\n        evidence.hidden = !allowEvidence;\n        referred.hidden=!allowEvidence;\n        referred.querySelectorAll('input').forEach(el=>el.disabled=referred.hidden);\n        sdkConfirm.hidden=!isSdkCall || !allowEvidence;\n"
+        },
+        {
+          "before": "            if(values.correo && !form.elements.nuevo_correo_contacto.value)form.elements.nuevo_correo_contacto.value=values.correo;\n            if(preparingResult&&outgoingReady&&!hasAnswer)decision.value='sin_identificar';\n            renderDecision();void loadMunicipalities(values.municipio_id||'');draftStatus.hidden=false;draftStatus.textContent='Borrador recuperado. Revisa los datos antes de guardar.';\n        };\n        void restore();\n",
+          "after": "            if(values.correo && !form.elements.nuevo_correo_contacto.value)form.elements.nuevo_correo_contacto.value=values.correo;\n            if(preparingResult&&outgoingReady&&!hasAnswer)decision.value='sin_identificar';\n            renderDecision();void loadMunicipalities(values.municipio_id||'');draftStatus.hidden=false;draftStatus.textContent='Borrador recuperado. Revisa el contacto: al guardar se actualizará la ficha del expediente seleccionado.';\n        };\n        void restore();\n"
+        },
+        {
+          "before": "        clearError();\n        if (!form.reportValidity()) return;\n        if(resultInput.value==='CONTACTO_REFERIDO' && !Array.from(referred.querySelectorAll('input')).some(e=>e.value.trim())) {showError('Captura algún dato de la persona o área referida.');return;}\n        clearTimeout(draftTimer);\n        const requestBody=new FormData(form);\n",
+          "after": "        clearError();\n        if (!form.reportValidity()) return;\n        if(resultInput.value==='CONTACTO_REFERIDO' && !Array.from(referred.querySelectorAll('input')).some(e=>e.type!=='hidden' && e.name!=='nombre_entidad_actualizado' && e.value.trim())) {showError('Captura algún dato de la persona o área referida.');return;}\n        clearTimeout(draftTimer);\n        const requestBody=new FormData(form);\n"
+        }
+      ]
+    },
+    {
+      "path": "app/views/telefonia/resultado_analista_form.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "                    </div>\n                    <div class=\"linkage-call-verification-box mt-3\" data-incoming-referred hidden>\n                        <strong>Contacto proporcionado por la institución</strong>\n                        <p class=\"text-muted small\">Estos datos se incorporarán al expediente. La persona referida puede ser distinta de quien atendió.</p>\n                        <div class=\"row g-3\">\n                            <div class=\"col-12 col-md-6\"><label class=\"form-label\" for=\"incomingReferredName\">Nombre del contacto</label>\n",
+          "after": "                    </div>\n                    <div class=\"linkage-call-verification-box mt-3\" data-incoming-referred hidden>\n                        <input type=\"hidden\" name=\"actualizar_datos_llamada\" value=\"1\">\n                        <strong>Datos de contacto para el expediente</strong>\n                        <div class=\"mt-2\"><label class=\"form-label\" for=\"incomingInstitutionUpdate\">Nombre institucional actualizado (opcional)</label><input id=\"incomingInstitutionUpdate\" name=\"nombre_entidad_actualizado\" maxlength=\"180\" class=\"form-control\"></div>\n                        <p class=\"text-muted small\">Revisa la captura: al guardar el resultado se actualizará la ficha del expediente seleccionado. Los campos vacíos conservan sus datos actuales. La persona que atendió puede ser distinta del contacto institucional.</p>\n                        <div class=\"row g-3\">\n                            <div class=\"col-12 col-md-6\"><label class=\"form-label\" for=\"incomingReferredName\">Nombre del contacto</label>\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_interacciones.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "            '<div class=\"linkage-referred-contact-box\">' +\n                '<div class=\"linkage-referred-contact-head\">' +\n                    '<strong>Nuevo contacto proporcionado</strong>' +\n                    '<span>El teléfono original se conservará como teléfono fuente.</span>' +\n                '</div>' +\n                '<div class=\"row g-2\">' +\n                    '<div class=\"col-12 col-md-6\">' +\n                        '<label class=\"form-label\" for=\"work_referred_phone\">Nuevo teléfono de contacto</label>' +\n",
+          "after": "            '<div class=\"linkage-referred-contact-box\">' +\n                '<div class=\"linkage-referred-contact-head\">' +\n                    '<strong>Datos de contacto para el expediente</strong><input type=\"hidden\" name=\"actualizar_datos_llamada\" value=\"1\">' +\n                    '<span>Al guardar el resultado se actualizará la ficha. Los campos vacíos conservan los datos actuales.</span>' +\n                '</div>' +\n                '<div class=\"row g-2\"><div class=\"col-12\"><label class=\"form-label\" for=\"work_institution_update\">Nombre institucional actualizado (opcional)</label><input id=\"work_institution_update\" name=\"nombre_entidad_actualizado\" maxlength=\"180\" class=\"form-control\"></div>' +\n                    '<div class=\"col-12 col-md-6\">' +\n                        '<label class=\"form-label\" for=\"work_referred_phone\">Nuevo teléfono de contacto</label>' +\n"
+        },
+        {
+          "before": "                formulario.querySelector('[name=\"canal\"]')?.value || ''\n            ).toUpperCase();\n            const visible = resultado === 'CONTACTO_REFERIDO' && canal === 'LLAMADA';\n\n            contenedorContactoReferido.classList.toggle('d-none', !visible);\n",
+          "after": "                formulario.querySelector('[name=\"canal\"]')?.value || ''\n            ).toUpperCase();\n            const visible = ['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'].includes(resultado) && canal === 'LLAMADA';\n\n            contenedorContactoReferido.classList.toggle('d-none', !visible);\n"
+        },
+        {
+          "before": "            }\n\n            if (!visible) {\n                [campoTelefonoReferido, campoCorreoReferido, campoNombreReferido, campoCargoReferido]\n                    .forEach(function (campo) {\n                        if (campo) {\n                            campo.value = '';\n                        }\n                    });\n            }\n        };\n\n",
+          "after": "            }\n\n            contenedorContactoReferido.querySelectorAll('input').forEach(input=>input.disabled=!visible);\n        };\n\n"
+        },
+        {
+          "before": "                }\n\n                agregarActividadInformativa(datos.interaccion);\n                formulario.classList.add('d-none');\n",
+          "after": "                }\n\n                window.IMPE_CALL_DRAFTS?.actualizarFicha(formData);\n                agregarActividadInformativa(datos.interaccion);\n                formulario.classList.add('d-none');\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaBorradorService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "            'nuevo_contacto_nombre'=>140,'nuevo_contacto_cargo'=>150,'nuevo_telefono_contacto'=>40,\n            'nuevo_correo_contacto'=>160,'decision'=>30,'seguimiento_id'=>12,'estado_id'=>12,'municipio_id'=>12,\n            'tipo_entidad'=>30,'resultado'=>40,'proxima_accion'=>40,'proxima_accion_at'=>30,\n            'verificacion_telefono_confirmado'=>1,'verificacion_correo_confirmado'=>1,\n",
+          "after": "            'nuevo_contacto_nombre'=>140,'nuevo_contacto_cargo'=>150,'nuevo_telefono_contacto'=>40,\n            'nuevo_correo_contacto'=>160,'decision'=>30,'seguimiento_id'=>12,'estado_id'=>12,'municipio_id'=>12,\n            'nombre_entidad_actualizado'=>180,'actualizar_datos_llamada'=>1,\n            'tipo_entidad'=>30,'resultado'=>40,'proxima_accion'=>40,'proxima_accion_at'=>30,\n            'verificacion_telefono_confirmado'=>1,'verificacion_correo_confirmado'=>1,\n"
+        }
+      ]
+    }
+  ]
+}

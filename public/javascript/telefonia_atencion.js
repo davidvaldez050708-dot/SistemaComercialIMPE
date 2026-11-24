@@ -20,6 +20,19 @@
     };
     window.IMPE_CALL_DRAFTS={
         refs,localSave,
+        actualizarFicha(datos) {
+            const form=document.querySelector('[data-work-interaction-form]');
+            if(!form || Number(form.elements.namedItem('seguimiento_id')?.value)!==Number(datos.get('seguimiento_id')))return;
+            if(datos.get('actualizar_datos_llamada')!=='1' || !['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'].includes(datos.get('resultado')))return;
+            const campos=[['nombre_entidad_actualizado','data-work-title',null],['nuevo_telefono_contacto','data-work-phone','telefono_verificado'],['nuevo_correo_contacto','data-work-email','correo_verificado'],['nuevo_contacto_nombre','data-work-contact-name','contacto_nombre'],['nuevo_contacto_cargo','data-work-contact-role','contacto_cargo']];
+            for(const [nombre,selector,inputName] of campos) {
+                const valor=String(datos.get(nombre)||'').trim();if(!valor)continue;
+                const label=document.querySelector('['+selector+']');if(label)label.textContent=valor;
+                const input=inputName && document.querySelector('[data-work-contact-form] [name="'+inputName+'"]');if(input)input.value=valor;
+            }
+            const correo=String(datos.get('nuevo_correo_contacto')||'').trim(),boton=document.querySelector('[data-work-email-button]');
+            if(correo && boton){boton.disabled=false;boton.title='Enviar correo a '+correo;}
+        },
         resultValues(values={}) {
             const out={...values};
             const names={nombre:'nombre_entidad',persona:'persona_atendio',telefono:'telefono_capturado',
@@ -28,6 +41,9 @@
                 if(!(name in out)&&alias in values)out[name]=values[alias];
                 delete out[alias];
             }
+            for(const [source,target] of [['telefono_capturado','nuevo_telefono_contacto'],['correo_capturado','nuevo_correo_contacto'],['nombre_entidad','nombre_entidad_actualizado']]) {
+                if(!(target in out) && out[source])out[target]=out[source];
+            }
             return out;
         },
         captureValues(values={}) {
@@ -35,6 +51,9 @@
             const names={nombre_entidad:'nombre',persona_atendio:'persona',telefono_capturado:'telefono',
                 correo_capturado:'correo',observacion:'notas',nuevo_contacto_nombre:'contacto_nombre',nuevo_contacto_cargo:'contacto_cargo'};
             for(const [name,alias] of Object.entries(names))if(name in values)out[alias]=values[name];
+            for(const [source,target] of [['nuevo_telefono_contacto','telefono'],['nuevo_correo_contacto','correo'],['nombre_entidad_actualizado','nombre']]) {
+                if(source in values)out[target]=values[source];
+            }
             return out;
         },
         async read(user,ids) {
@@ -77,7 +96,8 @@
         for(const [name,value] of Object.entries(normalized)) {
             const input=form.elements.namedItem(name);if(input&&!input.value&&value)input.value=String(value);
         }
-        window.IMPE_TELEPHONY_NOTIFY?.('Datos de la llamada recuperados. Revisa el resultado y confirma los datos verificados.');
+        form.querySelector('[name="resultado"]')?.dispatchEvent(new Event('change',{bubbles:true}));
+        window.IMPE_TELEPHONY_NOTIFY?.('Borrador recuperado. Revisa los datos de contacto: se guardarán en la ficha al registrar el resultado.');
     });
     window.IMPE_TELEPHONY_NOTIFY=(message,error=false)=>{
         if(!message||!window.bootstrap?.Toast)return;

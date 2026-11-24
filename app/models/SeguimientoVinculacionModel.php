@@ -1488,6 +1488,10 @@ class SeguimientoVinculacionModel
                 $stmtContactoReferido->execute();
             }
 
+            if (!empty($datos['contacto_llamada'])) {
+                require_once __DIR__.'/../services/DatosContactoLlamadaService.php';
+                DatosContactoLlamadaService::guardar($this->connection,(int)$seguimientoId,(int)$usuarioId,$datos['contacto_llamada']);
+            }
             $etapaPersistencia = 'actualizar el seguimiento';
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
                     SET ultima_interaccion_at = ?,
