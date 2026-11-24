@@ -1,0 +1,21 @@
+{
+  "release": "fecha-asignacion-analista-v1",
+  "files": [
+    {
+      "path": "app/helpers/TelefoniaAsignacionFechaHelper.php",
+      "new_file": true,
+      "content": "PD9waHAKCi8qKiBMYXMgYXNpZ25hY2lvbmVzIE15U1FMIHVzYW4gVVRDOyBsb3MgZXZlbnRvcyBQQlggc2UgZ3VhcmRhbiBlbiBob3JhIGRlIE3DqXhpY28uICovCmZpbmFsIGNsYXNzIFRlbGVmb25pYUFzaWduYWNpb25GZWNoYUhlbHBlcgp7CiAgICBwdWJsaWMgc3RhdGljIGZ1bmN0aW9uIGFNZXhpY28oc3RyaW5nICR1dGMpOiBzdHJpbmcKICAgIHsKICAgICAgICAkZmVjaGEgPSBEYXRlVGltZUltbXV0YWJsZTo6Y3JlYXRlRnJvbUZvcm1hdCgnIVktbS1kIEg6aTpzJywgJHV0YywgbmV3IERhdGVUaW1lWm9uZSgnVVRDJykpOwogICAgICAgIGlmICghJGZlY2hhIHx8ICRmZWNoYS0+Zm9ybWF0KCdZLW0tZCBIOmk6cycpICE9PSAkdXRjKSB7CiAgICAgICAgICAgIHRocm93IG5ldyBEb21haW5FeGNlcHRpb24oJ0ZlY2hhIGRlIGFzaWduYWNpw7NuIHRlbGVmw7NuaWNhIGludsOhbGlkYS4nKTsKICAgICAgICB9CiAgICAgICAgcmV0dXJuICRmZWNoYS0+c2V0VGltZXpvbmUobmV3IERhdGVUaW1lWm9uZSgnQW1lcmljYS9NZXhpY29fQ2l0eScpKS0+Zm9ybWF0KCdZLW0tZCBIOmk6cycpOwogICAgfQp9Cg==",
+      "after_sha": "81ce22f0a3e30def8f544d2a8f77591b5df9d561b9264b90fcf1d8f045bbdc5b"
+    },
+    {
+      "path": "app/services/TelefoniaEntrantesAnalistaService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "            throw new DomainException('Asigna y activa una extensión de llamadas entrantes al Analista.');\n        }\n        return $fila;\n",
+          "after": "            throw new DomainException('Asigna y activa una extensión de llamadas entrantes al Analista.');\n        }\n        // Normalizar una sola vez antes de filtrar historial y confirmar cierres.\n        require_once __DIR__ . '/../helpers/TelefoniaAsignacionFechaHelper.php';\n        $fila['desde'] = TelefoniaAsignacionFechaHelper::aMexico((string)$fila['desde']);\n        return $fila;\n"
+        }
+      ]
+    }
+  ]
+}

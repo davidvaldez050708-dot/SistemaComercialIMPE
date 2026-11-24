@@ -64,6 +64,9 @@ class TelefoniaEntrantesAnalistaService
         if (!$fila || !preg_match('/^[0-9]{3,6}$/', (string)$fila['extension'])) {
             throw new DomainException('Asigna y activa una extensión de llamadas entrantes al Analista.');
         }
+        // Normalizar una sola vez antes de filtrar historial y confirmar cierres.
+        require_once __DIR__ . '/../helpers/TelefoniaAsignacionFechaHelper.php';
+        $fila['desde'] = TelefoniaAsignacionFechaHelper::aMexico((string)$fila['desde']);
         return $fila;
     }
 
