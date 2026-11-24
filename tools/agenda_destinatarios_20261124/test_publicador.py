@@ -42,10 +42,14 @@ def fixture(kind='base', fail_db=False):
         elif base.exists():
             text=base.read_text(encoding='utf-8')
             put(live,name,text.replace('\n','\r\n').encode() if kind=='crlf' else text.encode())
-    if kind=='multi5':
+    if kind in ['multi5','hostinger_actual','multi6_anterior']:
         for name in FILES:
-            proc=subprocess.run(['git','show',f'674da6a0:tools/agenda_destinatarios_20261124/files/{name}'],cwd=ROOT,capture_output=True)
+            revision='8aa8ea33' if kind=='multi6_anterior' else '674da6a0'
+            proc=subprocess.run(['git','show',f'{revision}:tools/agenda_destinatarios_20261124/files/{name}'],cwd=ROOT,capture_output=True)
             if proc.returncode==0: put(live,name,proc.stdout)
+        if kind=='hostinger_actual':
+            name='app/controllers/AgendaComentarioController.php'
+            put(live,name,(HERE/'versiones_hostinger/permisos_por_accion'/name).read_bytes())
     if kind=='mixto':
         for name in [FILES[0],FILES[1],FILES[-1]]:put(live,name,(HERE/'files'/name).read_bytes())
     if kind=='ajeno':
@@ -69,7 +73,7 @@ def run(live,env,mode,ok=True):
     check((p.returncode==0)==ok,p.stdout+p.stderr)
     return p
 
-for kind in ['base','anterior','multi3','multi4','multi5','mixto','crlf']:
+for kind in ['base','anterior','multi3','multi4','multi5','hostinger_actual','multi6_anterior','mixto','crlf']:
     live,env=fixture(kind);before=contents(live)
     run(live,env,'--check')
     check(contents(live)==before,'CHECK no modifica archivos '+kind)
@@ -101,4 +105,4 @@ env['BASH_ENV']=posix(shim/'env.sh')
 run(live,env,'--apply',False)
 check(contents(live)==before,'Restaura los archivos si falla el primer reemplazo')
 
-print(json.dumps({'ok':True,'checks':checks,'escenarios':['base','anterior','multi3','multi4','multi5','mixto','crlf','ajeno','fallo_bd','rollback']},ensure_ascii=False))
+print(json.dumps({'ok':True,'checks':checks,'escenarios':['base','anterior','multi3','multi4','multi5','hostinger_actual','multi6_anterior','mixto','crlf','ajeno','fallo_bd','rollback']},ensure_ascii=False))

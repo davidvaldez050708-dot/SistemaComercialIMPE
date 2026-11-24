@@ -15,6 +15,9 @@ with tempfile.TemporaryDirectory(prefix='agenda-editar-controller-') as folder:
 class AgendaComentarioService {
  static function esUsuarioActual($u) { return $u>0; }
  static function puedeAcceder($u) { return $u>0 && !empty($_SESSION['agenda']); }
+ static function puedeRealizar($u,$accion) {
+  return self::puedeAcceder($u) && !in_array($accion,$_SESSION['denegadas']??[],true);
+ }
  function editar($usuario,$id,$datos) { return ['ok'=>true,'usuario'=>$usuario,'id'=>$id,'datos'=>$datos]; }
 }
 ''', encoding='utf-8')
@@ -42,5 +45,6 @@ require __DIR__.'/app/controllers/AgendaComentarioController.php';
     assert request(token='')[1] == 419
     assert request(session={})[1] == 403
     assert request(session=dict(usuario_id=2, agenda=False, csrf_token='seguro'))[1] == 403
+    assert request(session=dict(usuario_id=1, agenda=True, csrf_token='seguro', denegadas=['editar']))[1] == 403
     assert request(comment_id='12x')[0]['id'] == 0
 print('OK: ruta editar, POST, CSRF, sesión e ID validados sin conexión a BD.')

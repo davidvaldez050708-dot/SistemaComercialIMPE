@@ -12,6 +12,9 @@ en base_hostinger y coinciden con los identificadores Git del diagnóstico:
   JavaScript: 172c2f01b8d37187192d970ca6bc3ef5809ab228
 La edición incluye además AgendaComentarioController, cuya base se conserva
 en base_hostinger/app/controllers y se valida por SHA-256 antes de instalar.
+Se reconoce también el controlador de Hostinger con puedeRealizar por acción,
+conservado en versiones_hostinger/permisos_por_accion. La edición conserva esa
+validación y las comprobaciones de método HTTP y CSRF.
 
 Alcance
 - Versión multi6: el selector de destinatarios queda bloqueado visualmente y
