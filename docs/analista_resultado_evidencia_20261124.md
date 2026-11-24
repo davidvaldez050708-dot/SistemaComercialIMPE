@@ -51,3 +51,12 @@ Paquete: `tools/publicar_resultado_analista.py` y
 `tools/resultado_analista_release.json`. No reemplazar archivos completos de
 producción con la versión del repositorio. Las pruebas del servidor son de reglas;
 la comprobación integral con una llamada real se realiza después de instalar.
+
+Tras confirmar el funcionamiento en producción, se ajustó el aviso del formulario:
+tarjeta compacta con estilos propios limitados al panel, tipografía institucional
+y estados de consulta/confirmación/error. «Volver a comprobar» sólo aparece cuando
+falta confirmación o falla la consulta; consulta la misma llamada y no marca otra.
+La captura confirmada oculta el botón. Validado en Chrome sin depender de estilos
+Bootstrap, con capturas de los estados confirmado y pendiente y ancho de 390 px.
+Este ajuste usa `publicar_aviso_analista.py` y `aviso_analista_release.json` y sólo
+modifica bloques del JS; las validaciones de servidor permanecen instaladas.

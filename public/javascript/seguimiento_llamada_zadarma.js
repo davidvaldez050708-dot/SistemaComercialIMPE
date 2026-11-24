@@ -37,6 +37,34 @@
             document.head.appendChild(css);
         }
 
+        if (!document.getElementById('impe-call-result-rules-style')) {
+            const style = document.createElement('style');
+            style.id = 'impe-call-result-rules-style';
+            style.textContent = `
+              #offcanvasSeguimientoTrabajo .impe-call-result-card {display:flex;align-items:flex-start;gap:10px;
+                padding:12px 14px;margin:0 0 4px;border:1px solid #dce5f3;border-radius:12px;
+                background:#f5f8fd;color:#20365f;box-sizing:border-box;min-width:0}
+              #offcanvasSeguimientoTrabajo .impe-call-result-icon {display:grid;place-items:center;
+                flex:0 0 30px;height:30px;border-radius:9px;background:#e7eefb;color:#2c4289;font-size:16px}
+              #offcanvasSeguimientoTrabajo .impe-call-result-body {flex:1;min-width:0}
+              #offcanvasSeguimientoTrabajo .impe-call-result-body strong {display:block;
+                font-size:13px;font-weight:750;line-height:1.4;color:#243b70}
+              #offcanvasSeguimientoTrabajo .impe-call-result-body p {margin:4px 0 0;
+                font-size:12px;font-weight:400;line-height:1.55;color:#60718d;overflow-wrap:anywhere}
+              #offcanvasSeguimientoTrabajo .impe-call-result-retry {display:inline-flex;align-items:center;
+                justify-content:center;min-height:32px;max-width:100%;margin-top:9px;padding:6px 11px;
+                border:1px solid #cbd8ee;border-radius:8px;background:#fff;color:#2c4289;
+                font-family:inherit;font-size:12px;font-weight:700;line-height:1.4;cursor:pointer}
+              #offcanvasSeguimientoTrabajo .impe-call-result-retry:hover {background:#edf2fc;border-color:#a7bbe1}
+              #offcanvasSeguimientoTrabajo .impe-call-result-retry:focus-visible {outline:3px solid #c5d5f6;outline-offset:2px}
+              #offcanvasSeguimientoTrabajo .impe-call-result-retry:disabled {opacity:.6;cursor:wait}
+              #offcanvasSeguimientoTrabajo .impe-call-result-retry[hidden] {display:none}
+              #offcanvasSeguimientoTrabajo .impe-call-result-card[data-state="error"] {background:#fff9f0;border-color:#ecd7b7}
+              #offcanvasSeguimientoTrabajo .impe-call-result-card[data-state="error"] .impe-call-result-icon {background:#f9ecd8;color:#926321}
+            `;
+            document.head.appendChild(style);
+        }
+
         const vincularUrl =
             'prueba_telefonia/api/vincular_interaccion_zadarma.php';
         // El resultado se valida ANTES de crear la interacción, no sólo al vincularla.
@@ -77,12 +105,22 @@
             if (!notice) {
                 notice = document.createElement('div'); notice.className = 'col-12';
                 notice.setAttribute('data-call-result-rules',''); notice.setAttribute('role','status');
-                const text = document.createElement('p'); text.className = 'small text-muted mb-2';
+                const card = document.createElement('div'); card.className = 'impe-call-result-card';
+                const icon = document.createElement('span'); icon.className = 'impe-call-result-icon';
+                icon.setAttribute('aria-hidden','true');
+                const body = document.createElement('div'); body.className = 'impe-call-result-body';
+                const title = document.createElement('strong');
+                const text = document.createElement('p');
                 const retry = document.createElement('button'); retry.type = 'button';
-                retry.className = 'btn btn-sm btn-outline-primary'; retry.textContent = 'Comprobar llamada';
-                notice.append(text,retry); (form.querySelector('.row') || form).prepend(notice);
+                retry.className = 'impe-call-result-retry'; retry.textContent = '↻ Volver a comprobar';
+                retry.setAttribute('aria-label','Volver a consultar el resultado de esta llamada');
+                retry.title = 'Consulta la misma llamada; no inicia otra.'; retry.hidden = true;
+                body.append(title,text,retry); card.append(icon,body); notice.append(card);
+                (form.querySelector('.row') || form).prepend(notice);
             }
             const text = notice.querySelector('p'), retry = notice.querySelector('button');
+            const card = notice.querySelector('.impe-call-result-card');
+            const title = notice.querySelector('strong'), icon = notice.querySelector('.impe-call-result-icon');
             const submit = form.querySelector('button[type="submit"]');
             const vigente = () => reglasPorFormulario.get(form) === captura && !captura.cancelada;
             async function comprobar() {
@@ -90,7 +128,8 @@
                 clearTimeout(captura.timer); captura.consultando = true;
                 captura.reglas = null; aplicarReglasResultado(form, captura);
                 if (submit) submit.disabled = true;
-                retry.disabled = true; text.textContent = 'Confirmando el resultado con telefonía…';
+                card.dataset.state = 'pending'; title.textContent = 'Confirmando llamada…'; icon.textContent = '…';
+                retry.disabled = true; text.textContent = 'Espera un momento mientras se confirma el resultado para guardar.';
                 const controller = new AbortController();
                 const timeout = setTimeout(()=>controller.abort(),10000);
                 try {
@@ -132,11 +171,15 @@
                     if (data.reglas.opciones.length === 1) selector.value = data.reglas.opciones[0];
                     aplicarReglasResultado(form, captura);
                     selector.dispatchEvent(new Event('change',{bubbles:true}));
-                    text.textContent = 'Telefonía: '+data.reglas.etiqueta+'. '+(data.reglas.permite_verificar
-                        ? 'Indica si hablaste con una persona, escuchaste un buzón o una locución.'
-                        : 'No permite contacto correcto ni confirmar datos.');
+                    card.dataset.state = 'confirmed'; title.textContent = data.reglas.etiqueta; icon.textContent = '✓';
+                    retry.hidden = true;
+                    text.textContent = data.reglas.permite_verificar
+                        ? 'Selecciona lo ocurrido: conversación, buzón u otra respuesta.'
+                        : 'No se confirmó conversación. Registra el intento sin verificar datos.';
                 } catch (error) {
                     if (!vigente()) return;
+                    card.dataset.state = 'error'; title.textContent = 'Confirmación pendiente'; icon.textContent = '!';
+                    retry.hidden = false;
                     text.textContent = error.name === 'AbortError' ? 'La comprobación tardó demasiado. Vuelve a comprobar.' : error.message;
                     if (++captura.intentos < 8) captura.timer = setTimeout(comprobar,2000);
                 } finally {
