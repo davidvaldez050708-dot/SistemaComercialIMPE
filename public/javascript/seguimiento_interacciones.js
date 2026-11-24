@@ -424,6 +424,16 @@
             });
         };
 
+        // La validación nativa se ejecuta antes de submit: limpiar el error
+        // al corregir la selección, no sólo dentro del siguiente submit.
+        [checkTelefono, checkCorreo, checkContacto].forEach(function (campo) {
+            campo?.addEventListener('input', limpiarValidacionesVerificacion);
+            campo?.addEventListener('change', limpiarValidacionesVerificacion);
+        });
+        selectorResultado.addEventListener('change', limpiarValidacionesVerificacion);
+        formulario.querySelector('[name="canal"]')?.addEventListener('change', limpiarValidacionesVerificacion);
+        formulario.addEventListener('reset', limpiarValidacionesVerificacion);
+
         const marcarCampoInvalido = function (campo, mensaje) {
             if (!campo) {
                 return;

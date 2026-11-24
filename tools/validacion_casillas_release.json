@@ -1,0 +1,15 @@
+{
+  "release": "validacion-casillas-nativa-v1",
+  "files": [
+    {
+      "path": "public/javascript/seguimiento_interacciones.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        const marcarCampoInvalido = function (campo, mensaje) {",
+          "after": "        // La validación nativa se ejecuta antes de submit: limpiar el error\n        // al corregir la selección, no sólo dentro del siguiente submit.\n        [checkTelefono, checkCorreo, checkContacto].forEach(function (campo) {\n            campo?.addEventListener('input', limpiarValidacionesVerificacion);\n            campo?.addEventListener('change', limpiarValidacionesVerificacion);\n        });\n        selectorResultado.addEventListener('change', limpiarValidacionesVerificacion);\n        formulario.querySelector('[name=\"canal\"]')?.addEventListener('change', limpiarValidacionesVerificacion);\n        formulario.addEventListener('reset', limpiarValidacionesVerificacion);\n\n        const marcarCampoInvalido = function (campo, mensaje) {"
+        }
+      ]
+    }
+  ]
+}

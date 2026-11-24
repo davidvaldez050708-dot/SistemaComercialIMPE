@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('node:fs'),cp=require('node:child_process'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require('../../browser-legacy-deps/node_modules/playwright');
-const source=n=>fs.readFileSync('tmp/telefono-correo-stage/public/javascript/'+n,'utf8');
+const source=n=>{const p=(process.env.VALIDACION_STAGE||'tmp/validacion-casillas-stage/')+'public/javascript/'+n;return fs.readFileSync(fs.existsSync(p)?p:'tmp/telefono-correo-stage/public/javascript/'+n,'utf8');};
 (async()=>{const browser=await chromium.launch({headless:true,channel:'chrome'});
 try{
  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -13,7 +13,7 @@ try{
  await page.fill('[name="nuevo_correo_contacto"]','nuevo@example.org');
  assert.equal(await page.locator('[name="verificacion_correo_confirmado"]').isDisabled(),false,'se puede confirmar el correo nuevo');
  await page.evaluate(()=>document.querySelector('form').addEventListener('submit',e=>{e.preventDefault();window.enviados.push(Object.fromEntries(new FormData(e.currentTarget)));}));
- const enviar=()=>page.evaluate(()=>document.querySelector('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+ const enviar=()=>page.evaluate(()=>document.querySelector('form').requestSubmit());
  await enviar();assert.equal(await page.evaluate(()=>enviados.length),0);
  await page.check('[name="verificacion_telefono_confirmado"]');await enviar();assert.equal(await page.evaluate(()=>enviados.length),0);
  await page.check('[name="verificacion_correo_confirmado"]');await enviar();assert.equal(await page.evaluate(()=>enviados.length),1,'se puede corregir una captura rechazada y guardar');
