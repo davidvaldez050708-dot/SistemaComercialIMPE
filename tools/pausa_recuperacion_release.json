@@ -1,0 +1,28 @@
+{
+  "release": "pausa-recuperacion-sin-llamadas-v1",
+  "files": [
+    {
+      "path": "app/helpers/PausaConsultasAutomaticas.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "final class ImpePausaConsultasAutomaticas\n{\n    public static function objetivo(string $script, array $get, array $post, string $method): bool\n    {\n        $script = basename(str_replace('\\\\','/',$script));\n        if ($script === 'avisos_llamadas.php') return $method === 'GET';\n        if ($script !== 'index.php') return false;\n",
+          "after": "final class ImpePausaConsultasAutomaticas\n{\n    public static function objetivo(string $script, array $get, array $post, string $method, bool $completa = false): bool\n    {\n        $script = basename(str_replace('\\\\','/',$script));\n        if ($completa) {\n            // Con el equipo sin llamadas: detener toda solicitud web del CRM.\n            // Los proveedores conservan su entrada normal; no se descartan eventos.\n            if ($script === 'zadarma_webhook.php') return false;\n            if ($script === 'index.php' && ($get['controller'] ?? '') === 'whatsappWebhook'\n                && ($get['action'] ?? '') === 'webhook') return false;\n            return true;\n        }\n        if ($script === 'avisos_llamadas.php') return $method === 'GET';\n        if ($script !== 'index.php') return false;\n"
+        },
+        {
+          "before": "        $data = json_decode((string)@file_get_contents($flag),true);\n        if (!is_array($data) || (int)($data['hasta'] ?? 0) <= time()) return;\n        $script = (string)($_SERVER['SCRIPT_FILENAME'] ?? '');\n        if (!self::objetivo($script, $_GET, $_POST, strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')))) return;\n        http_response_code(503);\n        header('Content-Type: application/json; charset=utf-8');\n",
+          "after": "        $data = json_decode((string)@file_get_contents($flag),true);\n        if (!is_array($data) || (int)($data['hasta'] ?? 0) <= time()) return;\n        $completa = ($data['modo'] ?? '') === 'RECUPERACION_SIN_LLAMADAS';\n        if ($completa && PHP_SAPI === 'cli') return; // Diagnóstico puntual por SSH.\n        $script = (string)($_SERVER['SCRIPT_FILENAME'] ?? '');\n        if (!self::objetivo($script, $_GET, $_POST, strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')), $completa)) return;\n        http_response_code(503);\n        header('Content-Type: application/json; charset=utf-8');\n"
+        },
+        {
+          "before": "        header('Retry-After: 120');\n        echo json_encode(['ok'=>false,'pausa_automatica'=>true,'reintentar_en'=>120,\n            'mensaje'=>'Las consultas automáticas están pausadas temporalmente para recuperar el servicio.'], JSON_UNESCAPED_UNICODE);\n        exit;\n    }\n",
+          "after": "        header('Retry-After: 120');\n        echo json_encode(['ok'=>false,'pausa_automatica'=>true,'reintentar_en'=>120,\n            'mensaje'=>$completa ? 'El CRM está en pausa temporal de recuperación. No inicies llamadas ni repitas el acceso.'\n                : 'Las consultas automáticas están pausadas temporalmente para recuperar el servicio.'], JSON_UNESCAPED_UNICODE);\n        exit;\n    }\n"
+        }
+      ]
+    },
+    {
+      "path": "config/db_connection.php",
+      "new_file": false,
+      "prepend_guard": true
+    }
+  ]
+}
