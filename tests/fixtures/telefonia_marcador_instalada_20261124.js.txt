@@ -1,0 +1,806 @@
+(function () {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const root = document.querySelector('[data-telephony-dialer]');
+        if (!root) return;
+
+        const api = window.IMPE_TELEPHONY_PERSISTENT;
+        const numberInput = root.querySelector('[data-telephony-dial-number]');
+        const callButton = root.querySelector('[data-telephony-dial-call]');
+        const hangupButton = root.querySelector('[data-telephony-dial-hangup]');
+        const muteButton = root.querySelector('[data-telephony-dial-mute]');
+        const muteLabel = root.querySelector('[data-telephony-dial-mute-label]');
+        const muteIcon = root.querySelector('[data-telephony-dial-mute-icon]');
+        const newButton = root.querySelector('[data-telephony-dial-new]');
+        const afterCall = root.querySelector('[data-telephony-aftercall]');
+        const saveAfterCall = root.querySelector('[data-telephony-aftercall-save]');
+        const warning = root.querySelector('[data-telephony-assignment-warning]');
+        const identity = root.querySelector('[data-telephony-extension-identity]');
+        const salesStatus = document.querySelector('[data-telephony-sales-extension-status]');
+        const salesCaption = document.querySelector('[data-telephony-sales-extension-caption]');
+        const callStatus = root.querySelector('[data-telephony-dial-status]');
+        const contactForm = root.querySelector('[data-telephony-contact-form]');
+        const contactName = root.querySelector('[data-telephony-contact-name]');
+        const contactNumber = root.querySelector('[data-telephony-contact-number]');
+        const contactId=root.querySelector('[data-telephony-contact-id]'),contactEmail=root.querySelector('[data-telephony-contact-email]'),contactNote=root.querySelector('[data-telephony-contact-note]'),contactSchedule=root.querySelector('[data-telephony-contact-next]'),contactCancel=root.querySelector('[data-telephony-contact-cancel]');
+        const resetContact=()=>{contactForm.reset();if(contactId)contactId.value='0';if(contactCancel)contactCancel.hidden=true;};
+        contactCancel?.addEventListener('click',resetContact);
+        const contactList = root.querySelector('[data-telephony-contacts-list]');
+        const contactEmpty = root.querySelector('[data-telephony-contacts-empty]');
+        const contactFeedback = root.querySelector('[data-telephony-contact-status]');
+        const saveButton = root.querySelector('[data-telephony-contact-save]');
+        const contactSearch = root.querySelector('[data-telephony-contact-search]');
+        const contactSearchClear = root.querySelector('[data-telephony-contact-search-clear]');
+        const contactNoResults = root.querySelector('[data-telephony-contacts-no-results]');
+        const contactCount = root.querySelector('[data-telephony-contacts-count]');
+        const contactPagination = root.querySelector('[data-telephony-contact-pagination]');
+        const contactPages = root.querySelector('[data-telephony-contact-pages]');
+        const contactPrev = root.querySelector('[data-telephony-contact-prev]');
+        const contactNext = root.querySelector('[data-telephony-contact-next]');
+        const contactPageSize = 6;
+        const contactSort = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
+        let contactPage = 1;
+        const resultBlock = root.querySelector('[data-sales-result-block]');
+        const resultSelect = root.querySelector('[data-sales-result-select]');
+        const resultButton = root.querySelector('[data-sales-result-submit]');
+        const resultFeedback = root.querySelector('[data-sales-result-feedback]');
+        const historyTable = root.querySelector('.telephony-history-table');
+        const classifiedCalls = new Map();
+        const registrosInicio = new Map();
+        const vinculosPendientes = new Map();
+        const vinculosCompletados = new Set();
+        historyTable?.querySelectorAll('[data-sales-history-result-form]').forEach(function (form) {
+            const code = form.querySelector('[data-sales-history-result-select]')?.value || '';
+            if (code) classifiedCalls.set(form.dataset.pbxCallId, code);
+        });
+        let savingResult = false;
+        let ready = false;
+        let dialing = false;
+        let saving = false;
+        let checkingPhone = false;
+        let reintentoExtension = null;
+        let fallosExtension = 0;
+        let extensionAssigned = root.dataset.canCall === '1';
+
+        function say(text, error) {
+            callStatus.textContent = String(text || '');
+            callStatus.classList.toggle('is-error', Boolean(error));
+        }
+
+        function sayContact(text, error) {
+            contactFeedback.textContent = String(text || '');
+            contactFeedback.classList.toggle('is-error', Boolean(error));
+        }
+
+        function normalizeNumber(value) {
+            const raw = String(value || '').trim();
+            if (!/^\+?[\d\s().-]+$/.test(raw)) {
+                throw new Error('Escribe un teléfono con dígitos y, si aplica, prefijo internacional.');
+            }
+
+            let digits = window.IMPE_PHONE_NUMBERS.key(raw);
+
+            if (!/^[1-9][0-9]{10,14}$/.test(digits)) {
+                throw new Error('Usa diez dígitos de México o un número internacional válido.');
+            }
+
+            return digits;
+        }
+
+        function crearTokenMarcacion() {
+            if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+                throw new Error('El navegador no pudo iniciar una marcación segura. Utiliza HTTPS.');
+            }
+            const values = new Uint8Array(16);
+            window.crypto.getRandomValues(values);
+            return Array.from(values, function (v) {
+                return v.toString(16).padStart(2, '0');
+            }).join('');
+        }
+
+        function vincularEstado(state) {
+            const token = String(state?.context?.venta_intento || '');
+            const pbxId = String(state?.finalMetadata?.pbx_call_id || state?.pbxCallId || '');
+            if (
+                String(state?.context?.type || '').toUpperCase() !== 'DIALER' ||
+                !/^[a-f0-9]{32}$/.test(token) ||
+                !/^out_[a-fA-F0-9]{32,64}$/.test(pbxId)
+            ) {
+                return Promise.resolve(false);
+            }
+            const key = token + ':' + pbxId;
+            if (vinculosCompletados.has(key)) return Promise.resolve(true);
+            if (vinculosPendientes.has(key)) return vinculosPendientes.get(key);
+            const iniciar = registrosInicio.get(token) || Promise.resolve();
+            const binding = Promise.resolve(iniciar).then(function () {
+                return postContact(root.dataset.callBindUrl, {
+                    token: token, pbx_call_id: pbxId
+                });
+            }).then(function () {
+                vinculosCompletados.add(key);
+                return true;
+            }).finally(function () {
+                vinculosPendientes.delete(key);
+            });
+            vinculosPendientes.set(key, binding);
+            return binding;
+        }
+
+        function renderCall() {
+            const state = api?.getState?.() || {};
+            // Únicamente asociar llamadas nacidas en el botón de Ventas.
+            // La extensión por sí sola no demuestra que sean comerciales.
+            void vincularEstado(state).catch(function () {
+                // Zadarma puede retrasar el webhook; se reintentará después.
+            });
+            const active = Boolean(state.active);
+            const phase = String(state.phase || '');
+            const ownFinished = phase === 'finished' &&
+                String(state.context?.type || '').toUpperCase() === 'DIALER';
+
+            const pbxId = String(state.finalMetadata?.pbx_call_id || state.pbxCallId || '');
+            const canClassify = ownFinished && /^out_[a-fA-F0-9]{32,64}$/.test(pbxId);
+            const pendingResult = canClassify && !classifiedCalls.has(pbxId);
+
+            callButton.disabled = !ready || dialing || active || ownFinished;
+            hangupButton.disabled = !active;
+            const canMute = active && String(state.status || '') === 'in-progress';
+            muteButton.disabled = !canMute;
+            const muted = Boolean(state.muted);
+            muteButton.setAttribute('aria-pressed', muted ? 'true' : 'false');
+            muteLabel.textContent = muted ? 'Activar micrófono' : 'Silenciar';
+            muteIcon.className = muted ? 'bi bi-mic' : 'bi bi-mic-mute';
+            newButton.hidden = !ownFinished;
+            newButton.disabled = pendingResult || savingResult;
+            resultBlock.hidden = !pendingResult;
+            afterCall.hidden = !ownFinished ||
+                !String(state.destination || numberInput.value || '').trim();
+
+            if (active) {
+                say(muted ? 'Micrófono silenciado' : (state.message || 'Llamada en curso…'));
+            } else if (ownFinished) {
+                if (!canClassify) {
+                    say('La llamada aún no tiene identificador verificable. Actualiza el historial para clasificarla.');
+                } else {
+                    say(pendingResult
+                        ? 'Registra el resultado de esta llamada para continuar.'
+                        : 'Resultado registrado. Puedes iniciar otra llamada y actualizar el historial.');
+                }
+            } else if (phase === 'error') {
+                say(state.message || 'No fue posible realizar la llamada.', true);
+            }
+        }
+
+        root.querySelectorAll('[data-dial-key]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const key = String(button.dataset.dialKey || '');
+                if (key === '⌫') {
+                    numberInput.value = numberInput.value.slice(0, -1);
+                } else if (key === '+') {
+                    if (!numberInput.value) numberInput.value = '+';
+                } else if (/^\d$/.test(key)) {
+                    numberInput.value += key;
+                }
+                numberInput.focus();
+            });
+        });
+
+        root.querySelector('[data-telephony-dialer-form]').addEventListener(
+            'submit',
+            async function (event) {
+                event.preventDefault();
+                if (dialing || !ready || !api) return;
+
+                let destination;
+                try {
+                    destination = normalizeNumber(numberInput.value);
+                } catch (error) {
+                    say(error.message, true);
+                    return;
+                }
+
+                let token;
+                try {
+                    token = crearTokenMarcacion();
+                } catch (error) {
+                    say(error.message, true);
+                    return;
+                }
+
+                dialing = true;
+                renderCall();
+                // Conservar la activación de audio del clic del usuario.
+                try {window.parent?.IMPE_TELEPHONY_SHELL?.unlockAudio?.();}catch(_){}
+                // IMPORTANTE: NO activar WebRTC hasta confirmar la aceptación
+                // de la marcación en el servidor. Su 409 protege NO_CONTACTAR
+                // y la ausencia de permiso. Si falla el POST, NO se llama.
+                try {
+                    const registrar=postContact(root.dataset.callStartUrl,{
+                        destino:destination,
+                        token:token
+                    });
+                    registrosInicio.set(token,registrar);
+                    await registrar;
+                    await api.startCall({
+                        destination: destination,
+                        institution: '',
+                        context: {type: 'DIALER', venta_intento: token}
+                    });
+                    say('Solicitud de llamada enviada. Esperando a Zadarma…');
+                } catch (error) {
+                    registrosInicio.delete(token);
+                    say(error?.message || 'No fue posible autorizar la llamada.', true);
+                } finally {
+                    dialing=false;
+                    renderCall();
+                }
+            }
+        );
+
+        hangupButton.addEventListener('click', function () {
+            api?.hangup?.();
+            say('Finalizando llamada…');
+        });
+
+        muteButton.addEventListener('click', function () {
+            if (!muteButton.disabled) {
+                api?.toggleMute?.();
+            }
+        });
+
+        saveAfterCall.addEventListener('click', function () {
+            const state = api?.getState?.() || {};
+            if (state.active || String(state.context?.type || '').toUpperCase() !== 'DIALER') {
+                return;
+            }
+            resetContact();contactName.value=String(state.institution||'').slice(0,90);
+            contactNumber.value = String(state.destination || numberInput.value || '');
+            root.querySelector('[data-sales-contact-editor]').open = true;
+            sayContact('Escribe el nombre del prospecto y pulsa Guardar número.');
+            contactName.focus();
+        });
+
+        newButton.addEventListener('click', function () {
+            const state = api?.getState?.() || {};
+            if (state.active || newButton.disabled) return;
+            if (String(state.context?.type || '').toUpperCase() === 'DIALER') {
+                api?.clearFinished?.();
+            }
+            numberInput.value = '';
+            say('Listo para marcar.');
+            renderCall();
+            numberInput.focus();
+        });
+
+        function normalizeContactSearch(value) {
+            return String(value || '').normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLocaleLowerCase('es-MX')
+                .trim().replace(/\s+/g, ' ');
+        }
+
+        function updateEmpty() {
+            // Las personas guardadas ya vienen de su propia agenda privada.
+            // Búsqueda y paginación se realizan localmente (máximo 150 registros).
+            const all = Array.from(contactList.querySelectorAll('[data-telephony-contact-row]'));
+            const query = normalizeContactSearch(contactSearch.value);
+            const digits = window.IMPE_PHONE_NUMBERS.key(contactSearch.value);
+            const phoneQuery = digits !== '' && /^[+\d\s().-]+$/.test(contactSearch.value.trim());
+            const matching = all.filter(function (row) {
+                if (!query) return true;
+                const name = normalizeContactSearch(
+                    row.querySelector('[data-contact-name]')?.textContent || ''
+                );
+                const phone = String(row.dataset.contactNumber || '');
+                return name.includes(query) || normalizeContactSearch(phone).includes(query) ||
+                    (phoneQuery && window.IMPE_PHONE_NUMBERS.key(phone).includes(digits));
+            });
+
+            matching.sort(function (a, b) {
+                return contactSort.compare(
+                    a.querySelector('[data-contact-name]')?.textContent || '',
+                    b.querySelector('[data-contact-name]')?.textContent || ''
+                );
+            });
+
+            const totalPages = Math.ceil(matching.length / contactPageSize);
+            contactPage = Math.min(Math.max(contactPage, 1), Math.max(totalPages, 1));
+            const start = (contactPage - 1) * contactPageSize;
+            const visible = new Set(matching.slice(start, start + contactPageSize));
+            all.forEach(function (row) {
+                row.hidden = !visible.has(row);
+            });
+
+            const contactosNoCargados = root.dataset.contactsUnavailable === '1';
+            contactEmpty.hidden = all.length > 0 || contactosNoCargados;
+            contactNoResults.hidden = all.length === 0 || matching.length > 0;
+            contactSearchClear.hidden = contactSearch.value === '';
+
+            if (contactosNoCargados) {
+                contactCount.textContent = '';
+            } else if (all.length === 0) {
+                contactCount.textContent = '0 prospectos guardados';
+            } else if (matching.length === 0) {
+                contactCount.textContent = '0 resultados de ' + all.length + ' contactos';
+            } else {
+                const end = Math.min(start + contactPageSize, matching.length);
+                const noun = query ? (matching.length === 1 ? 'resultado' : 'resultados') : 'contactos';
+                contactCount.textContent = 'Mostrando ' + (start + 1) + '–' + end +
+                    ' de ' + matching.length + ' ' + noun +
+                    (query ? ' · ' + all.length + ' guardados' : '');
+            }
+
+            contactPagination.hidden = totalPages <= 1;
+            contactPrev.disabled = contactPage <= 1;
+            contactNext.disabled = contactPage >= totalPages;
+
+            contactPages.replaceChildren();
+            if (totalPages <= 1) return;
+
+            // Mostrar un tramo de números y los extremos para mantener
+            // compacto el control incluso con 25 páginas (150 contactos).
+            const numbers = new Set([1, totalPages]);
+            for (let page = Math.max(1, contactPage - 2);
+                page <= Math.min(totalPages, contactPage + 2); page++) {
+                numbers.add(page);
+            }
+            if (contactPage <= 3) {
+                for (let page = 1; page <= Math.min(5, totalPages); page++) numbers.add(page);
+            }
+            if (contactPage >= totalPages - 2) {
+                for (let page = Math.max(1, totalPages - 4); page <= totalPages; page++) {
+                    numbers.add(page);
+                }
+            }
+            let previous = 0;
+            Array.from(numbers).sort(function (a, b) { return a - b; })
+                .forEach(function (page) {
+                    if (previous && page - previous > 1) {
+                        const dots = document.createElement('span');
+                        dots.className = 'telephony-contacts-page-ellipsis';
+                        dots.textContent = '…';
+                        dots.setAttribute('aria-hidden', 'true');
+                        contactPages.appendChild(dots);
+                    }
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'telephony-contacts-page-btn';
+                    button.dataset.telephonyContactPage = String(page);
+                    button.textContent = String(page);
+                    button.setAttribute('aria-label', 'Página ' + page + ' de ' + totalPages);
+                    if (page === contactPage) {
+                        button.classList.add('is-current');
+                        button.setAttribute('aria-current', 'page');
+                    }
+                    contactPages.appendChild(button);
+                    previous = page;
+                });
+        }
+
+        contactSearch.addEventListener('input', function () {
+            contactPage = 1;
+            updateEmpty();
+        });
+        contactSearchClear.addEventListener('click', function () {
+            contactSearch.value = '';
+            contactPage = 1;
+            updateEmpty();
+            contactSearch.focus();
+        });
+        contactPagination.addEventListener('click', function (event) {
+            const button = event.target.closest('button');
+            if (!button || button.disabled) return;
+            const requested = button.hasAttribute('data-telephony-contact-prev')
+                ? contactPage - 1
+                : button.hasAttribute('data-telephony-contact-next')
+                    ? contactPage + 1
+                    : Number(button.dataset.telephonyContactPage);
+            if (!Number.isInteger(requested)) return;
+            contactPage = requested;
+            updateEmpty();
+        });
+
+        function createContactRow(contact) {
+            const row = document.createElement('tr');
+            row.className = 'telephony-contact-row';
+            row.setAttribute('data-telephony-contact-row', '');
+            row.dataset.contactId = String(contact.id);
+            row.dataset.contactNumber = String(contact.telefono);
+            row.dataset.contactEmail=contact.correo||'';
+            row.dataset.contactNote=contact.observacion||'';
+            row.dataset.contactNext=contact.proxima_accion_at||'';
+
+            const details=document.createElement('td');
+            details.className='telephony-contact-name';
+            const name=document.createElement('strong');
+            name.setAttribute('data-contact-name','');
+            name.textContent=String(contact.nombre);
+            details.append(name);
+
+            const phone=document.createElement('td');
+            phone.className='sales-contact-phone';
+            phone.setAttribute('data-contact-display-number','');
+            phone.textContent=String(contact.telefono);
+
+            const info=document.createElement('td');
+            info.className='sales-contact-meta';
+            const email=document.createElement('span');
+            email.textContent=String(contact.correo||'');
+            info.append(email);
+            if(contact.proxima_accion_at){
+                const next=document.createElement('small');
+                next.textContent='Próxima: '+String(contact.proxima_accion_at);
+                info.append(next);
+            }
+            if(contact.observacion){
+                const note=document.createElement('small');
+                note.setAttribute('data-contact-extra','');
+                note.textContent=String(contact.observacion);
+                info.append(note);
+            }
+
+            const actionsCell=document.createElement('td');
+            const actions=document.createElement('div');
+            actions.className='telephony-contact-actions';
+            const edit=document.createElement('button');
+            edit.type='button';edit.className='btn btn-system-light';
+            edit.setAttribute('data-telephony-contact-edit','');
+            edit.setAttribute('aria-label','Editar contacto');
+            const editIcon=document.createElement('i');
+            editIcon.className='bi bi-pencil';editIcon.setAttribute('aria-hidden','true');
+            edit.append(editIcon);
+            const use=document.createElement('button');
+            use.type='button';use.className='btn btn-system-light';
+            use.setAttribute('data-telephony-contact-use','');
+            use.textContent='Usar número';
+            const remove=document.createElement('button');
+            remove.type='button';remove.className='telephony-contact-remove';
+            remove.setAttribute('data-telephony-contact-remove','');
+            remove.setAttribute('aria-label','Eliminar teléfono guardado');
+            const icon=document.createElement('i');
+            icon.className='bi bi-trash';icon.setAttribute('aria-hidden','true');
+            remove.append(icon);
+            actions.append(edit,use,remove);
+            actionsCell.append(actions);
+            row.append(details,phone,info,actionsCell);
+            return row;
+        }
+
+        function upsertContact(contact) {
+            let existing = null;
+            contactList.querySelectorAll('[data-telephony-contact-row]').forEach(
+                function (row) {
+                    if (row.dataset.contactId === String(contact.id)) {
+                        existing = row;
+                    }
+                }
+            );
+
+            const row = createContactRow(contact);
+            if (existing) {
+                existing.replaceWith(row);
+            } else {
+                contactList.prepend(row);
+            }
+            // Al guardar, dejar visible el nuevo contacto incluso si está
+            // fuera de la primera página de la agenda.
+            contactSearch.value = String(contact.nombre || '');
+            contactPage = 1;
+            updateEmpty();
+        }
+
+        async function postContact(url, fields) {
+            const body = new URLSearchParams();
+            body.set('csrf_token', String(root.dataset.csrfToken || ''));
+            Object.entries(fields).forEach(function (entry) {
+                body.set(entry[0], String(entry[1]));
+            });
+
+            const response = await fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'fetch',
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: body.toString()
+            });
+
+            let result;
+            try {
+                result = await response.json();
+            } catch (error) {
+                throw new Error('No se recibió una respuesta válida. Revisa tu sesión.');
+            }
+            if (!response.ok || !result.ok) {
+                throw new Error(result.mensaje || 'La operación no pudo completarse.');
+            }
+            return result;
+        }
+
+        async function guardarClasificacion(pbxId, resultado) {
+            if (!/^out_[a-fA-F0-9]{32,64}$/.test(pbxId) || !resultado) {
+                throw new Error('Selecciona un resultado válido de una llamada finalizada.');
+            }
+            const response = await postContact(root.dataset.resultSaveUrl, {
+                pbx_call_id: pbxId,
+                resultado: resultado
+            });
+            classifiedCalls.set(pbxId, resultado);
+            return response.registro || {};
+        }
+
+        function reflejarResultadoEnFila(form, codigo, registro) {
+            if (!form) return;
+            const select = form.querySelector('[data-sales-history-result-select]');
+            if (select) select.value = codigo;
+            const row = form.closest('tr');
+            const label = form.parentElement?.querySelector('[data-sales-result-badge]');
+            if (label) {
+                label.textContent = registro.etiqueta || codigo;
+                label.classList.add('is-classified');
+            }
+
+            // Si se registró buzón u otro resultado sin contacto humano,
+            // detener cualquier audio que ya estuviera abierto en la página.
+            if (codigo !== 'CONVERSACION_PERSONA' && row) {
+                const next = row.nextElementSibling;
+                if (next?.hasAttribute('data-sales-recording-row')) {
+                    const audio = next.querySelector('audio');
+                    if (audio) {
+                        audio.pause();
+                        audio.removeAttribute('src');
+                        audio.load();
+                    }
+                    next.remove();
+                }
+                const cell = row.querySelector('.telephony-recording-cell');
+                if (cell) {
+                    cell.textContent = 'No aplica';
+                }
+            }
+        }
+
+        root.querySelector('[data-sales-open-hub]')?.addEventListener('click',function(){
+            const state=api?.getState?.()||{},ref=state.finalMetadata?.pbx_call_id||state.pbxCallId||'';
+            const url=new URL('index.php?controller=telefonia&action=misLlamadas',location.href);if(ref)url.searchParams.set('pbx_call_id',ref);location.href=url.href;
+        });
+        resultButton?.addEventListener('click', function () {
+            const state = api?.getState?.() || {};
+            const pbxId = String(state.finalMetadata?.pbx_call_id || state.pbxCallId || '');
+            if (state.active || savingResult) return;
+            const codigo = resultSelect.value;
+            if (!codigo) {
+                resultFeedback.textContent = 'Selecciona qué ocurrió durante la llamada.';
+                return;
+            }
+            savingResult = true;
+            resultButton.disabled = true;
+            resultFeedback.textContent = 'Registrando el resultado…';
+            void vincularEstado(state).then(function () {
+                return guardarClasificacion(pbxId, codigo);
+            }).then(function (registro) {
+                resultFeedback.textContent = 'Resultado registrado. Actualiza el historial para ver los cambios.';
+                historyTable?.querySelectorAll('[data-sales-history-result-form]').forEach(function (form) {
+                    if (form.dataset.pbxCallId === pbxId) {
+                        reflejarResultadoEnFila(form, codigo, registro);
+                    }
+                });
+            }).catch(function (error) {
+                resultFeedback.textContent = error.message ||
+                    'No fue posible registrar el resultado.';
+            }).finally(function () {
+                savingResult = false;
+                resultButton.disabled = false;
+                renderCall();
+            });
+        });
+
+        historyTable?.addEventListener('submit', function (event) {
+            const form = event.target.closest('[data-sales-history-result-form]');
+            if (!form) return;
+            event.preventDefault();
+            if (form.dataset.saving === '1') return;
+            const select = form.querySelector('[data-sales-history-result-select]');
+            const boton = form.querySelector('[data-sales-history-result-submit]');
+            const feedback = form.parentElement?.querySelector('[data-sales-history-feedback]');
+            if (!select?.value) {
+                if (feedback) feedback.textContent = 'Selecciona un resultado.';
+                return;
+            }
+            form.dataset.saving = '1';
+            if (boton) boton.disabled = true;
+            if (feedback) feedback.textContent = 'Guardando…';
+            void guardarClasificacion(form.dataset.pbxCallId || '', select.value)
+                .then(function (registro) {
+                    reflejarResultadoEnFila(form, select.value, registro);
+                    if (feedback) feedback.textContent =
+                        'Guardado. Actualiza para reflejar la grabación.';
+                    renderCall();
+                }).catch(function (error) {
+                    if (feedback) feedback.textContent = error.message;
+                }).finally(function () {
+                    form.dataset.saving = '0';
+                    if (boton) boton.disabled = false;
+                });
+        });
+
+        root.querySelector('[data-telephony-contact-from-dialer]')
+            .addEventListener('click', function () {
+                contactNumber.value = numberInput.value;
+                root.querySelector('[data-sales-contact-editor]').open = true;
+                contactName.focus();
+                sayContact(
+                    contactNumber.value
+                        ? 'Escribe el nombre del prospecto para guardar su teléfono.'
+                        : 'Primero escribe un número en el marcador.'
+                );
+            });
+
+        contactForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            if (saving) return;
+
+            try {
+                normalizeNumber(contactNumber.value);
+            } catch (error) {
+                sayContact(error.message, true);
+                return;
+            }
+            if (contactName.value.trim().length < 2) {
+                sayContact('Escribe el nombre del prospecto (mínimo 2 caracteres).', true);
+                return;
+            }
+
+            saving = true;
+            saveButton.disabled = true;
+            sayContact('Guardando teléfono…');
+            void postContact(root.dataset.contactAddUrl, {
+                nombre: contactName.value.trim(),
+                telefono: contactNumber.value.trim(), contacto_id:contactId?.value||'0',correo:contactEmail?.value||'',observacion:contactNote?.value||'',proxima_accion_at:contactSchedule?.value||''
+            }).then(function (result) {
+                upsertContact(result.contacto);
+                resetContact();
+                sayContact('Teléfono guardado. Puedes seleccionarlo para marcar.');
+            }).catch(function (error) {
+                sayContact(error.message, true);
+            }).finally(function () {
+                saving = false;
+                saveButton.disabled = false;
+            });
+        });
+
+        contactList.addEventListener('click', function (event) {
+            const button = event.target.closest('button');
+            const row = event.target.closest('[data-telephony-contact-row]');
+            if (!button || !row) return;
+
+            if(button.hasAttribute('data-telephony-contact-edit')){
+                contactId.value=row.dataset.contactId;contactName.value=row.querySelector('[data-contact-name]').textContent;
+                contactNumber.value=row.dataset.contactNumber;contactEmail.value=row.dataset.contactEmail||'';contactNote.value=row.dataset.contactNote||'';
+                contactSchedule.value=(row.dataset.contactNext||'').replace(' ','T').slice(0,16);contactCancel.hidden=false;
+                root.querySelector('[data-sales-contact-editor]').open=true;contactName.focus();return;
+            }
+            if (button.hasAttribute('data-telephony-contact-use')) {
+                numberInput.value = row.dataset.contactNumber || '';
+                say('Número seleccionado. Pulsa Llamar para iniciar la llamada.');
+                numberInput.focus();
+                return;
+            }
+
+            if (!button.hasAttribute('data-telephony-contact-remove')) return;
+            if (!window.confirm('¿Eliminar este teléfono de tu agenda personal?')) return;
+
+            button.disabled = true;
+            void postContact(root.dataset.contactDeleteUrl, {
+                contacto_id: row.dataset.contactId
+            }).then(function () {
+                row.remove();
+                updateEmpty();
+                sayContact('Teléfono eliminado.');
+            }).catch(function (error) {
+                button.disabled = false;
+                sayContact(error.message, true);
+            });
+        });
+
+        function applyExtension(info) {
+            const extension = String(info?.extension || '').trim();
+            extensionAssigned = /^\d{3,6}$/.test(extension);
+            ready = extensionAssigned && Boolean(info?.permite_salientes);
+            root.dataset.canCall = ready ? '1' : '0';
+
+            if (identity) {
+                identity.textContent = extensionAssigned
+                    ? 'Extensión ' + extension : 'Sin extensión asignada';
+            }
+            if (salesStatus) {
+                salesStatus.textContent = extensionAssigned
+                    ? 'Extensión ' + extension : 'Extensión pendiente';
+            }
+            if (salesCaption) {
+                salesCaption.textContent = ready
+                    ? 'Teléfono disponible para realizar llamadas'
+                    : 'Solicita la configuración al administrador';
+            }
+            if (warning) {
+                warning.hidden = ready;
+            }
+
+            const state = api?.getState?.() || {};
+            if (!state.active && state.phase !== 'finished') {
+                if (ready) {
+                    say('Listo para marcar. Autoriza el micrófono cuando el navegador lo solicite.');
+                } else if (warning && !warning.hidden) {
+                    // El mensaje amarillo explica el pendiente sin duplicar avisos.
+                    say('');
+                } else {
+                    say('La extensión no tiene llamadas salientes habilitadas.', true);
+                }
+            }
+            renderCall();
+        }
+
+        function verifyExtension(forceRefresh) {
+            if (!api || typeof api.probe !== 'function' || checkingPhone) return;
+            if (api?.getState?.()?.active || document.hidden) return;
+            window.clearTimeout(reintentoExtension);
+            reintentoExtension = null;
+            checkingPhone = true;
+            void api.probe(Boolean(forceRefresh)).then(function (info) {
+                fallosExtension = 0;
+                applyExtension(info);
+            }).catch(function (error) {
+                if (error.sinExtension) {
+                    fallosExtension = 0;
+                    applyExtension(null);
+                    return;
+                }
+                ready = false;
+                root.dataset.canCall = '0';
+                if (salesStatus && !extensionAssigned) salesStatus.textContent = 'Extensión por verificar';
+                if (identity && !extensionAssigned) identity.textContent = 'Extensión por verificar';
+                if (salesCaption) salesCaption.textContent = 'Esperando respuesta de telefonía';
+                if (warning) warning.hidden = true;
+                say(error.message || 'No fue posible consultar la extensión.', true);
+                if (!error.status || error.status >= 500 || error.status === 429) {
+                    const demora = Math.min(15000, 3000 * 2 ** fallosExtension);
+                    fallosExtension = Math.min(fallosExtension + 1, 3);
+                    reintentoExtension = window.setTimeout(function () {
+                        reintentoExtension = null;
+                        verifyExtension(true);
+                    }, demora + Math.floor(Math.random() * 300));
+                }
+                renderCall();
+            }).finally(function () {
+                checkingPhone = false;
+            });
+        }
+
+        // El buscador de prospectos funciona aun si Zadarma no está configurado.
+        updateEmpty();
+        if (!api || typeof api.probe !== 'function') {
+            say('El motor telefónico no está disponible en este perfil.', true);
+            return;
+        }
+
+        api.subscribe(renderCall);
+        renderCall();
+        verifyExtension(true);
+        // Reintentar enlaces mientras se confirma el webhook, incluso si
+        // ya acabó la llamada y la interfaz sigue abierta.
+        window.setInterval(function () {
+            void vincularEstado(api?.getState?.() || {}).catch(function () {});
+        }, 8000);
+        // Sin recargar el Inicio, detecta una extensión asignada por el administrador.
+        window.setInterval(function () {
+            if (!ready && !checkingPhone) verifyExtension(true);
+        }, 30000);
+        window.addEventListener('focus', function () {
+            if (!ready) verifyExtension(true);
+        });
+    });
+})();

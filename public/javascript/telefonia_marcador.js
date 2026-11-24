@@ -60,8 +60,10 @@
         let saving = false;
         let checkingPhone = false;
         let extensionAssigned = root.dataset.canCall === '1';
+        let callStatusOwned = false;
 
-        function say(text, error) {
+        function say(text, error, fromCall = false) {
+            callStatusOwned = fromCall;
             callStatus.textContent = String(text || '');
             callStatus.classList.toggle('is-error', Boolean(error));
         }
@@ -142,7 +144,8 @@
             const canClassify = ownFinished && /^out_[a-fA-F0-9]{32,64}$/.test(pbxId);
             const pendingResult = canClassify && !classifiedCalls.has(pbxId);
 
-            callButton.disabled = !ready || dialing || active || ownFinished;
+            const resultRequired = ownFinished && (!canClassify || pendingResult || savingResult);
+            callButton.disabled = !ready || dialing || active || resultRequired;
             hangupButton.disabled = !active;
             const canMute = active && String(state.status || '') === 'in-progress';
             muteButton.disabled = !canMute;
@@ -157,17 +160,21 @@
                 !String(state.destination || numberInput.value || '').trim();
 
             if (active) {
-                say(muted ? 'Micrófono silenciado' : (state.message || 'Llamada en curso…'));
+                say(muted ? 'Micrófono silenciado' : (state.message || 'Llamada en curso…'), false, true);
             } else if (ownFinished) {
                 if (!canClassify) {
-                    say('La llamada aún no tiene identificador verificable. Actualiza el historial para clasificarla.');
+                    say('La llamada aún no tiene identificador verificable. Actualiza el historial para clasificarla.', false, true);
                 } else {
                     say(pendingResult
                         ? 'Registra el resultado de esta llamada para continuar.'
-                        : 'Resultado registrado. Puedes iniciar otra llamada y actualizar el historial.');
+                        : 'Resultado registrado. Puedes iniciar otra llamada y actualizar el historial.', false, true);
                 }
             } else if (phase === 'error') {
-                say(state.message || 'No fue posible realizar la llamada.', true);
+                say(state.message || 'No fue posible realizar la llamada.', true, true);
+            } else if (callStatusOwned) {
+                // Reposo invalida el mensaje de la llamada anterior. Conservar
+                // mensajes de entrada/validación que no provienen del teléfono.
+                say(ready ? 'Listo para marcar.' : '');
             }
         }
 
@@ -226,7 +233,7 @@
                         institution: '',
                         context: {type: 'DIALER', venta_intento: token}
                     });
-                    say('Solicitud de llamada enviada. Esperando a Zadarma…');
+                    say('Solicitud de llamada enviada. Esperando a Zadarma…', false, true);
                 } catch (error) {
                     registrosInicio.delete(token);
                     say(error?.message || 'No fue posible autorizar la llamada.', true);
@@ -239,7 +246,7 @@
 
         hangupButton.addEventListener('click', function () {
             api?.hangup?.();
-            say('Finalizando llamada…');
+            say('Finalizando llamada…', false, true);
         });
 
         muteButton.addEventListener('click', function () {
@@ -521,11 +528,23 @@
             if (!/^out_[a-fA-F0-9]{32,64}$/.test(pbxId) || !resultado) {
                 throw new Error('Selecciona un resultado válido de una llamada finalizada.');
             }
+            const classifiedState = api?.getState?.() || {};
+            const classifiedRef = String(classifiedState.finalMetadata?.pbx_call_id || classifiedState.pbxCallId || '');
+            const classifiedExtension = String(classifiedState.extension || '');
             const response = await postContact(root.dataset.resultSaveUrl, {
                 pbx_call_id: pbxId,
                 resultado: resultado
             });
             classifiedCalls.set(pbxId, resultado);
+            // Notificar el mismo diálogo sólo después del acuse del servidor.
+            // El shell conserva sus guardas de referencia, extensión y token.
+            if (classifiedRef === pbxId && /^[0-9]{3,6}$/.test(classifiedExtension)) {
+                try {
+                    if (window.parent !== window) window.parent.postMessage({
+                        type: 'IMPE_SALES_RESULT_SAVED', ref: pbxId, extension: classifiedExtension
+                    }, window.location.origin);
+                } catch (_) { /* El resultado guardado sigue disponible en el historial. */ }
+            }
             return response.registro || {};
         }
 

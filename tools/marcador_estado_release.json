@@ -1,0 +1,43 @@
+{
+  "release": "marcador-estado-v1",
+  "files": [
+    {
+      "path": "public/javascript/telefonia_marcador.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        let extensionAssigned = root.dataset.canCall === '1';\n\n        function say(text, error) {\n            callStatus.textContent = String(text || '');\n",
+          "after": "        let extensionAssigned = root.dataset.canCall === '1';\n        let callStatusOwned = false;\n\n        function say(text, error, fromCall = false) {\n            callStatusOwned = fromCall;\n            callStatus.textContent = String(text || '');\n"
+        },
+        {
+          "before": "\n            callButton.disabled = !ready || dialing || active || ownFinished;\n            hangupButton.disabled = !active;\n",
+          "after": "\n            const resultRequired = ownFinished && (!canClassify || pendingResult || savingResult);\n            callButton.disabled = !ready || dialing || active || resultRequired;\n            hangupButton.disabled = !active;\n"
+        },
+        {
+          "before": "            if (active) {\n                say(muted ? 'Micrófono silenciado' : (state.message || 'Llamada en curso…'));\n            } else if (ownFinished) {\n                if (!canClassify) {\n                    say('La llamada aún no tiene identificador verificable. Actualiza el historial para clasificarla.');\n                } else {\n",
+          "after": "            if (active) {\n                say(muted ? 'Micrófono silenciado' : (state.message || 'Llamada en curso…'), false, true);\n            } else if (ownFinished) {\n                if (!canClassify) {\n                    say('La llamada aún no tiene identificador verificable. Actualiza el historial para clasificarla.', false, true);\n                } else {\n"
+        },
+        {
+          "before": "                        ? 'Registra el resultado de esta llamada para continuar.'\n                        : 'Resultado registrado. Puedes iniciar otra llamada y actualizar el historial.');\n                }\n            } else if (phase === 'error') {\n                say(state.message || 'No fue posible realizar la llamada.', true);\n            }\n",
+          "after": "                        ? 'Registra el resultado de esta llamada para continuar.'\n                        : 'Resultado registrado. Puedes iniciar otra llamada y actualizar el historial.', false, true);\n                }\n            } else if (phase === 'error') {\n                say(state.message || 'No fue posible realizar la llamada.', true, true);\n            } else if (callStatusOwned) {\n                // Reposo invalida el mensaje de la llamada anterior. Conservar\n                // mensajes de entrada/validación que no provienen del teléfono.\n                say(ready ? 'Listo para marcar.' : '');\n            }\n"
+        },
+        {
+          "before": "                    });\n                    say('Solicitud de llamada enviada. Esperando a Zadarma…');\n                } catch (error) {\n",
+          "after": "                    });\n                    say('Solicitud de llamada enviada. Esperando a Zadarma…', false, true);\n                } catch (error) {\n"
+        },
+        {
+          "before": "            api?.hangup?.();\n            say('Finalizando llamada…');\n        });\n",
+          "after": "            api?.hangup?.();\n            say('Finalizando llamada…', false, true);\n        });\n"
+        },
+        {
+          "before": "            }\n            const response = await postContact(root.dataset.resultSaveUrl, {\n",
+          "after": "            }\n            const classifiedState = api?.getState?.() || {};\n            const classifiedRef = String(classifiedState.finalMetadata?.pbx_call_id || classifiedState.pbxCallId || '');\n            const classifiedExtension = String(classifiedState.extension || '');\n            const response = await postContact(root.dataset.resultSaveUrl, {\n"
+        },
+        {
+          "before": "            classifiedCalls.set(pbxId, resultado);\n            return response.registro || {};\n",
+          "after": "            classifiedCalls.set(pbxId, resultado);\n            // Notificar el mismo diálogo sólo después del acuse del servidor.\n            // El shell conserva sus guardas de referencia, extensión y token.\n            if (classifiedRef === pbxId && /^[0-9]{3,6}$/.test(classifiedExtension)) {\n                try {\n                    if (window.parent !== window) window.parent.postMessage({\n                        type: 'IMPE_SALES_RESULT_SAVED', ref: pbxId, extension: classifiedExtension\n                    }, window.location.origin);\n                } catch (_) { /* El resultado guardado sigue disponible en el historial. */ }\n            }\n            return response.registro || {};\n"
+        }
+      ]
+    }
+  ]
+}
