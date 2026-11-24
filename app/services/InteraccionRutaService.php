@@ -70,6 +70,16 @@ class InteraccionRutaService
             return $this->error('Selecciona un resultado válido.', 422);
         }
 
+        try {
+            require_once __DIR__.'/TelefoniaResultadoAnalistaService.php';
+            TelefoniaResultadoAnalistaService::validarLlamada($usuarioId, $seguimientoId, $datos, $this->connection);
+        } catch (DomainException $e) {
+            return $this->error($e->getMessage(),409);
+        } catch (Throwable $e) {
+            error_log('[analista_validar_informativa] '.get_class($e));
+            return $this->error('No se pudo confirmar la llamada. No se guardó la interacción. Intenta nuevamente.',503);
+        }
+
         $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($datos['persona_atendio'] ?? ''));
         $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion'] ?? ''));
         $origenLlamada = strtoupper(trim((string)($datos['origen_llamada'] ?? 'MANUAL')));

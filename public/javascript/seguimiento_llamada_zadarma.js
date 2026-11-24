@@ -39,6 +39,141 @@
 
         const vincularUrl =
             'prueba_telefonia/api/vincular_interaccion_zadarma.php';
+        // El resultado se valida ANTES de crear la interacción, no sólo al vincularla.
+        const reglasPorFormulario = new WeakMap();
+        const resultadosVerificables = ['CONTACTO_CORRECTO','CONTACTO_REFERIDO',
+            'SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'];
+        function aplicarReglasResultado(form, captura) {
+            const selector = form.querySelector('[name="resultado"]');
+            if (!selector) return;
+            for (const option of selector.options) {
+                if (!option.value) continue;
+                option.disabled = captura.originales.get(option) === true || !captura.reglas || !captura.reglas.opciones.includes(option.value);
+            }
+            if (selector.selectedOptions[0]?.disabled) selector.value = '';
+            const verifica = captura.reglas?.permite_verificar === true &&
+                resultadosVerificables.includes(selector.value);
+            for (const field of form.querySelectorAll('[name^="verificacion_"]')) {
+                if (field.type !== 'checkbox') continue;
+                if (!verifica) { field.checked = false; field.disabled = true; }
+            }
+        }
+        function prepararResultadoConTelefonia(form, metadata) {
+            const anterior = reglasPorFormulario.get(form);
+            if (anterior) {
+                anterior.cancelada = true; clearTimeout(anterior.timer);
+                for (const [option,disabled] of anterior.originales) option.disabled = disabled;
+            }
+            const originales = new Map(Array.from(form.querySelectorAll('[name="resultado"] option')).map(option=>[option,option.disabled]));
+            const captura = {metadata, originales, reglas:null, cancelada:false, intentos:0};
+            reglasPorFormulario.set(form, captura);
+            let refInput = form.querySelector('[name="llamada_pbx_id"]');
+            if (!refInput) {
+                refInput = document.createElement('input'); refInput.type = 'hidden';
+                refInput.name = 'llamada_pbx_id'; form.appendChild(refInput);
+            }
+            refInput.value = String(metadata.pbx_call_id || '');
+            let notice = form.querySelector('[data-call-result-rules]');
+            if (!notice) {
+                notice = document.createElement('div'); notice.className = 'col-12';
+                notice.setAttribute('data-call-result-rules',''); notice.setAttribute('role','status');
+                const text = document.createElement('p'); text.className = 'small text-muted mb-2';
+                const retry = document.createElement('button'); retry.type = 'button';
+                retry.className = 'btn btn-sm btn-outline-primary'; retry.textContent = 'Comprobar llamada';
+                notice.append(text,retry); (form.querySelector('.row') || form).prepend(notice);
+            }
+            const text = notice.querySelector('p'), retry = notice.querySelector('button');
+            const submit = form.querySelector('button[type="submit"]');
+            const vigente = () => reglasPorFormulario.get(form) === captura && !captura.cancelada;
+            async function comprobar() {
+                if (!vigente() || captura.consultando) return;
+                clearTimeout(captura.timer); captura.consultando = true;
+                captura.reglas = null; aplicarReglasResultado(form, captura);
+                if (submit) submit.disabled = true;
+                retry.disabled = true; text.textContent = 'Confirmando el resultado con telefonía…';
+                const controller = new AbortController();
+                const timeout = setTimeout(()=>controller.abort(),10000);
+                try {
+                    let ref = String(metadata.pbx_call_id || '');
+                    if (!/^out_[a-fA-F0-9]{32,64}$/.test(ref)) {
+                        // Sólo recuperar el marcado exacto, con checkpoint y ventana temporal.
+                        const key = typeof lastDialKey === 'string' ? lastDialKey : '';
+                        if (!key || !metadata.checkpoint_ready || localStorage.getItem(key) !== String(metadata.call_token) ||
+                            Date.now()/1000 - Number(metadata.finished_at || 0) > 30) {
+                            throw Error('El identificador de la llamada está pendiente. Vuelve a comprobar en unos segundos.');
+                        }
+                        const params = new URLSearchParams({destination:metadata.to || '',since:String(metadata.requested_at || 0),
+                            after_id:String(metadata.after_id || 0),final:'1'});
+                        const res = await fetch('prueba_telefonia/api/zadarma_estado_llamada.php?'+params,
+                            {credentials:'same-origin',cache:'no-store',signal:controller.signal});
+                        const data = await res.json();
+                        const start = Date.parse(data?.call?.start_time || '')/1000;
+                        ref = String(data?.call?.pbx_call_id || '');
+                        if (!res.ok || !data.ok || !/^out_[a-fA-F0-9]{32,64}$/.test(ref) || !Number.isFinite(start) ||
+                            start < Number(metadata.requested_at)-2 || start > Number(metadata.finished_at)+2 ||
+                            localStorage.getItem(key) !== String(metadata.call_token)) {
+                            throw Error('Todavía no se identifica esta llamada con certeza. Vuelve a comprobar.');
+                        }
+                        if (!vigente()) return;
+                        metadata.pbx_call_id = ref;
+                    }
+                    const params = new URLSearchParams({seguimiento_id:String(metadata.seguimiento_id),pbx_call_id:ref});
+                    const response = await fetch('prueba_telefonia/api/resultado_saliente_analista.php?'+params,
+                        {credentials:'same-origin',cache:'no-store',signal:controller.signal});
+                    const data = await response.json();
+                    if (!vigente()) return;
+                    if (!response.ok || !data.ok) throw Error(data.mensaje || 'No se pudo confirmar la llamada.');
+                    if (data.reglas?.pbx_call_id !== ref || !Array.isArray(data.reglas.opciones)) throw Error('La confirmación no corresponde a esta llamada.');
+                    captura.reglas = data.reglas; refInput.value = ref;
+                    const selector = form.querySelector('[name="resultado"]');
+                    if (data.reglas.opciones.includes('OCUPADO') && !selector.querySelector('option[value="OCUPADO"]')) {
+                        selector.add(new Option('Línea ocupada','OCUPADO'));
+                    }
+                    if (data.reglas.opciones.length === 1) selector.value = data.reglas.opciones[0];
+                    aplicarReglasResultado(form, captura);
+                    selector.dispatchEvent(new Event('change',{bubbles:true}));
+                    text.textContent = 'Telefonía: '+data.reglas.etiqueta+'. '+(data.reglas.permite_verificar
+                        ? 'Indica si hablaste con una persona, escuchaste un buzón o una locución.'
+                        : 'No permite contacto correcto ni confirmar datos.');
+                } catch (error) {
+                    if (!vigente()) return;
+                    text.textContent = error.name === 'AbortError' ? 'La comprobación tardó demasiado. Vuelve a comprobar.' : error.message;
+                    if (++captura.intentos < 8) captura.timer = setTimeout(comprobar,2000);
+                } finally {
+                    clearTimeout(timeout); captura.consultando = false;
+                    if (vigente()) { retry.disabled = false; if (submit) submit.disabled = !captura.reglas; }
+                }
+            }
+            retry.onclick = comprobar;
+            void comprobar();
+        }
+        document.addEventListener('change', function (event) {
+            const form = event.target.closest?.('[data-work-interaction-form]');
+            const captura = form && reglasPorFormulario.get(form);
+            if (captura) aplicarReglasResultado(form,captura);
+        });
+        document.addEventListener('submit', function (event) {
+            const form = event.target, captura = reglasPorFormulario.get(form);
+            if (!captura || captura.cancelada) return;
+            const seleccion = form.querySelector('[name="resultado"]')?.value || '';
+            if (!captura.reglas || !captura.reglas.opciones.includes(seleccion)) {
+                event.preventDefault(); event.stopImmediatePropagation();
+                mostrarToast('Comprueba la llamada y selecciona un resultado compatible antes de guardar.',true);
+            } else captura.enviada = true;
+        },true);
+        for (const name of ['impe:interaction-exact-id-ready','impe:interaction-informative-saved']) {
+            document.addEventListener(name,function(event) {
+                const form = offcanvas.querySelector('[data-work-interaction-form]');
+                const captura = form && reglasPorFormulario.get(form);
+                if (!captura?.enviada || Number(event.detail?.seguimientoId) !== Number(captura.metadata.seguimiento_id)) return;
+                captura.cancelada = true; clearTimeout(captura.timer); reglasPorFormulario.delete(form);
+                for (const [option,disabled] of captura.originales) option.disabled = disabled;
+                form.querySelector('[data-call-result-rules]')?.remove();
+                form.querySelector('[name="llamada_pbx_id"]')?.remove();
+                const origen = form.querySelector('[name="origen_llamada"]');
+                if (origen?.value === 'ZADARMA') origen.value = 'MANUAL';
+            });
+        }
         const usuarioId =
             Number(window.IMPE_CURRENT_USER_ID || 0);
         const pendingLinkKey =
@@ -759,6 +894,7 @@
                         formulario,
                         metadata
                     );
+                    prepararResultadoConTelefonia(formulario, metadata);
                     document.dispatchEvent(new CustomEvent('impe:call-result-form-opened', {
                         detail:{form:formulario,ids:[metadata.pbx_call_id,metadata.call_token,lastFinishedToken].filter(Boolean)}
                     }));

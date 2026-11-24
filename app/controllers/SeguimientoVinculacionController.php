@@ -1057,6 +1057,7 @@ class SeguimientoVinculacionController
         $resultadoFormulario = strtoupper(trim((string)($_POST['resultado'] ?? '')));
         $mapaResultados = [
             'SIN_RESPUESTA' => 'SIN_RESPUESTA',
+            'OCUPADO' => 'OCUPADO',
             'BUZON_VOZ' => 'BUZON_VOZ',
             'FUERA_SERVICIO' => 'FUERA_SERVICIO',
             'NUMERO_INCORRECTO' => 'NUMERO_INCORRECTO',
@@ -1091,6 +1092,16 @@ class SeguimientoVinculacionController
                 'ok' => false,
                 'mensaje' => 'Selecciona canal y resultado válidos.'
             ], 422);
+        }
+
+        try {
+            require_once __DIR__.'/../services/TelefoniaResultadoAnalistaService.php';
+            TelefoniaResultadoAnalistaService::validarLlamada($usuarioId, $seguimientoId, $_POST);
+        } catch (DomainException $e) {
+            $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);
+        } catch (Throwable $e) {
+            error_log('[analista_validar_resultado] '.get_class($e));
+            $this->responderJson(['ok'=>false,'mensaje'=>'No se pudo confirmar la llamada. No se guardó la interacción. Intenta nuevamente.'],503);
         }
 
         $fechaInicio = $this->normalizarFechaFormulario($_POST['fecha_inicio'] ?? '');
