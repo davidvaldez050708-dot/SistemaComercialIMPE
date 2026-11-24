@@ -30,6 +30,7 @@ echo "PASS: catálogo por versión, caducidad, bloqueo concurrente, fallos sin c
     assert r.returncode==0,(r.stdout,r.stderr)
     print(r.stdout.decode().strip())
     (site/'fallar.php').write_text("<?php require __DIR__.'/app/helpers/ControlCargaMysql.php';ImpeControlCargaMysql::registrarFallo(new RuntimeException('sintético',(int)($_GET['code']??0)));echo 'OK';",encoding='utf-8')
+    (site/'doble.php').write_text("<?php require __DIR__.'/app/helpers/ControlCargaMysql.php';$causa=new RuntimeException('sintético',2002);ImpeControlCargaMysql::registrarFallo($causa);ImpeControlCargaMysql::registrarFallo(new RuntimeException('envoltura',0,$causa));ImpeControlCargaMysql::registrarFallo($causa);echo 'OK';",encoding='utf-8')
     (site/'estado.php').write_text("<?php require __DIR__.'/app/helpers/ControlCargaMysql.php';ImpeControlCargaMysql::comprobar();echo 'OK';",encoding='utf-8')
     (site/'cli.php').write_text("<?php require __DIR__.'/app/helpers/ControlCargaMysql.php';try{ImpeControlCargaMysql::comprobar(false);}catch(ImpeMysqlCircuitoAbierto $e){ImpeControlCargaMysql::registrarFallo($e);echo 'NO_INTENTADO';}",encoding='utf-8')
     sock=socket.socket();sock.bind(('127.0.0.1',0));port=sock.getsockname()[1];sock.close()
@@ -52,5 +53,22 @@ echo "PASS: catálogo por versión, caducidad, bloqueo concurrente, fallos sin c
         result=subprocess.run([PHP,str(site/'cli.php')],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         assert result.returncode==0 and result.stdout==b'NO_INTENTADO' and circuit.read_bytes()==before
         data['hasta']=1;circuit.write_text(json.dumps(data));assert request('/estado.php')[2]==b'OK'
+        circuit.write_text('{}');assert request('/doble.php')[0]==200
+        data=json.loads(circuit.read_text());assert data['fallos']==1 and data['hasta']-data['ultimo']==1
+        # Mantener la ventana activa durante las comprobaciones, sin esperar ni consultar MySQL.
+        data['hasta']=int(time.time())+60;circuit.write_text(json.dumps(data));before=circuit.read_bytes()
+        for route in ['login&action=mostrarLogin','home&action=index','telefonia&action=shell','telefonia&action=detalleVenta','seguimientoVinculacion&action=registrarInteraccionTrabajo']:
+            assert request('/estado.php?controller='+route)[0]==200,route
+        assert request('/estado.php?controller=reminder&action=pendientes')[0]==503
+        req=urllib.request.Request('http://127.0.0.1:'+str(port)+'/estado.php?controller=telefonia&action=guardarResultadoVenta',data=b'prueba=1')
+        with urllib.request.urlopen(req,timeout=3) as respuesta:assert respuesta.status==200 and respuesta.read()==b'OK'
+        assert circuit.read_bytes()==before
+        # El rechazo de privilegios conserva la protección general y una pantalla HTML.
+        request('/fallar.php?code=1142');before=circuit.read_bytes()
+        req=urllib.request.Request('http://127.0.0.1:'+str(port)+'/estado.php',headers={'Accept':'text/html'})
+        try:r=urllib.request.urlopen(req,timeout=3)
+        except urllib.error.HTTPError as e:r=e
+        assert r.status==503 and 'text/html' in r.headers['Content-Type'] and b'<main>' in r.read()
+        assert circuit.read_bytes()==before
     finally:server.terminate();server.wait(timeout=5)
-print('PASS: circuito compartido 2002/1142, esperas 1/2/4 y 120 s, 503 con Retry-After, sin extender por un intento omitido. Sin MySQL real.')
+print('PASS: una causa se cuenta una vez; 2002 frena avisos sin bloquear operacion humana; 1142 mantiene proteccion general; HTML/JSON y Retry-After. Sin MySQL real.')
