@@ -1,0 +1,63 @@
+{
+  "release": "registro-unificado-analista-v1",
+  "files": [
+    {
+      "path": "public/javascript/telefonia_atencion.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.mensaje||'No se pudo guardar el borrador.');return data;\n    };\n    window.IMPE_CALL_DRAFTS={\n        refs,localSave,\n        actualizarFicha(datos) {\n            const form=document.querySelector('[data-work-interaction-form]');\n",
+          "after": "        const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.mensaje||'No se pudo guardar el borrador.');return data;\n    };\n    const contactosUnificados=new WeakMap();\n    window.IMPE_CALL_DRAFTS={\n        refs,localSave,\n        unificarContacto(form) {\n            const persona=form?.elements.namedItem('persona_atendio'),contacto=form?.elements.namedItem('nuevo_contacto_nombre');\n            if(!persona||!contacto)return;\n            let state=contactosUnificados.get(form);\n            if(!state){\n                state={referido:'',modo:false,espejo:''};contactosUnificados.set(form,state);\n                if(!form.dataset.contactoUnificadoEventos){\n                    form.dataset.contactoUnificadoEventos='1';\n                    persona.addEventListener('input',()=>window.IMPE_CALL_DRAFTS.unificarContacto(form));\n                    form.addEventListener('reset',()=>{contactosUnificados.delete(form);queueMicrotask(()=>window.IMPE_CALL_DRAFTS.unificarContacto(form));});\n                }\n            }\n            const referido=form.elements.namedItem('resultado')?.value==='CONTACTO_REFERIDO';\n            if(referido){\n                if(!state.modo){\n                    if(contacto.value && contacto.value!==state.espejo)state.referido=contacto.value;\n                    contacto.value=state.referido;\n                }\n            }\n            else {\n                if(state.modo || (contacto.value && contacto.value!==state.espejo && contacto.value!==persona.value))state.referido=contacto.value;\n                contacto.value=persona.value;state.espejo=persona.value;\n            }\n            state.modo=referido;\n            const grupo=contacto.closest('.col-12, .col-md-6');if(grupo)grupo.hidden=!referido;\n            const label=persona.id && form.querySelector('label[for=\"'+persona.id+'\"]');\n            if(label)label.textContent=referido?'Persona que atendió':'Persona de contacto';\n            const labelReferido=contacto.id && form.querySelector('label[for=\"'+contacto.id+'\"]');\n            if(labelReferido)labelReferido.textContent='Otra persona de contacto';\n        },\n        actualizarFicha(datos) {\n            const form=document.querySelector('[data-work-interaction-form]');\n"
+        },
+        {
+          "before": "        const form=event.detail?.form,ids=refs(event.detail?.ids||[]);\n        if(!(form instanceof HTMLFormElement)||!ids.length)return;\n        const cycle=(Number(form.dataset.draftCycle)||0)+1;form.dataset.draftCycle=String(cycle);\n        let changed=false;const dirty=()=>{changed=true;};form.addEventListener('input',dirty,{once:true});\n",
+          "after": "        const form=event.detail?.form,ids=refs(event.detail?.ids||[]);\n        if(!(form instanceof HTMLFormElement)||!ids.length)return;\n        contactosUnificados.delete(form);\n        const cycle=(Number(form.dataset.draftCycle)||0)+1;form.dataset.draftCycle=String(cycle);\n        let changed=false;const dirty=()=>{changed=true;};form.addEventListener('input',dirty,{once:true});\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_interacciones.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        contenedorContactoReferido.setAttribute('data-work-referred-contact-wrapper', '');\n        contenedorContactoReferido.innerHTML =\n            '<div class=\"linkage-referred-contact-box\">' +\n                '<div class=\"linkage-referred-contact-head\">' +\n                    '<strong>Datos de contacto para el expediente</strong><input type=\"hidden\" name=\"actualizar_datos_llamada\" value=\"1\">' +\n                    '<span>Al guardar el resultado se actualizará la ficha. Los campos vacíos conservan los datos actuales.</span>' +\n                '</div>' +\n                '<div class=\"row g-2\"><div class=\"col-12\"><label class=\"form-label\" for=\"work_institution_update\">Nombre institucional actualizado (opcional)</label><input id=\"work_institution_update\" name=\"nombre_entidad_actualizado\" maxlength=\"180\" class=\"form-control\"></div>' +\n                    '<div class=\"col-12 col-md-6\">' +\n                        '<label class=\"form-label\" for=\"work_referred_phone\">Nuevo teléfono de contacto</label>' +\n                        '<input class=\"form-control\" id=\"work_referred_phone\" name=\"nuevo_telefono_contacto\" maxlength=\"80\" autocomplete=\"tel\">' +\n                    '</div>' +\n                    '<div class=\"col-12 col-md-6\">' +\n                        '<label class=\"form-label\" for=\"work_referred_email\">Nuevo correo de contacto</label>' +\n                        '<input class=\"form-control\" id=\"work_referred_email\" name=\"nuevo_correo_contacto\" type=\"email\" maxlength=\"180\" autocomplete=\"email\">' +\n                    '</div>' +\n",
+          "after": "        contenedorContactoReferido.setAttribute('data-work-referred-contact-wrapper', '');\n        contenedorContactoReferido.innerHTML =\n            '<div>' +\n                '<div class=\"linkage-referred-contact-head text-muted small\">' +\n                    '<input type=\"hidden\" name=\"actualizar_datos_llamada\" value=\"1\">' +\n                    '<span>Al guardar el resultado se actualizará la ficha. Los campos vacíos conservan los datos actuales.</span>' +\n                '</div>' +\n                '<div class=\"row g-2\"><div class=\"col-12\"><label class=\"form-label\" for=\"work_institution_update\">Nombre institucional actualizado (opcional)</label><input id=\"work_institution_update\" name=\"nombre_entidad_actualizado\" maxlength=\"180\" class=\"form-control\"></div>' +\n                    '<div class=\"col-12 col-md-6\">' +\n                        '<label class=\"form-label\" for=\"work_referred_phone\">Teléfono de contacto</label>' +\n                        '<input class=\"form-control\" id=\"work_referred_phone\" name=\"nuevo_telefono_contacto\" maxlength=\"80\" autocomplete=\"tel\">' +\n                    '</div>' +\n                    '<div class=\"col-12 col-md-6\">' +\n                        '<label class=\"form-label\" for=\"work_referred_email\">Correo electrónico</label>' +\n                        '<input class=\"form-control\" id=\"work_referred_email\" name=\"nuevo_correo_contacto\" type=\"email\" maxlength=\"180\" autocomplete=\"email\">' +\n                    '</div>' +\n"
+        },
+        {
+          "before": "\n            contenedorContactoReferido.querySelectorAll('input').forEach(input=>input.disabled=!editable);\n            contenedorContactoReferido.querySelector('.linkage-referred-contact-head span').textContent = editable\n                ? 'Revisa el borrador antes de elegir el resultado. Al guardar se actualizará la ficha; los campos vacíos conservan sus datos actuales.'\n",
+          "after": "\n            contenedorContactoReferido.querySelectorAll('input').forEach(input=>input.disabled=!editable);\n            window.IMPE_CALL_DRAFTS?.unificarContacto(formulario);\n            contenedorContactoReferido.querySelector('.linkage-referred-contact-head span').textContent = editable\n                ? 'Revisa el borrador antes de elegir el resultado. Al guardar se actualizará la ficha; los campos vacíos conservan sus datos actuales.'\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_entrantes_analista.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        referred.hidden=!enabled;\n        referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowEvidence));\n        sdkConfirm.hidden=!isSdkCall || !allowEvidence;\n        sdkCheck.required=!sdkConfirm.hidden;\n",
+          "after": "        referred.hidden=!enabled;\n        referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowEvidence));\n        window.IMPE_CALL_DRAFTS?.unificarContacto(form);\n        sdkConfirm.hidden=!isSdkCall || !allowEvidence;\n        sdkCheck.required=!sdkConfirm.hidden;\n"
+        }
+      ]
+    },
+    {
+      "path": "app/views/telefonia/resultado_analista_form.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "                        </div>\n                    </div>\n                    <div class=\"linkage-call-verification-box mt-3\" data-incoming-referred hidden>\n                        <input type=\"hidden\" name=\"actualizar_datos_llamada\" value=\"1\">\n                        <strong>Datos de contacto para el expediente</strong>\n                        <div class=\"mt-2\"><label class=\"form-label\" for=\"incomingInstitutionUpdate\">Nombre institucional actualizado (opcional)</label><input id=\"incomingInstitutionUpdate\" name=\"nombre_entidad_actualizado\" maxlength=\"180\" class=\"form-control\"></div>\n                        <p class=\"text-muted small\">Revisa la captura: al guardar el resultado se actualizará la ficha del expediente seleccionado. Los campos vacíos conservan sus datos actuales. La persona que atendió puede ser distinta del contacto institucional.</p>\n                        <div class=\"row g-3\">\n                            <div class=\"col-12 col-md-6\"><label class=\"form-label\" for=\"incomingReferredName\">Nombre del contacto</label>\n",
+          "after": "                        </div>\n                    </div>\n                    <div class=\"mt-3\" data-incoming-referred hidden>\n                        <input type=\"hidden\" name=\"actualizar_datos_llamada\" value=\"1\">\n                        <div class=\"mt-2\"><label class=\"form-label\" for=\"incomingInstitutionUpdate\">Nombre institucional actualizado (opcional)</label><input id=\"incomingInstitutionUpdate\" name=\"nombre_entidad_actualizado\" maxlength=\"180\" class=\"form-control\"></div>\n                        <p class=\"text-muted small\">Al guardar el resultado, la persona de contacto y los datos capturados se incorporarán a la ficha. Los campos vacíos conservan los datos actuales.</p>\n                        <div class=\"row g-3\">\n                            <div class=\"col-12 col-md-6\"><label class=\"form-label\" for=\"incomingReferredName\">Nombre del contacto</label>\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/DatosContactoLlamadaService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "            !in_array($resultado, ['CONTACTO_CORRECTO', 'CONTACTO_REFERIDO', 'SOLICITO_INFORMACION',\n                'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'], true)) return [];\n        $campos = [\n            'nombre_entidad_actualizado'=>['nombre_entidad',180],\n",
+          "after": "            !in_array($resultado, ['CONTACTO_CORRECTO', 'CONTACTO_REFERIDO', 'SOLICITO_INFORMACION',\n                'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'], true)) return [];\n        // En la atención normal hay una sola persona; el referido sigue siendo independiente.\n        if ($resultado !== 'CONTACTO_REFERIDO' && isset($datos['persona_atendio'])) {\n            $datos['nuevo_contacto_nombre']=$datos['persona_atendio'];\n        }\n        $campos = [\n            'nombre_entidad_actualizado'=>['nombre_entidad',180],\n"
+        }
+      ]
+    }
+  ]
+}

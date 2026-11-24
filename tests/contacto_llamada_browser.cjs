@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
 const {chromium}=require('../../browser-legacy-deps/node_modules/playwright');
-const stage=process.env.CONTACTO_STAGE || (fs.existsSync('tmp/contacto-visible-stage/')?'tmp/contacto-visible-stage/':'');
+const stage=process.env.CONTACTO_STAGE || (fs.existsSync('tmp/registro-unificado-stage/')?'tmp/registro-unificado-stage/':'');
 const source=name=>fs.readFileSync((fs.existsSync(stage+name)?stage:'')+name,'utf8');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
@@ -21,7 +21,17 @@ const source=name=>fs.readFileSync((fs.existsSync(stage+name)?stage:'')+name,'ut
   await page.evaluate(()=>document.dispatchEvent(new CustomEvent('impe:call-result-form-opened',{detail:{form:document.querySelector('form[data-work-interaction-form]'),ids:['out_sintetico_1']}})));
   await page.waitForFunction(()=>document.querySelector('[name="nuevo_correo_contacto"]').value==='nuevo@example.org');
   assert.equal(await page.locator('[name="nombre_entidad_actualizado"]').inputValue(),'Institucion prueba');
+  assert.equal(await page.locator('[name="nuevo_contacto_nombre"]').inputValue(),'Persona que atendio');
+  assert.equal(await page.locator('[name="nuevo_contacto_nombre"]').evaluate(e=>e.closest('.col-12').hidden),true);
+  assert.equal(await page.locator('.linkage-referred-contact-box').count(),0);
+  await page.selectOption('[name="resultado"]','CONTACTO_REFERIDO');
   assert.equal(await page.locator('[name="nuevo_contacto_nombre"]').inputValue(),'Contacto institucional');
+  await page.fill('[name="nuevo_contacto_nombre"]','Persona referida');
+  await page.selectOption('[name="resultado"]','CONTACTO_CORRECTO');
+  assert.equal(await page.locator('[name="nuevo_contacto_nombre"]').inputValue(),'Persona que atendio');
+  await page.selectOption('[name="resultado"]','CONTACTO_REFERIDO');
+  assert.equal(await page.locator('[name="nuevo_contacto_nombre"]').inputValue(),'Persona referida');
+  await page.selectOption('[name="resultado"]','CONTACTO_CORRECTO');
   assert.equal(await page.locator('[name="persona_atendio"]').inputValue(),'Persona que atendio');
   assert.equal(await page.locator('[name="nuevo_correo_contacto"]').isDisabled(),false);
   const manual=await page.evaluate(async()=>{
@@ -45,7 +55,7 @@ const source=name=>fs.readFileSync((fs.existsSync(stage+name)?stage:'')+name,'ut
   assert.deepEqual(errors,[]);
 
   // Formulario real del auricular y transferencias, con la biblioteca de recuperación real.
-  const php=`<?php define('BASE_URL','http://crm.test/');$esc=static function($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');};$_SESSION=['csrf_token'=>'sintetico'];$estadosEntrantes=[];$esDevolucion=false;require '${path.resolve(fs.existsSync('tmp/contacto-llamada-stage/app/views/telefonia/resultado_analista_form.php')?'tmp/contacto-llamada-stage/app/views/telefonia/resultado_analista_form.php':'app/views/telefonia/resultado_analista_form.php').replaceAll('\\','/')}';`;
+  const php=`<?php define('BASE_URL','http://crm.test/');$esc=static function($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');};$_SESSION=['csrf_token'=>'sintetico'];$estadosEntrantes=[];$esDevolucion=false;require '${path.resolve(fs.existsSync(stage+'app/views/telefonia/resultado_analista_form.php')?stage+'app/views/telefonia/resultado_analista_form.php':'app/views/telefonia/resultado_analista_form.php').replaceAll('\\','/')}';`;
   const html=cp.execFileSync('C:/xampp/php/php.exe',[],{input:php,encoding:'utf8'});
   await page.goto('http://crm.test/');
   await page.setContent(`<section data-linkage-incoming data-current-user="30" data-search-url="/buscar" data-save-url="/guardar"></section>${html}`);

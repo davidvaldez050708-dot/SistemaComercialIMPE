@@ -18,8 +18,39 @@
             keepalive:true,headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(body)});
         const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.mensaje||'No se pudo guardar el borrador.');return data;
     };
+    const contactosUnificados=new WeakMap();
     window.IMPE_CALL_DRAFTS={
         refs,localSave,
+        unificarContacto(form) {
+            const persona=form?.elements.namedItem('persona_atendio'),contacto=form?.elements.namedItem('nuevo_contacto_nombre');
+            if(!persona||!contacto)return;
+            let state=contactosUnificados.get(form);
+            if(!state){
+                state={referido:'',modo:false,espejo:''};contactosUnificados.set(form,state);
+                if(!form.dataset.contactoUnificadoEventos){
+                    form.dataset.contactoUnificadoEventos='1';
+                    persona.addEventListener('input',()=>window.IMPE_CALL_DRAFTS.unificarContacto(form));
+                    form.addEventListener('reset',()=>{contactosUnificados.delete(form);queueMicrotask(()=>window.IMPE_CALL_DRAFTS.unificarContacto(form));});
+                }
+            }
+            const referido=form.elements.namedItem('resultado')?.value==='CONTACTO_REFERIDO';
+            if(referido){
+                if(!state.modo){
+                    if(contacto.value && contacto.value!==state.espejo)state.referido=contacto.value;
+                    contacto.value=state.referido;
+                }
+            }
+            else {
+                if(state.modo || (contacto.value && contacto.value!==state.espejo && contacto.value!==persona.value))state.referido=contacto.value;
+                contacto.value=persona.value;state.espejo=persona.value;
+            }
+            state.modo=referido;
+            const grupo=contacto.closest('.col-12, .col-md-6');if(grupo)grupo.hidden=!referido;
+            const label=persona.id && form.querySelector('label[for="'+persona.id+'"]');
+            if(label)label.textContent=referido?'Persona que atendió':'Persona de contacto';
+            const labelReferido=contacto.id && form.querySelector('label[for="'+contacto.id+'"]');
+            if(labelReferido)labelReferido.textContent='Otra persona de contacto';
+        },
         actualizarFicha(datos) {
             const form=document.querySelector('[data-work-interaction-form]');
             if(!form || Number(form.elements.namedItem('seguimiento_id')?.value)!==Number(datos.get('seguimiento_id')))return;
@@ -82,6 +113,7 @@
     document.addEventListener('impe:call-result-form-opened',async event=>{
         const form=event.detail?.form,ids=refs(event.detail?.ids||[]);
         if(!(form instanceof HTMLFormElement)||!ids.length)return;
+        contactosUnificados.delete(form);
         const cycle=(Number(form.dataset.draftCycle)||0)+1;form.dataset.draftCycle=String(cycle);
         let changed=false;const dirty=()=>{changed=true;};form.addEventListener('input',dirty,{once:true});
         const values=await window.IMPE_CALL_DRAFTS.read(Number(window.IMPE_CURRENT_USER_ID||0),ids);

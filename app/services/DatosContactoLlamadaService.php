@@ -8,6 +8,10 @@ final class DatosContactoLlamadaService
         if (($datos['actualizar_datos_llamada'] ?? '') !== '1' || $canal !== 'LLAMADA' ||
             !in_array($resultado, ['CONTACTO_CORRECTO', 'CONTACTO_REFERIDO', 'SOLICITO_INFORMACION',
                 'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'], true)) return [];
+        // En la atención normal hay una sola persona; el referido sigue siendo independiente.
+        if ($resultado !== 'CONTACTO_REFERIDO' && isset($datos['persona_atendio'])) {
+            $datos['nuevo_contacto_nombre']=$datos['persona_atendio'];
+        }
         $campos = [
             'nombre_entidad_actualizado'=>['nombre_entidad',180],
             'nuevo_telefono_contacto'=>['telefono_verificado',40],

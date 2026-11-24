@@ -264,18 +264,18 @@
         contenedorContactoReferido.className = 'col-12 d-none';
         contenedorContactoReferido.setAttribute('data-work-referred-contact-wrapper', '');
         contenedorContactoReferido.innerHTML =
-            '<div class="linkage-referred-contact-box">' +
-                '<div class="linkage-referred-contact-head">' +
-                    '<strong>Datos de contacto para el expediente</strong><input type="hidden" name="actualizar_datos_llamada" value="1">' +
+            '<div>' +
+                '<div class="linkage-referred-contact-head text-muted small">' +
+                    '<input type="hidden" name="actualizar_datos_llamada" value="1">' +
                     '<span>Al guardar el resultado se actualizará la ficha. Los campos vacíos conservan los datos actuales.</span>' +
                 '</div>' +
                 '<div class="row g-2"><div class="col-12"><label class="form-label" for="work_institution_update">Nombre institucional actualizado (opcional)</label><input id="work_institution_update" name="nombre_entidad_actualizado" maxlength="180" class="form-control"></div>' +
                     '<div class="col-12 col-md-6">' +
-                        '<label class="form-label" for="work_referred_phone">Nuevo teléfono de contacto</label>' +
+                        '<label class="form-label" for="work_referred_phone">Teléfono de contacto</label>' +
                         '<input class="form-control" id="work_referred_phone" name="nuevo_telefono_contacto" maxlength="80" autocomplete="tel">' +
                     '</div>' +
                     '<div class="col-12 col-md-6">' +
-                        '<label class="form-label" for="work_referred_email">Nuevo correo de contacto</label>' +
+                        '<label class="form-label" for="work_referred_email">Correo electrónico</label>' +
                         '<input class="form-control" id="work_referred_email" name="nuevo_correo_contacto" type="email" maxlength="180" autocomplete="email">' +
                     '</div>' +
                     '<div class="col-12 col-md-6">' +
@@ -323,6 +323,7 @@
             }
 
             contenedorContactoReferido.querySelectorAll('input').forEach(input=>input.disabled=!editable);
+            window.IMPE_CALL_DRAFTS?.unificarContacto(formulario);
             contenedorContactoReferido.querySelector('.linkage-referred-contact-head span').textContent = editable
                 ? 'Revisa el borrador antes de elegir el resultado. Al guardar se actualizará la ficha; los campos vacíos conservan sus datos actuales.'
                 : 'La captura se conserva. Este resultado sin contacto no actualiza los datos de la ficha.';
