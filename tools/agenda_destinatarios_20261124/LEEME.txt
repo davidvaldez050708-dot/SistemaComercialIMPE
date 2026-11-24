@@ -33,6 +33,8 @@ Alcance
   seleccionarlas. Permite marcar varias filas sin mostrar casillas cuadradas.
   La selección conserva el foco al marcar con teclado y no se cierra entre
   selecciones. Los recursos llevan una versión nueva en su URL.
+- Ajuste tipográfico: Manrope a 14px únicamente en el valor del selector y las
+  filas de usuarios. Se conserva la tipografía y el tamaño del resto del modal.
 
 Instalación en la versión de producción que ya tiene comentarios
 1. Actualizar la rama codex/agenda-destinatarios-multiples en el clon privado

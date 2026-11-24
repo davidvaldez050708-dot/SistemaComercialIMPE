@@ -1,6 +1,6 @@
 <?php // Integración independiente de las acciones de reunión. ?>
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_comentarios.css?v=<?= filemtime(ROOT_PATH . '/public/css/agenda_comentarios.css') ?>">
-<link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_destinatarios.css?v=multi5-<?= filemtime(ROOT_PATH . '/public/css/agenda_destinatarios.css') ?>">
+<link rel="stylesheet" href="<?= BASE_URL ?>public/css/agenda_destinatarios.css?v=multi5-font1-<?= filemtime(ROOT_PATH . '/public/css/agenda_destinatarios.css') ?>">
 <p class="agenda-comments-status" data-agenda-comments-status role="status" hidden></p>
 <aside class="agenda-side-card agenda-comments-panel" data-agenda-comments-panel hidden aria-label="Detalle del día">
     <header class="agenda-comments-heading">

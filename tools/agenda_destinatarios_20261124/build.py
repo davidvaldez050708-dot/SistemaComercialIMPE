@@ -23,7 +23,7 @@ for path in sorted((HERE / 'files').rglob('*')):
     allowed = []
     if original.exists():
         allowed.append(hashlib.sha256(before.encode()).hexdigest())
-    for revision in ['023cfc3f', 'a2e67b1d', '85b0c915', '95f8d0a6']:
+    for revision in ['023cfc3f', 'a2e67b1d', '85b0c915', '95f8d0a6', '250cf2ec']:
         result = subprocess.run(['git','show',f'{revision}:tools/agenda_destinatarios_20261124/files/{name}'],cwd=ROOT,capture_output=True)
         if result.returncode == 0:
             allowed.append(hashlib.sha256(result.stdout.decode('utf-8').replace('\r\n','\n').encode()).hexdigest())
