@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 import time
 
-FILES=('app/helpers/PausaConsultasAutomaticas.php', 'index.php', 'prueba_telefonia/api/avisos_llamadas.php', 'tools/cron_zoho_leads.php')
+FILES=('app/helpers/PausaConsultasAutomaticas.php', 'index.php', 'prueba_telefonia/api/avisos_llamadas.php')
 
 def sha(data): return hashlib.sha256(data).hexdigest()
 
@@ -75,7 +75,7 @@ def main():
     def activar():
         backups.mkdir(parents=True,exist_ok=True,mode=0o700)
         write(flag,json.dumps({'version':1,'hasta':int(time.time())+3600}).encode('utf-8'),0o600)
-        print('PAUSA_ACTIVA: 60 minutos; Zoho, avisos y sondeos no críticos. Webhooks, telefonía activa y guardado de resultados no se interceptan.')
+        print('PAUSA_ACTIVA: 60 minutos; avisos y sondeos no críticos. Sin cambios al cron. Webhooks, telefonía activa y guardado de resultados no se interceptan.')
     plan=[]
     if args.restore:
         backup=Path(args.restore).resolve()

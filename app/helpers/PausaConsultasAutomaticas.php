@@ -5,7 +5,6 @@ final class ImpePausaConsultasAutomaticas
     public static function objetivo(string $script, array $get, array $post, string $method): bool
     {
         $script = basename(str_replace('\\','/',$script));
-        if ($script === 'cron_zoho_leads.php') return PHP_SAPI === 'cli';
         if ($script === 'avisos_llamadas.php') return $method === 'GET';
         if ($script !== 'index.php') return false;
         $controller = (string)($get['controller'] ?? '');
@@ -29,10 +28,6 @@ final class ImpePausaConsultasAutomaticas
         if (!is_array($data) || (int)($data['hasta'] ?? 0) <= time()) return;
         $script = (string)($_SERVER['SCRIPT_FILENAME'] ?? '');
         if (!self::objetivo($script, $_GET, $_POST, strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')))) return;
-        if (basename($script) === 'cron_zoho_leads.php' && PHP_SAPI === 'cli') {
-            echo "PAUSA_TEMPORAL: importación automática diferida; sin consultas MySQL.\n";
-            exit(0);
-        }
         http_response_code(503);
         header('Content-Type: application/json; charset=utf-8');
         header('Cache-Control: no-store');

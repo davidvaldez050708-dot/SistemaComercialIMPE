@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory() as tmp:
         r=subprocess.run(cmd+[mode],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         assert r.returncode==0,(r.stdout,r.stderr)
         return r.stdout
-    assert b'COMPROBACION_OK: 4' in deploy('--check')
+    assert b'COMPROBACION_OK: 3' in deploy('--check')
     assert not private.exists()
     assert b'PAUSA_ACTIVA' in deploy('--apply')
     assert b'PAUSA_ACTIVA' in deploy('--apply')
@@ -34,7 +34,6 @@ with tempfile.TemporaryDirectory() as tmp:
         assert json.loads(request('index.php',dict(controller=controller,action=action)))['pausa_automatica'] is True
     assert json.loads(request('index.php',dict(controller='telefonia',action='disponibilidad'),dict(accion='POLL',id=0),'POST'))['pausa_automatica'] is True
     assert json.loads(request('prueba_telefonia/api/avisos_llamadas.php'))['pausa_automatica'] is True
-    assert 'PAUSA_TEMPORAL' in request('tools/cron_zoho_leads.php')
     for method,controller,action,post in [
         ('POST','login','iniciarSesion',{}),('GET','home','index',{}),
         ('GET','telefonia','estadoUsuario',{}),('POST','telefonia','guardarResultadoVenta',{}),
@@ -48,4 +47,4 @@ with tempfile.TemporaryDirectory() as tmp:
     flag.write_text(json.dumps(dict(hasta=1)))
     assert request('index.php',dict(controller='reminder',action='pendientes'))=='NEGOCIO'
     assert b'REANUDACION_OK' in deploy('--reanudar') and not flag.exists()
-print('PASS: pausa antes de negocio/SQL; cron diferido; login, páginas, llamadas/resultados, webhooks y transferencia en curso excluidos; caducidad, reanudación e idempotencia. Sin conexiones MySQL.')
+print('PASS: pausa antes de negocio/SQL; login, páginas, llamadas/resultados, webhooks y transferencia en curso excluidos; caducidad, reanudación e idempotencia. Sin cron ni conexiones MySQL.')
