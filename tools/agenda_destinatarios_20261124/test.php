@@ -12,11 +12,15 @@ $db->real_connect('127.0.0.1','root','','',(int)(getenv('AGENDA_TEST_PORT') ?: 1
 $db->set_charset('utf8mb4');
 $db->query('CREATE DATABASE IF NOT EXISTS agenda_multiple_test');
 $db->select_db('agenda_multiple_test');
-foreach (['agenda_comentarios_destinatarios','agenda_comentarios_vistos_avisos','agenda_comentarios_lecturas','agenda_comentarios','usuarios','roles'] as $tabla) $db->query('DROP TABLE IF EXISTS '.$tabla);
+foreach (['agenda_comentarios_destinatarios','agenda_comentarios_vistos_avisos','agenda_comentarios_lecturas','agenda_comentarios','usuarios','rol_permisos','permisos','roles'] as $tabla) $db->query('DROP TABLE IF EXISTS '.$tabla);
 $db->query('CREATE TABLE roles (id INT PRIMARY KEY, nombre VARCHAR(40), estado INT)');
-$db->query("INSERT INTO roles VALUES (1,'Prueba',1)");
+$db->query("INSERT INTO roles VALUES (1,'Administrador',1),(2,'Agenda',1),(3,'Receptor',1),(4,'Sin permisos',1),(5,'Autor limitado',1)");
+$db->query('CREATE TABLE permisos (id INT PRIMARY KEY,codigo VARCHAR(100),estado INT)');
+$db->query("INSERT INTO permisos VALUES (1,'agenda.ver',1),(2,'agenda.comentarios.ver',1),(3,'agenda.comentarios.crear',1),(4,'agenda.comentarios.eliminar',1),(5,'agenda.comentarios.recibir_dirigidos',1),(6,'agenda.comentarios.enviar_administrador',1)");
+$db->query('CREATE TABLE rol_permisos (rol_id INT,permiso_id INT,PRIMARY KEY(rol_id,permiso_id))');
+$db->query('INSERT INTO rol_permisos VALUES (1,1),(1,2),(2,1),(2,2),(2,3),(2,4),(2,5),(2,6),(3,5),(5,1),(5,2),(5,3),(5,4)');
 $db->query('CREATE TABLE usuarios (id INT PRIMARY KEY,nombre VARCHAR(80),apellidos VARCHAR(80),rol_id INT,estado INT)');
-$db->query("INSERT INTO usuarios VALUES (1,'Autor','',1,1),(2,'Ana','',1,1),(3,'Bea','',1,1),(4,'Ajeno','',1,1),(5,'Inactivo','',1,0),(9,'Fallo','',1,1)");
+$db->query("INSERT INTO usuarios VALUES (1,'Autor','',2,1),(2,'Ana','',2,1),(3,'Bea','',3,1),(4,'Ajeno','',2,1),(5,'Inactivo','',2,0),(6,'Sin permisos','',4,1),(7,'Administrador','',1,1),(8,'Autor limitado','',5,1),(9,'Fallo','',2,1)");
 $db->query('CREATE TABLE agenda_comentarios (id INT AUTO_INCREMENT PRIMARY KEY,fecha DATE,recordatorio_at DATETIME NULL,comentario TEXT,creado_por INT,autor_nombre VARCHAR(255),creado_at DATETIME,eliminado_at DATETIME NULL,eliminado_por INT NULL,privado INT DEFAULT 0,destinatario_id INT NULL) ENGINE=InnoDB');
 $db->query('CREATE TABLE agenda_comentarios_lecturas (comentario_id INT,usuario_id INT,novedad_leida_at DATETIME NULL,recordatorio_atendido_at DATETIME NULL,PRIMARY KEY(comentario_id,usuario_id)) ENGINE=InnoDB');
 $db->query('CREATE TABLE agenda_comentarios_vistos_avisos (comentario_id INT,lector_id INT,leido_at DATETIME,PRIMARY KEY(comentario_id,lector_id)) ENGINE=InnoDB');
@@ -27,13 +31,21 @@ $repo = new AgendaComentarioRepository($db);
 $svc = new AgendaComentarioService($repo,$clock);
 $checks=0;
 function check($ok,$msg) { global $checks; $checks++; if (!$ok) throw new RuntimeException($msg); }
-function user($id,$agenda=true) { $_SESSION=['usuario_id'=>$id,'permisos'=>$agenda?['reuniones.ver']:[]]; }
+function user($id,$agenda=true) {
+    global $db;
+    $result=$db->query('SELECT p.codigo FROM usuarios u JOIN rol_permisos rp ON rp.rol_id=u.rol_id JOIN permisos p ON p.id=rp.permiso_id AND p.estado=1 WHERE u.id='.(int)$id);
+    $permisos=array_column($result->fetch_all(MYSQLI_ASSOC),'codigo');
+    if (!$agenda) $permisos=array_values(array_intersect($permisos,['agenda.comentarios.recibir_dirigidos']));
+    $_SESSION=['usuario_id'=>$id,'permisos'=>$permisos];
+}
 function createComment($extra=[]) { global $svc; user(1); return $svc->crear(1,array_merge(['fecha'=>'2026-11-24','hora'=>'11:00','comentario'=>'Comentario prueba'],$extra)); }
 $r=createComment(['destinatarios_ids'=>['2','3','2']]);
 check($r['ok'],'Crear múltiple');$id=$r['comentario']['id'];
 check($r['comentario']['destinatarios_ids']===[2,3],'Deduplicar destinatarios');
 check($db->query('SELECT COUNT(*) n FROM agenda_comentarios')->fetch_assoc()['n']==1,'Un solo comentario');
-foreach ([1,2,3] as $u) { user($u);check($svc->listar($u,'2026-11-01','2026-12-01')['comentarios'][0]['id']===$id,'Visible para autor y seleccionados'); }
+foreach ([1,2] as $u) { user($u);check($svc->listar($u,'2026-11-01','2026-12-01')['comentarios'][0]['id']===$id,'Visible para autor y seleccionados'); }
+check($repo->obtener($id,3)!==null,'Segundo destinatario tiene acceso SQL');
+user(3);check($svc->listar(3,'2026-11-01','2026-12-01')['codigo_http']===403,'Receptor sin Agenda no obtiene acceso a la pantalla');
 user(4);check($svc->listar(4,'2026-11-01','2026-12-01')['comentarios']===[],'Oculto a ajenos');
 check($svc->leer(4,$id)['codigo_http']===404,'Lectura directa denegada');
 $repo->marcarLeido($id,4,'2026-11-24 10:00:00');
@@ -50,7 +62,22 @@ check(count($repo->vistosPendientes(1))===1,'Aviso de lectura del segundo destin
 check($repo->leerAvisoVisto(1,$id,3,'2026-11-24 11:01:00'),'Consumir visto del segundo destinatario');
 check($repo->leerAvisoVisto(1,$id,3,'2026-11-24 11:01:00'),'Visto idempotente');
 check(!$repo->leerAvisoVisto(1,$id,4,'2026-11-24 11:01:00'),'No inventar vistos');
-foreach ([['destinatarios_ids'=>['2','5']],['destinatarios_ids'=>['2','999']],['destinatarios_ids'=>'2,3'],['destinatarios_ids'=>['2','x']],['destinatarios_ids'=>['2'],'privado'=>'1']] as $bad) check(!createComment($bad)['ok'],'Validar destinatarios');
+foreach ([['destinatarios_ids'=>['2','5']],['destinatarios_ids'=>['2','6']],['destinatarios_ids'=>['2','999']],['destinatarios_ids'=>'2,3'],['destinatarios_ids'=>['2','x']],['destinatarios_ids'=>['2'],'privado'=>'1']] as $bad) check(!createComment($bad)['ok'],'Validar destinatarios');
+check($repo->destinatarioHabilitado(7,1),'Permiso explícito permite enviar a administrador');
+check(!$repo->destinatarioHabilitado(7,8),'Sin permiso no permite enviar a administrador');
+user(8);check(!$svc->crear(8,['fecha'=>'2026-11-24','comentario'=>'No autorizado','destinatarios_ids'=>['2','7']])['ok'],'No se mezcla un destino permitido con administrador no autorizado');
+user(1);$_SESSION['permisos']=array_diff($_SESSION['permisos'],['agenda.comentarios.crear']);
+check($svc->crear(1,['fecha'=>'2026-11-24','comentario'=>'No autorizado','destinatarios_ids'=>['2','3']])['codigo_http']===403,'Conserva permiso de crear');
+$withoutCreate=$svc->listar(1,'2026-11-01','2026-12-01');
+check(!$withoutCreate['destinatarios_disponibles'] && $withoutCreate['destinatarios']===[],'Sin crear no expone selector de destinatarios');
+user(1);$_SESSION['permisos']=array_diff($_SESSION['permisos'],['agenda.comentarios.eliminar']);
+check($svc->eliminar(1,$id)['codigo_http']===403,'Conserva permiso de eliminar');
+check(!$svc->listar(1,'2026-11-01','2026-12-01')['comentarios'][0]['puede_eliminar'],'Oculta acción eliminar sin permiso');
+user(6);check($svc->notificaciones(6)['recordatorios']===[],'Usuario sin permiso no recibe avisos');
+$vencidos=(new AgendaComentarioService($repo,new DateTimeImmutable('2026-11-24 11:00:00')));
+user(2);$due=$vencidos->notificaciones(2);
+check(count($due['horarios']??[])===1,'Conserva horarios de recordatorios vencidos de producción');
+check($due['recordatorios'][0]['agenda_autor_id']===1 && is_int($due['recordatorios'][0]['agenda_creado_at']),'Conserva metadatos usados por avisos y sonido');
 $public=createComment(['hora'=>'']);check($public['ok'],'Crear público sin hora');
 $publicId=$public['comentario']['id'];user(4);check($repo->obtener($publicId,4)!==null,'Público sigue visible');
 $private=createComment(['privado'=>'1']);check($private['ok'],'Crear privado');

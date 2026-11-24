@@ -9,14 +9,13 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 OUT = ROOT / 'output/agenda_destinatarios_20261124'
 OUT.mkdir(parents=True, exist_ok=True)
-snapshot = ROOT / 'output/seguimiento_flujo_20261119/native-constructors/after'
-dependency = ROOT / 'tools/estabilidad_403_503/dependency_snapshot_20261110'
+snapshot = HERE / 'base_hostinger'
 manifest = []
 patch = []
 for path in sorted((HERE / 'files').rglob('*')):
     if not path.is_file(): continue
     name = path.relative_to(HERE / 'files').as_posix()
-    original = (dependency if name.startswith('public/javascript/') else snapshot) / name
+    original = snapshot / name
     before = original.read_text(encoding='utf-8') if original.exists() else ''
     after = path.read_text(encoding='utf-8')
     patch.extend(difflib.unified_diff(before.splitlines(True), after.splitlines(True),

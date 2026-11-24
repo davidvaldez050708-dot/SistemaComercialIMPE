@@ -7,6 +7,7 @@ MODE="${1:---check}"
 }
 SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 LIVE="${IMPE_AGENDA_PUBLIC:-$HOME/domains/fundacionrededumex.org/public_html}"
+BACKUPS="${IMPE_AGENDA_BACKUPS:-$HOME/respaldos-crm}"
 PATCH="$SOURCE/cambio.patch"
 [[ -s "$PATCH" && -f "$LIVE/index.php" ]] || {
   echo 'ERROR: falta el parche completo o la raíz del CRM.' >&2; exit 1;
@@ -51,7 +52,7 @@ finish() {
 trap finish EXIT
 
 if [[ "$ALREADY" == 0 ]]; then
-  BACKUP="$HOME/respaldos-crm/agenda-destinatarios-$(date +%Y%m%d-%H%M%S)-$$"
+  BACKUP="$BACKUPS/agenda-destinatarios-$(date +%Y%m%d-%H%M%S)-$$"
   (umask 077; mkdir -p "$BACKUP")
   tar -czf "$BACKUP/archivos-anteriores.tar.gz" \
     app/services/AgendaComentarioRepository.php \

@@ -3,9 +3,13 @@ AGENDA: DESTINATARIOS MÚLTIPLES
 Estado: implementación preparada y probada. No publicada en Hostinger.
 
 La pantalla de comentarios no existe en el árbol local principal. Esta entrega
-parte de sus copias de producción existentes: servicios y vista de
-output/seguimiento_flujo_20261119/native-constructors/after y JavaScript de
-tools/estabilidad_403_503/dependency_snapshot_20261110.
+parte de la versión actual de Hostinger reconstruida con el diagnóstico
+proporcionado por el usuario el 24/11/2026. Los cuatro archivos base se guardan
+en base_hostinger y coinciden con los identificadores Git del diagnóstico:
+  Repository: 5269c3dca68cd7371403ee3c5598d133ca93292c
+  Service:    2bc974ef6d563ed54ae9e6a5ccb08958e0024599
+  Vista:      61479f685537e4f8acaf8110c05db5c580be59bf
+  JavaScript: 172c2f01b8d37187192d970ca6bc3ef5809ab228
 
 Alcance
 - Casillas para seleccionar uno o varios destinatarios.
@@ -14,6 +18,8 @@ Alcance
 - Los seleccionados conservan avisos, recordatorios y lecturas independientes.
 - Continúa funcionando el parámetro anterior destinatario_id.
 - No cambia recordatorios.js, audio, intervalos, reuniones ni seguimientos.
+- Conserva los permisos actuales de crear, eliminar, recibir comentarios y
+  enviar al administrador, así como los metadatos y horarios de los avisos.
 - Si falta la migración, se rechazan varios destinatarios sin enviar a Todos.
 
 Instalación en la versión de producción que ya tiene comentarios
@@ -29,12 +35,13 @@ Instalación en la versión de producción que ya tiene comentarios
    con un tercer usuario que no lo ve. El autor conserva acceso para gestionarlo.
 
 Pruebas ejecutadas
-- PHP: 40 comprobaciones con MariaDB 10.4 en una BD aislada, sin datos del CRM:
+- PHP: 52 comprobaciones con MariaDB 10.4 en una BD aislada, sin datos del CRM:
   visibilidad, lectura directa, avisos, recordatorio por usuario, vistos,
   validación de usuarios, comentarios antiguos, eliminación, compatibilidad
   sin migración y rollback si falla la inserción de un destinatario.
 - Navegador Chrome: escritorio y móvil, selección/envío múltiple, modo privado,
   Sin hora, restablecimiento del formulario y pérdida de permisos de un destino.
+- El parche se comprueba contra los cuatro archivos exactos del diagnóstico.
 - Sintaxis PHP y JavaScript.
 
 Fuentes y pruebas revisables: tools/agenda_destinatarios_20261124.

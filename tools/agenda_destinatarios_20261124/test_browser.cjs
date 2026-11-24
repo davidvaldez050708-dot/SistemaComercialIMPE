@@ -39,6 +39,12 @@ const css=fs.readFileSync(path.join(base,'public/css/agenda_destinatarios.css'),
    assert.equal(posts.at(-1).get('hora'),'');
    await add.click();assert.equal(await details.locator('summary').textContent(),'Todos los usuarios con Agenda');
    await details.locator('summary').click();await boxes.nth(1).check();await boxes.nth(2).check();
+   await page.locator('textarea').fill('Comentario con hora para dos usuarios');
+   await page.locator('input[name=sin_hora]').uncheck();await page.locator('input[name=hora]').fill('11:30');
+   await page.locator('[data-agenda-comment-save]').click();await page.waitForFunction(()=>!document.querySelector('dialog').open);
+   assert.equal(posts.at(-1).get('hora'),'11:30');
+   assert.deepEqual(posts.at(-1).getAll('destinatarios_ids[]'),['2','3']);
+   await add.click();await details.locator('summary').click();await boxes.nth(1).check();await boxes.nth(2).check();
    // Refresh while editing must preserve a now-unavailable selection, then
    // block submission rather than silently send it to everyone.
    recipients=recipients.slice(0,1);await page.evaluate(()=>dispatchEvent(new Event('online')));
@@ -48,6 +54,12 @@ const css=fs.readFileSync(path.join(base,'public/css/agenda_destinatarios.css'),
    assert.equal(await page.locator('dialog').first().evaluate(d=>d.open),true);
    const dir=path.join(process.cwd(),'output/agenda_destinatarios_20261124');fs.mkdirSync(dir,{recursive:true});
    await page.screenshot({path:path.join(dir,`seleccion-${width}.png`)});
+   await page.locator('[data-agenda-comment-cancel]').first().click();
+   await page.locator('[data-agenda-comments-new]').evaluate(b=>{b.disabled=true;b.hidden=true;});
+   await add.click();assert.equal(await page.locator('dialog').first().evaluate(d=>d.open),false,'Sin permiso no abre editor');
+   await page.locator('[data-agenda-comments-tab="reuniones"]').click();
+   await page.locator('[data-agenda-comments-tab="comentarios"]').click();
+   assert.equal(await page.locator('[data-agenda-comments-new]').evaluate(b=>b.hidden),true,'No revela botón sin permiso al cambiar pestaña');
    await page.close();
   }
   assert.deepEqual(errors,[]);console.log('OK: selección múltiple, envío, privacidad, restablecimiento y cambios de permisos; escritorio y móvil.');

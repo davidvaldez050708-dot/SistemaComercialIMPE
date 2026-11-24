@@ -138,18 +138,44 @@ class AgendaComentarioRepository
         return $filas;
     }
 
-    public function destinatarios(): array
+    public function destinatarios(int $autor = 0): array
     {
-        return $this->db->query("SELECT u.id,TRIM(CONCAT(COALESCE(u.nombre,''),' ',COALESCE(u.apellidos,''))) AS nombre,r.nombre AS rol
-            FROM usuarios u INNER JOIN roles r ON r.id=u.rol_id AND r.estado=1
-            WHERE u.estado=1
-            ORDER BY u.nombre,u.apellidos,u.id")->fetch_all(MYSQLI_ASSOC);
+        return $this->consultarDestinatarios($autor);
     }
 
-    public function destinatarioHabilitado(int $id): bool
+    private function consultarDestinatarios(int $autor, ?int $destinatario = null): array
     {
-        foreach ($this->destinatarios() as $usuario) if ((int)$usuario['id'] === $id) return true;
-        return false;
+        $sql = "SELECT u.id,TRIM(CONCAT(COALESCE(u.nombre,''),' ',COALESCE(u.apellidos,''))) AS nombre,r.nombre AS rol
+            FROM usuarios u INNER JOIN roles r ON r.id=u.rol_id AND r.estado=1
+            WHERE u.estado=1 AND (
+                EXISTS (
+                    SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
+                    WHERE rp.rol_id=r.id AND p.estado=1 AND p.codigo='agenda.comentarios.recibir_dirigidos'
+                ) OR 2 = (
+                    SELECT COUNT(DISTINCT p.codigo) FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
+                    WHERE rp.rol_id=r.id AND p.estado=1 AND p.codigo IN ('agenda.ver','agenda.comentarios.ver')
+                )
+            ) AND (r.id <> 1 OR EXISTS (
+                SELECT 1 FROM usuarios a INNER JOIN roles ra ON ra.id=a.rol_id AND ra.estado=1
+                INNER JOIN rol_permisos ap ON ap.rol_id=ra.id
+                INNER JOIN permisos p ON p.id=ap.permiso_id
+                WHERE a.id=? AND a.estado=1
+                    AND p.estado=1 AND p.codigo='agenda.comentarios.enviar_administrador'
+            ))";
+        $stmt = $this->db->prepare($sql . ($destinatario === null
+            ? ' ORDER BY u.nombre,u.apellidos,u.id' : ' AND u.id=?'));
+        if ($destinatario === null) {
+            $stmt->bind_param('i', $autor);
+        } else {
+            $stmt->bind_param('ii', $autor, $destinatario);
+        }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function destinatarioHabilitado(int $id, int $autor): bool
+    {
+        return $this->consultarDestinatarios($autor, $id) !== [];
     }
 
     public function crear(int $usuario, string $fecha, ?string $hora, string $texto, string $ahora, bool $privado = false, ?int $destinatario = null, array $destinatarios = []): int
@@ -157,7 +183,7 @@ class AgendaComentarioRepository
         $privacidad = $this->privacidadDisponible();
         if ($privado && !$privacidad) throw new RuntimeException('AGENDA_PRIVACIDAD_NO_DISPONIBLE');
         $dirigidos = $this->destinatariosDisponibles();
-        if ($destinatario !== null && (!$dirigidos || $privado || !$this->destinatarioHabilitado($destinatario))) throw new RuntimeException('AGENDA_DESTINATARIO_NO_DISPONIBLE');
+        if ($destinatario !== null && (!$dirigidos || $privado || !$this->destinatarioHabilitado($destinatario, $usuario))) throw new RuntimeException('AGENDA_DESTINATARIO_NO_DISPONIBLE');
         $stmt = $this->db->prepare("SELECT TRIM(CONCAT(COALESCE(nombre,''),' ',COALESCE(apellidos,''))) AS autor FROM usuarios WHERE id=?");
         $stmt->bind_param('i', $usuario);
         $stmt->execute();

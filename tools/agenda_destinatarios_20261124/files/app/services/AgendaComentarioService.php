@@ -16,7 +16,23 @@ class AgendaComentarioService
 
     public static function puedeAcceder(int $usuario): bool
     {
-        return self::esUsuarioActual($usuario) && tienePermiso('reuniones.ver');
+        return self::esUsuarioActual($usuario) &&
+            tienePermiso('agenda.ver') && tienePermiso('agenda.comentarios.ver');
+    }
+
+    public static function puedeRealizar(int $usuario, string $accion): bool
+    {
+        switch ($accion) {
+            case 'crear':
+                return self::puedeAcceder($usuario) && tienePermiso('agenda.comentarios.crear');
+            case 'eliminar':
+                return self::puedeAcceder($usuario) && tienePermiso('agenda.comentarios.eliminar');
+            case 'leer':
+                return self::puedeAcceder($usuario) ||
+                    (self::esUsuarioActual($usuario) && tienePermiso('agenda.comentarios.recibir_dirigidos'));
+            default:
+                return self::puedeAcceder($usuario);
+        }
     }
 
     public static function esUsuarioActual(int $usuario): bool
@@ -56,7 +72,8 @@ class AgendaComentarioService
         return ['id'=>(int)$fila['id'], 'fecha'=>(string)$fila['fecha'],
             'hora'=>empty($fila['recordatorio_at']) ? null : substr($fila['recordatorio_at'],11,5),
             'comentario'=>(string)$fila['comentario'], 'autor'=>(string)$fila['autor_nombre'], 'privado'=>!empty($fila['privado']),
-            'creado_at'=>(string)$fila['creado_at'], 'puede_eliminar'=>(int)$fila['creado_por']===$usuario,
+            'creado_at'=>(string)$fila['creado_at'],
+            'puede_eliminar'=>(int)$fila['creado_por']===$usuario && self::puedeRealizar($usuario, 'eliminar'),
             'destinatarios_ids'=>$destinatarios, 'destinatario_id'=>$destinatario, 'destinatario_nombre'=>$destinatario===null?null:(trim((string)($fila['destinatario_nombre']??'')) ?: 'Usuario seleccionado'),
             'leido'=>!empty($fila['novedad_leida_at']), 'atendido'=>!empty($fila['recordatorio_atendido_at']),
             'recordatorio_pendiente'=>$notificaUsuario && !empty($fila['recordatorio_at']) && $fila['recordatorio_at']<=$this->ahora() && empty($fila['recordatorio_atendido_at'])];
@@ -69,17 +86,22 @@ class AgendaComentarioService
         $dias = (new DateTimeImmutable($desde))->diff(new DateTimeImmutable($hasta));
         if ($dias->invert || $dias->days < 1 || $dias->days > 62) { return $this->error('Consulta hasta 62 días de la agenda.'); }
         $filas = $this->repo->listar($desde, $hasta, $usuario);
+        $puedeCrear = self::puedeRealizar($usuario, 'crear');
+        $destinatariosDisponibles = $puedeCrear && $this->repo->destinatariosDisponibles();
         return ['ok'=>true,'comentarios'=>array_map(fn($f)=>$this->presentar($f,$usuario),array_slice($filas,0,500)),
-            'hay_mas'=>count($filas)>500,'privados_disponibles'=>$this->repo->privacidadDisponible(),
-            'multiples_destinatarios_disponibles'=>$this->repo->multiplesDisponibles(),
-            'destinatarios_disponibles'=>$this->repo->destinatariosDisponibles(),
-            'destinatarios'=>$this->repo->destinatariosDisponibles()?array_map(static fn($u)=>[
+            'hay_mas'=>count($filas)>500,'privados_disponibles'=>$puedeCrear && $this->repo->privacidadDisponible(),
+            'multiples_destinatarios_disponibles'=>$puedeCrear && $this->repo->multiplesDisponibles(),
+            'destinatarios_disponibles'=>$destinatariosDisponibles,
+            'destinatarios'=>$destinatariosDisponibles?array_map(static fn($u)=>[
                 'id'=>(int)$u['id'],'nombre'=>(string)$u['nombre'],'rol'=>(string)$u['rol']
-            ],$this->repo->destinatarios()):[]];
+            ],$this->repo->destinatarios($usuario)):[]];
     }
 
     public function crear(int $usuario, array $datos): array
     {
+        if (!self::puedeRealizar($usuario, 'crear')) {
+            return $this->error('No tienes permiso para agregar comentarios de la agenda.', 403);
+        }
         if ($error = $this->acceso($usuario)) { return $error; }
         $fecha = $datos['fecha'] ?? '';
         $hora = $datos['hora'] ?? '';
@@ -103,8 +125,8 @@ class AgendaComentarioService
         if ($destinatarios) {
             if ($privado) return $this->error('Un comentario privado sólo puede generar avisos para su autor.');
             if (!$this->repo->destinatariosDisponibles() || (count($destinatarios)>1 && !$this->repo->multiplesDisponibles())) return $this->error('Falta completar la instalación de destinatarios.',503);
-            $habilitados = array_map(static fn($u)=>(int)$u['id'],$this->repo->destinatarios());
-            if (array_diff($destinatarios,$habilitados)) return $this->error('Algún destinatario ya no está activo. Revisa la selección.');
+            $habilitados = array_map(static fn($u)=>(int)$u['id'],$this->repo->destinatarios($usuario));
+            if (array_diff($destinatarios,$habilitados)) return $this->error('Algún destinatario no está disponible para tu perfil. Revisa la selección.');
         }
         $destinatario = $destinatarios[0] ?? null;
         if (!$this->fechaValida($fecha)) { return $this->error('Selecciona un día válido de la agenda.'); }
@@ -118,6 +140,9 @@ class AgendaComentarioService
 
     public function eliminar(int $usuario, int $id): array
     {
+        if (!self::puedeRealizar($usuario, 'eliminar')) {
+            return $this->error('No tienes permiso para eliminar comentarios de la agenda.', 403);
+        }
         if ($error = $this->acceso($usuario)) { return $error; }
         $fila = $id>0 ? $this->repo->obtener($id,$usuario) : null;
         if (!$fila) { return $this->error('El comentario ya no está disponible.',404); }
@@ -128,7 +153,7 @@ class AgendaComentarioService
 
     public function leer(int $usuario, int $id): array
     {
-        if (!self::esUsuarioActual($usuario)) return $this->error('No tienes acceso a los comentarios de la agenda.',403);
+        if (!self::puedeRealizar($usuario, 'leer')) return $this->error('No tienes acceso a los comentarios de la agenda.',403);
         if (!$this->repo->disponible()) return $this->error('Los comentarios de la agenda aún no están disponibles.',503);
         $fila = $id > 0 ? $this->repo->obtener($id, $usuario) : null;
         if (!$fila || (!self::puedeAcceder($usuario) && (!in_array($usuario,$fila['destinatarios_ids'] ?? [(int)($fila['destinatario_id'] ?? 0)],true) || !empty($fila['privado'])))) {
@@ -141,7 +166,7 @@ class AgendaComentarioService
     public function notificaciones(int $usuario): array
     {
         $salida = ['recordatorios'=>[], 'avisos'=>[]];
-        if (!self::esUsuarioActual($usuario) || !$this->repo->disponible()) { return $salida; }
+        if (!self::puedeRealizar($usuario, 'leer') || !$this->repo->disponible()) { return $salida; }
         $soloDirigidos = !self::puedeAcceder($usuario);
         $ahora = $this->ahora();
         foreach ($this->repo->pendientes($usuario,$ahora,$soloDirigidos) as $fila) {
@@ -151,11 +176,13 @@ class AgendaComentarioService
                 'nombre_entidad'=>!empty($fila['privado'])?'Comentario privado · Sólo tú':'Comentario de '.$fila['autor_nombre'],
                 'accion'=>$vencido?'Recordatorio de agenda: '.$fila['comentario']:'Añadió un comentario a la agenda: '.$fila['comentario'],
                 'fecha'=>$vencido?$fila['recordatorio_at']:$fila['creado_at'],
+                'agenda_autor_id'=>(int)$fila['creado_por'],
+                'agenda_creado_at'=>strtotime($fila['creado_at']),
                 'estado'=>$vencido?'vencida':'normal', 'etiqueta'=>$vencido?'Hora programada':(empty($fila['recordatorio_at'])?'Sin hora':'Comentario nuevo'),
                 'icono'=>'bi-chat-left-text','prioridad'=>$vencido?0:4,
                 'agenda_solo_aviso'=>$soloDirigidos,
                 'url'=>'index.php?controller=agendaReunion&action=index&mes='.substr($fila['fecha'],0,7).'&comentario_id='.(int)$fila['id'].'&dia='.$fila['fecha']];
-            if (!$vencido && empty($fila['recordatorio_atendido_at']) && !empty($fila['recordatorio_at'])) {
+            if (empty($fila['recordatorio_atendido_at']) && !empty($fila['recordatorio_at'])) {
                 $item['agenda_horario_at'] = strtotime($fila['recordatorio_at']);
                 $item['agenda_horario_mensaje'] = $fila['comentario'];
                 $salida['horarios'][] = $item;
