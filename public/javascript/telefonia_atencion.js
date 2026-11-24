@@ -93,8 +93,11 @@
           for(const [source,target] of [['telefono_capturado','nuevo_telefono_contacto'],['correo_capturado','nuevo_correo_contacto']]){
               if(!form.elements.namedItem(source)&&!normalized[target]&&normalized[source])normalized[target]=normalized[source];
           }
+        const camposCapturados=new Set(['persona_atendio','observacion','telefono_capturado','correo_capturado',
+            'nombre_entidad_actualizado','nuevo_telefono_contacto','nuevo_correo_contacto','nuevo_contacto_nombre','nuevo_contacto_cargo']);
         for(const [name,value] of Object.entries(normalized)) {
-            const input=form.elements.namedItem(name);if(input&&!input.value&&value)input.value=String(value);
+            const input=form.elements.namedItem(name);
+            if(input && value && (!input.value || camposCapturados.has(name)))input.value=String(value);
         }
         form.querySelector('[name="resultado"]')?.dispatchEvent(new Event('change',{bubbles:true}));
         window.IMPE_TELEPHONY_NOTIFY?.('Borrador recuperado. Revisa los datos de contacto: se guardarán en la ficha al registrar el resultado.');

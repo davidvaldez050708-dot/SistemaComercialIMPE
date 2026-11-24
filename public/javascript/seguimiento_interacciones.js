@@ -313,7 +313,8 @@
             const canal = String(
                 formulario.querySelector('[name="canal"]')?.value || ''
             ).toUpperCase();
-            const visible = ['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'].includes(resultado) && canal === 'LLAMADA';
+            const visible = canal === 'LLAMADA';
+            const editable = visible && (!resultado || ['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'].includes(resultado));
 
             contenedorContactoReferido.classList.toggle('d-none', !visible);
 
@@ -321,7 +322,10 @@
                 campoTelefonoReferido.required = false;
             }
 
-            contenedorContactoReferido.querySelectorAll('input').forEach(input=>input.disabled=!visible);
+            contenedorContactoReferido.querySelectorAll('input').forEach(input=>input.disabled=!editable);
+            contenedorContactoReferido.querySelector('.linkage-referred-contact-head span').textContent = editable
+                ? 'Revisa el borrador antes de elegir el resultado. Al guardar se actualizará la ficha; los campos vacíos conservan sus datos actuales.'
+                : 'La captura se conserva. Este resultado sin contacto no actualiza los datos de la ficha.';
         };
 
         const bloqueEvidenciaVerificacion = formulario.querySelector(
@@ -957,6 +961,7 @@
         });
 
         aplicarModoRuta();
+        actualizarContactoReferido();
         actualizarEvidenciaVerificacion();
         aplicarResultadoInteraccion();
         cargarResumenVerificacion();

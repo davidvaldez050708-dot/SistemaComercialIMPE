@@ -130,8 +130,8 @@
             'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'
         ].includes(result);
         evidence.hidden = !allowEvidence;
-        referred.hidden=!allowEvidence;
-        referred.querySelectorAll('input').forEach(el=>el.disabled=referred.hidden);
+        referred.hidden=!enabled;
+        referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowEvidence));
         sdkConfirm.hidden=!isSdkCall || !allowEvidence;
         sdkCheck.required=!sdkConfirm.hidden;
         if(sdkConfirm.hidden)sdkCheck.checked=false;

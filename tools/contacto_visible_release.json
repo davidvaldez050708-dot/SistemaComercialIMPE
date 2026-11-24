@@ -1,0 +1,43 @@
+{
+  "release": "contacto-visible-analista-v1",
+  "files": [
+    {
+      "path": "public/javascript/telefonia_atencion.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "              if(!form.elements.namedItem(source)&&!normalized[target]&&normalized[source])normalized[target]=normalized[source];\n          }\n        for(const [name,value] of Object.entries(normalized)) {\n            const input=form.elements.namedItem(name);if(input&&!input.value&&value)input.value=String(value);\n        }\n        form.querySelector('[name=\"resultado\"]')?.dispatchEvent(new Event('change',{bubbles:true}));\n",
+          "after": "              if(!form.elements.namedItem(source)&&!normalized[target]&&normalized[source])normalized[target]=normalized[source];\n          }\n        const camposCapturados=new Set(['persona_atendio','observacion','telefono_capturado','correo_capturado',\n            'nombre_entidad_actualizado','nuevo_telefono_contacto','nuevo_correo_contacto','nuevo_contacto_nombre','nuevo_contacto_cargo']);\n        for(const [name,value] of Object.entries(normalized)) {\n            const input=form.elements.namedItem(name);\n            if(input && value && (!input.value || camposCapturados.has(name)))input.value=String(value);\n        }\n        form.querySelector('[name=\"resultado\"]')?.dispatchEvent(new Event('change',{bubbles:true}));\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_interacciones.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "                formulario.querySelector('[name=\"canal\"]')?.value || ''\n            ).toUpperCase();\n            const visible = ['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'].includes(resultado) && canal === 'LLAMADA';\n\n            contenedorContactoReferido.classList.toggle('d-none', !visible);\n",
+          "after": "                formulario.querySelector('[name=\"canal\"]')?.value || ''\n            ).toUpperCase();\n            const visible = canal === 'LLAMADA';\n            const editable = visible && (!resultado || ['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'].includes(resultado));\n\n            contenedorContactoReferido.classList.toggle('d-none', !visible);\n"
+        },
+        {
+          "before": "            }\n\n            contenedorContactoReferido.querySelectorAll('input').forEach(input=>input.disabled=!visible);\n        };\n\n",
+          "after": "            }\n\n            contenedorContactoReferido.querySelectorAll('input').forEach(input=>input.disabled=!editable);\n            contenedorContactoReferido.querySelector('.linkage-referred-contact-head span').textContent = editable\n                ? 'Revisa el borrador antes de elegir el resultado. Al guardar se actualizará la ficha; los campos vacíos conservan sus datos actuales.'\n                : 'La captura se conserva. Este resultado sin contacto no actualiza los datos de la ficha.';\n        };\n\n"
+        },
+        {
+          "before": "\n        aplicarModoRuta();\n        actualizarEvidenciaVerificacion();\n        aplicarResultadoInteraccion();\n",
+          "after": "\n        aplicarModoRuta();\n        actualizarContactoReferido();\n        actualizarEvidenciaVerificacion();\n        aplicarResultadoInteraccion();\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_entrantes_analista.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        ].includes(result);\n        evidence.hidden = !allowEvidence;\n        referred.hidden=!allowEvidence;\n        referred.querySelectorAll('input').forEach(el=>el.disabled=referred.hidden);\n        sdkConfirm.hidden=!isSdkCall || !allowEvidence;\n        sdkCheck.required=!sdkConfirm.hidden;\n",
+          "after": "        ].includes(result);\n        evidence.hidden = !allowEvidence;\n        referred.hidden=!enabled;\n        referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowEvidence));\n        sdkConfirm.hidden=!isSdkCall || !allowEvidence;\n        sdkCheck.required=!sdkConfirm.hidden;\n"
+        }
+      ]
+    }
+  ]
+}
