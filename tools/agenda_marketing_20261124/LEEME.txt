@@ -1,5 +1,13 @@
 AGENDA EN LA CAMPANA DE MARKETING
 
+Auditoría de configuración por perfil (sólo SELECT y lectura de archivos):
+  php tools/agenda_marketing_20261124/auditar_perfiles.php /ruta/public_html
+Sin ruta utiliza $HOME/domains/fundacionrededumex.org/public_html.
+Muestra cantidades por perfil, permisos de recepción y conexiones al motor
+de avisos/audio instaladas. No modifica permisos ni reproduce audio.
+El permiso de escritorio, bloqueo de reproducción y volumen se comprueban
+en cada navegador. La prueba aislada es test_auditoria.py.
+
 El diagnóstico de Hostinger confirmó que ConvocatoriaNotificacionController
 no entregaba comentarios ni horarios de Agenda, y convocatoria_notificaciones.js
 no enviaba datos al motor ya instalado IMPEAgendaAlerts. En Marketing no existe
