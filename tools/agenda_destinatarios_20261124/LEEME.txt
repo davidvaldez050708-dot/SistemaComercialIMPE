@@ -21,16 +21,21 @@ Alcance
 - Conserva los permisos actuales de crear, eliminar, recibir comentarios y
   enviar al administrador, así como los metadatos y horarios de los avisos.
 - Si falta la migración, se rechazan varios destinatarios sin enviar a Todos.
+- Versión multi3: las casillas se muestran al abrir el editor y el formulario
+  dice "Destinatarios · puedes marcar varios". La selección conserva el foco
+  al marcar con teclado. Los recursos llevan una versión nueva en su URL.
 
 Instalación en la versión de producción que ya tiene comentarios
-1. Respaldar los cuatro archivos existentes incluidos en el paquete y la BD.
-2. Ejecutar database/migrations/2026_11_24_agenda_comentarios_destinatarios.sql
-   sobre esa BD. Crea únicamente la tabla de destinatarios, sin alterar datos.
-3. Aplicar cambio.patch desde la raíz del proyecto, comprobándolo primero con
-   git apply --check /ruta/cambio.patch y luego git apply /ruta/cambio.patch.
-   El parche conserva cambios ajenos fuera de los bloques modificados. Si la
-   comprobación falla, conciliar con los archivos actuales antes de instalar.
-   También se incluyen los seis archivos completos, organizados por su ruta.
+1. Actualizar la rama codex/agenda-destinatarios-multiples en el clon privado
+   $HOME/agenda-destinatarios-git. No actualizar public_html con git pull.
+2. Ejecutar bash tools/agenda_destinatarios_20261124/publicar.sh --check desde
+   ese clon. Sólo prepara temporales y comprueba conexión, versiones y sintaxis.
+3. Si muestra OK, ejecutar el mismo script con --apply. Respalda los originales,
+   crea la tabla adicional e instala los seis archivos. Se reconocen la base
+   diagnosticada, las entregas anteriores y combinaciones parciales de ellas;
+   cualquier versión ajena se conserva y detiene la instalación.
+   El instalador no depende de Git en public_html y verifica por SHA-256 todos
+   los archivos después de instalarlos, incluido el selector visible multi3.
 4. Recargar Agenda y crear un comentario dirigido a dos usuarios. Comprobar
    con un tercer usuario que no lo ve. El autor conserva acceso para gestionarlo.
 
@@ -42,6 +47,9 @@ Pruebas ejecutadas
 - Navegador Chrome: escritorio y móvil, selección/envío múltiple, modo privado,
   Sin hora, restablecimiento del formulario y pérdida de permisos de un destino.
 - El parche se comprueba contra los cuatro archivos exactos del diagnóstico.
+- Publicador multi3: instalación desde la base, versión anterior, instalación
+  parcial y CRLF; check sin cambios, archivos instalados, respaldo, idempotencia,
+  rechazo de código desconocido y fallos simulados de BD y reemplazo de archivos.
 - Sintaxis PHP y JavaScript.
 
 Fuentes y pruebas revisables: tools/agenda_destinatarios_20261124.

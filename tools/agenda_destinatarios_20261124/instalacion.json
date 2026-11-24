@@ -1,0 +1,52 @@
+{
+  "app/services/AgendaComentarioRepository.php": {
+    "sha256": "3a493aa431ca1433028fd0e5bbc7be90f571974f253359145c16c19db967a06f",
+    "permitidos": [
+      "1e9b0373d4dab3387ca0779fff031f883355f252092698764f541ea66c4f1830",
+      "3a493aa431ca1433028fd0e5bbc7be90f571974f253359145c16c19db967a06f",
+      "a33b0a093292ae73e1ca8965d68bf2d70f43eb530bd92076eba21cf7ea0764ac"
+    ],
+    "nuevo": false
+  },
+  "app/services/AgendaComentarioService.php": {
+    "sha256": "9981ec7507eda9195423a56676c72baf3560784d4ef7c9397df1f0ce5614f2a0",
+    "permitidos": [
+      "3a4f37eaaf79f54529ffae34dea974d16c1c328049bf0b3040aef3286212e4dd",
+      "539a865f59b94e96618acf7c5f636e6c8859fce28c3cbf9055481b162d30bf22",
+      "9981ec7507eda9195423a56676c72baf3560784d4ef7c9397df1f0ce5614f2a0"
+    ],
+    "nuevo": false
+  },
+  "app/views/seguimiento_vinculacion/partials/agenda_comentarios.php": {
+    "sha256": "1941505758d00a88c3934e9687fc2b8d9786f46df0868281d91db10eec45dfd4",
+    "permitidos": [
+      "9b37912a6eca0052089e54a58d3a743140535c8e560272aa04f6a6c0f058344b",
+      "a7e87131364978a6f430a9a1a11d4d320304b900fe40fb8a38baf06cd6a2d211",
+      "ab9fffe2b63adc7f4491e42deb03a6cd5a3a154ef29bfa56a2f56c8f17de0b53"
+    ],
+    "nuevo": false
+  },
+  "database/migrations/2026_11_24_agenda_comentarios_destinatarios.sql": {
+    "sha256": "8b8520487870de812697a18e6a2c266e22d1fc1edda8a9901084b571ac801794",
+    "permitidos": [
+      "8b8520487870de812697a18e6a2c266e22d1fc1edda8a9901084b571ac801794"
+    ],
+    "nuevo": true
+  },
+  "public/css/agenda_destinatarios.css": {
+    "sha256": "d520c2c623b07d1d6817e302978d84d9f044a42532f605019fc37725fc24710b",
+    "permitidos": [
+      "d520c2c623b07d1d6817e302978d84d9f044a42532f605019fc37725fc24710b"
+    ],
+    "nuevo": true
+  },
+  "public/javascript/agenda_comentarios.js": {
+    "sha256": "9221cfdffdc0e7b64faab087f393f41a876f31ec70212d96a0880c2e0531e43a",
+    "permitidos": [
+      "05e8ceac838969e6e931406037d99851fb94bdffa3e3dd021356b3543b968e91",
+      "98daa6642840c351faec9ded3c2440d5d246a0bb9ff8bd9637cc5b3c40cfb6fb",
+      "ca965505e0d15a61836b24c55de23d125436f5e2fca6341f73cc700e9641f9fd"
+    ],
+    "nuevo": false
+  }
+}

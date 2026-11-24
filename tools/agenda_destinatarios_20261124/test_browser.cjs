@@ -22,14 +22,19 @@ const css=fs.readFileSync(path.join(base,'public/css/agenda_destinatarios.css'),
    });
    await page.goto('http://agenda.test/');
    const add=page.locator('[data-agenda-comment-add]');await add.waitFor();await add.click();
-   const details=page.locator('[data-agenda-recipients]');await details.locator('summary').click();
+   const details=page.locator('[data-agenda-recipients]');
+   const openChoices=async()=>{if(!await details.evaluate(d=>d.open))await details.locator('summary').click();};
+   assert.equal(await details.evaluate(d=>d.open),true,'Casillas visibles al abrir el editor');
+   assert.equal(await details.getAttribute('data-agenda-recipients-version'),'multi3');
    const boxes=details.locator('input');
-   await boxes.nth(1).check();await boxes.nth(2).check();
+   await boxes.nth(1).focus();await page.keyboard.press('Space');
+   assert.equal(await page.evaluate(()=>document.activeElement.value),'2','Selección por teclado conserva el foco');
+   await boxes.nth(2).check();
    assert.match(await details.locator('summary').textContent(),/Ana, Bea/);
    assert.equal(await boxes.nth(0).isChecked(),false);
    await page.locator('textarea').fill('Comentario para dos usuarios');
    await page.locator('input[name=privado]').check();assert.equal(await boxes.nth(1).isDisabled(),true);
-   await page.locator('input[name=privado]').uncheck();await details.locator('summary').click();
+   await page.locator('input[name=privado]').uncheck();await openChoices();
    assert.equal(await boxes.nth(1).isChecked(),true);
    assert.equal(await boxes.nth(2).isChecked(),true);
    assert.equal(await page.locator('input[name=sin_hora]').isChecked(),true);
@@ -38,13 +43,15 @@ const css=fs.readFileSync(path.join(base,'public/css/agenda_destinatarios.css'),
    assert.deepEqual(posts.at(-1).getAll('destinatarios_ids[]'),['2','3']);
    assert.equal(posts.at(-1).get('hora'),'');
    await add.click();assert.equal(await details.locator('summary').textContent(),'Todos los usuarios con Agenda');
-   await details.locator('summary').click();await boxes.nth(1).check();await boxes.nth(2).check();
+   await openChoices();await boxes.nth(1).check();await boxes.nth(2).check();
    await page.locator('textarea').fill('Comentario con hora para dos usuarios');
    await page.locator('input[name=sin_hora]').uncheck();await page.locator('input[name=hora]').fill('11:30');
    await page.locator('[data-agenda-comment-save]').click();await page.waitForFunction(()=>!document.querySelector('dialog').open);
    assert.equal(posts.at(-1).get('hora'),'11:30');
    assert.deepEqual(posts.at(-1).getAll('destinatarios_ids[]'),['2','3']);
-   await add.click();await details.locator('summary').click();await boxes.nth(1).check();await boxes.nth(2).check();
+   await add.click();await openChoices();await boxes.nth(1).check();await boxes.nth(2).check();
+   const previewDir=path.join(process.cwd(),'output/agenda_destinatarios_20261124');fs.mkdirSync(previewDir,{recursive:true});
+   await page.screenshot({path:path.join(previewDir,`selector-multiple-${width}.png`)});
    // Refresh while editing must preserve a now-unavailable selection, then
    // block submission rather than silently send it to everyone.
    recipients=recipients.slice(0,1);await page.evaluate(()=>dispatchEvent(new Event('online')));

@@ -24,10 +24,12 @@
         let recipientsAvailable = false, recipients = [];
         function updateRecipients() {
             if (!recipient) return;
+            const focusedValue = recipient.contains(document.activeElement) && document.activeElement.matches('input[type="checkbox"]')
+                ? document.activeElement.value : null;
             const list = recipient.querySelector('[data-agenda-recipients-list]');
             const all = document.createElement('label');
             const allInput = document.createElement('input');
-            allInput.type = 'checkbox'; allInput.checked = !selectedRecipients.length;
+            allInput.type = 'checkbox'; allInput.value = ''; allInput.checked = !selectedRecipients.length;
             allInput.disabled = privateComment.checked || !recipientsAvailable;
             allInput.addEventListener('change', () => {
                 selectedRecipients = []; updateRecipients(); updateOptions();
@@ -55,6 +57,7 @@
             });
             const names = selectedRecipients.map(id => users.find(u => String(u.id) === id)?.nombre || 'Usuario seleccionado');
             recipient.querySelector('summary').textContent = names.length ? names.join(', ') : 'Todos los usuarios con Agenda';
+            if (focusedValue !== null) Array.from(list.querySelectorAll('input')).find(input => input.value === focusedValue)?.focus();
         }
         function updateOptions() {
             hour.disabled = noHour.checked;
@@ -360,7 +363,7 @@
         function openEditor(date, origin) {
             if (newComment.disabled || !available || editor.open) return;
             tab='comentarios';openDay(date);
-            form.reset();selectedRecipients=[];updateRecipients();if(recipient)recipient.open=false;counter();error.hidden=true;updateOptions();
+            form.reset();selectedRecipients=[];updateRecipients();if(recipient)recipient.open=recipientsAvailable;counter();error.hidden=true;updateOptions();
             editorOrigin=origin;
             editor.querySelector('[data-agenda-comment-date]').textContent=label(date);
             editor.style.left='';editor.style.top='';editor.classList.remove('is-anchored');
