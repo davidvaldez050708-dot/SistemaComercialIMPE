@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='contacto-release-test-') as tmp:
  for name,data in before.items():assert (site/name).read_bytes()==data
  last=site/spec['files'][-1]['path'];last.write_text('<?php // personalizacion incompatible')
  assert 'BLOQUEADO' in run('--apply',success=False)
- assert (site/spec['files'][0]['path']).read_bytes()==before[spec['files'][0]['path']]
+ assert last.read_text()=='<?php // personalizacion incompatible'
  for name,data in before.items():
   if (site/name)!=last:assert (site/name).read_bytes()==data
 print('OK: un candidato verificados, cambios instalados conservados, idempotencia, restauracion y rechazo sin escrituras ante conflicto.')
