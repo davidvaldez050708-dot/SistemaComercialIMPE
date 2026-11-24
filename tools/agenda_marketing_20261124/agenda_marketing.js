@@ -83,25 +83,37 @@
             const busy=Array.from(document.querySelectorAll('.convocatoria-activation-toast')).some(toast=>
                 toast.getClientRects().length>0 && getComputedStyle(toast).display!=='none' && getComputedStyle(toast).visibility!=='hidden');
             if (!ownsAgenda() || document.hidden || active?.isConnected || busy || !target(item)) return false;
+            let container=document.querySelector('[data-agenda-marketing-toast-container]');
+            if (!container) {
+                container=document.createElement('div');
+                container.className='toast-container position-fixed top-0 end-0 p-3';
+                container.dataset.agendaMarketingToastContainer='';
+                Object.assign(container.style,{position:'fixed',top:'0',right:'0',padding:'16px',zIndex:'1098'});
+                document.body.append(container);
+            }
             const toast=document.createElement('a');
-            toast.className='convocatoria-activation-toast is-info';toast.href=target(item).href;
+            toast.className='toast system-toast agenda-comment-toast show';toast.href=target(item).href;
             toast.dataset.agendaMarketingToast='';toast.setAttribute('role','status');
-            Object.assign(toast.style,{position:'fixed',zIndex:'1098',display:'grid',boxSizing:'border-box'});
-            const icon=document.createElement('span');icon.className='convocatoria-activation-toast-icon';
-            const glyph=document.createElement('i');glyph.className='bi bi-chat-left-text';icon.append(glyph);
-            const copy=document.createElement('span');copy.className='convocatoria-activation-toast-copy';
+            toast.setAttribute('aria-live','polite');toast.setAttribute('aria-atomic','true');
+            Object.assign(toast.style,{display:'block',boxSizing:'border-box',width:'min(350px, calc(100vw - 32px))',textDecoration:'none'});
+            const body=document.createElement('div');body.className='toast-body';body.style.padding='12px';
+            const glyph=document.createElement('i');glyph.className='bi bi-chat-left-text';glyph.setAttribute('aria-hidden','true');
+            const copy=document.createElement('span');Object.assign(copy.style,{flex:'1',minWidth:'0',overflowWrap:'anywhere'});
             const title=document.createElement('strong');title.textContent=item.titulo||'Nuevo comentario en la agenda';
             const message=document.createElement('span');message.textContent=item.mensaje||item.accion||'';
+            message.style.display='block';
             copy.append(title,message);
-            const button=document.createElement('button');button.type='button';button.className='convocatoria-activation-toast-close';
-            button.setAttribute('aria-label','Cerrar aviso');button.textContent='×';
+            const button=document.createElement('button');button.type='button';button.className='btn-close agenda-marketing-toast-close';
+            button.setAttribute('aria-label','Cerrar aviso');
+            Object.assign(button.style,{border:'0',background:'transparent',padding:'4px',width:'24px',height:'24px',flexShrink:'0',display:'inline-flex',alignItems:'center',justifyContent:'center',color:'var(--color-text-secondary, #6d7480)'});
+            const cross=document.createElementNS('http://www.w3.org/2000/svg','svg');
+            cross.setAttribute('viewBox','0 0 16 16');cross.setAttribute('width','12');cross.setAttribute('height','12');cross.setAttribute('aria-hidden','true');
+            const lines=document.createElementNS('http://www.w3.org/2000/svg','path');
+            lines.setAttribute('d','M3 3l10 10M13 3L3 13');lines.setAttribute('fill','none');lines.setAttribute('stroke','currentColor');lines.setAttribute('stroke-width','1.8');lines.setAttribute('stroke-linecap','round');cross.append(lines);button.append(cross);
             button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();close();});
-            toast.append(icon,copy,button);
+            body.append(glyph,copy,button);toast.append(body);
             toast.addEventListener('click',event=>{if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();void read(item,toast);});
-            active=toast;activeItem=item;document.body.append(toast);
-            const style=getComputedStyle(toast);
-            if (style.top==='auto') toast.style.top='78px';
-            if (style.left==='auto' && style.right==='auto') toast.style.right='18px';
+            active=toast;activeItem=item;container.append(toast);
             window.setTimeout(()=>{
                 if (!toast.isConnected) return;
                 if (document.hidden) {if(active===toast)close(false);return;}

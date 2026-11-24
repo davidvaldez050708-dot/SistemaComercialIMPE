@@ -4,7 +4,7 @@ const root=process.cwd(),out=path.join(root,'output/agenda_marketing_20261124');
 const result=JSON.parse(fs.readFileSync(path.join(out,'response.json'),'utf8'));
 const engine=fs.readFileSync(path.join(__dirname,'base/agenda_alertas.js'),'utf8');
 const source=fs.readFileSync(path.join(out,'live/public/javascript/convocatoria_notificaciones.js'),'utf8');
-const css=fs.readFileSync(path.join(root,'public/css/recordatorios.css'),'utf8');
+const css=['global.css','dashboard.css','recordatorios.css'].map(file=>fs.readFileSync(path.join(root,'public/css',file),'utf8')).join('\n');
 const now=result.servidor_at*1000;
 const comment={...result.recordatorios[0],agenda_creado_at:Math.floor(now/1000)+3};
 const empty=()=>({...structuredClone(result),notificaciones:[],recordatorios:[],avisos:[],horarios:[],no_leidas:0});
@@ -52,13 +52,15 @@ async function fixture(browser,options={}) {
 (async()=>{const browser=await chromium.launch({headless:true,channel:'chrome'});try{
  let f=await fixture(browser);await f.advance(3000);f.set(withComment(comment));await f.refresh();
  await f.page.waitForSelector('[data-agenda-marketing-toast]');await f.audio();
+ assert.equal(await f.page.locator('[data-agenda-marketing-toast]').evaluate(el=>el.classList.contains('system-toast')),true,'Diseño compartido del sistema');
+ assert.equal(await f.page.locator('[data-agenda-marketing-toast] .toast-body').evaluate(el=>getComputedStyle(el).fontSize),'12px');
  assert.equal(await f.page.evaluate(()=>__plays),2,'Mismo audio de Agenda reproducido dos veces');
  assert.equal(await f.page.locator('[data-convocatoria-notification-badge]').textContent(),'1');
  assert.match(await f.page.locator('[data-convocatoria-notification-content]').textContent(),/Nuevo comentario autorizado/);
  assert.equal(f.posts.length,0,'Presentar y sonar no marca leído');
  assert.match((await f.page.evaluate(()=>__audioUrls))[0],/\/public\/audio\/agenda-aviso\.mp3$/);
- await f.advance(9000);await f.refresh();await f.audio();assert.equal(await f.page.evaluate(()=>__plays),2,'No repetir por sondeo');
  await f.page.screenshot({path:path.join(out,'marketing-comentario.png')});
+ await f.advance(9000);await f.refresh();await f.audio();assert.equal(await f.page.evaluate(()=>__plays),2,'No repetir por sondeo');
  await f.close();checks++;
 
  f=await fixture(browser,{data:withComment({...comment,agenda_creado_at:Math.floor(now/1000)-6*60})});
@@ -76,7 +78,7 @@ async function fixture(browser,options={}) {
  await f.advance(60000);await f.audio();assert.equal(await f.page.evaluate(()=>__plays),4,'Sonido a la hora conservando horarios');await f.close();checks++;
 
  f=await fixture(browser);await f.advance(3000);f.set(withComment({...comment,agenda_solo_aviso:true}));await f.refresh();await f.audio();
- await f.page.locator('[data-agenda-marketing-toast] .convocatoria-activation-toast-close').click();
+ await f.page.locator('[data-agenda-marketing-toast] .agenda-marketing-toast-close').click();
  assert.equal(f.posts.length,0,'Cerrar aviso no marca leído');
  await f.page.locator('.topbar-reminder-item').click();await new Promise(r=>setTimeout(r,40));
  assert.equal(f.posts.length,1);assert.equal(f.posts[0].body.get('id'),'92');assert.equal(f.posts[0].token,'token-prueba');

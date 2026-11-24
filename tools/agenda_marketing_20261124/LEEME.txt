@@ -51,3 +51,8 @@ navegador, horario, lectura con CSRF, fallo de lectura, convivencia con avisos
 de convocatorias, varias pestañas y ausencia de cambios en otros perfiles.
 Regresiones v2: comentario reciente en la primera respuesta, motor de sonido
 ausente al inicio, root genérico oculto e identificador de usuario publicado tarde.
+
+Diseño v3: el comentario usa toast/system-toast/agenda-comment-toast y toast-body,
+los mismos componentes de los avisos del sistema. Icono azul sin tarjeta verde,
+Manrope y tamaño de texto del componente común, y cierre sin recuadro nativo.
+Se conserva la llegada del comentario, su sonido, lectura y tiempo de visualización.
