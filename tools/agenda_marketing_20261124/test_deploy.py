@@ -26,8 +26,8 @@ def fixture(kind):
  write(live,'public/javascript/agenda_alertas.js',(HERE/'base/agenda_alertas.js').read_bytes())
  write(live,'public/audio/agenda-aviso.mp3',b'fixture de audio')
  if kind=='partial':write(live,FILES[1],(ROOT/'output/agenda_marketing_20261124/live'/FILES[1]).read_bytes())
- if kind in ['v1','v2']:
-  revision='4558f3b7' if kind=='v2' else 'b3643b4c'
+ if kind in ['v1','v2','v3']:
+  revision={'v1':'b3643b4c','v2':'4558f3b7','v3':'5555dd43'}[kind]
   old=json.loads(subprocess.check_output(['git','show',revision+':tools/agenda_marketing_20261124/cambios.json'],cwd=ROOT))
   for name in FILES[1:]:
    text=(live/name).read_text(encoding='utf-8')
@@ -45,7 +45,7 @@ def run(env,mode,ok=True):
  p=subprocess.run([BASH,str(HERE/'publicar.sh'),mode],env=env,capture_output=True,text=True,encoding='utf-8',errors='replace')
  check((p.returncode==0)==ok,p.stdout+p.stderr)
  return p
-for kind in ['base','v1','v2','custom','crlf','partial']:
+for kind in ['base','v1','v2','v3','custom','crlf','partial']:
  live,env=fixture(kind);before=snapshot(live)
  run(env,'--check');check(snapshot(live)==before,'CHECK no cambia el sitio')
  run(env,'--apply');check((live/FILES[0]).exists(),'Servicio instalado')

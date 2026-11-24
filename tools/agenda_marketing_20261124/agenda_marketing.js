@@ -160,7 +160,14 @@
             syncEngine();void ensureEngine();
             for (const link of root.querySelectorAll('a.topbar-reminder-item')) {
                 const item=records.find(r=>target(r)?.href===link.href);
-                if (item) { const icon=link.querySelector('.topbar-reminder-icon i');if(icon)icon.className='bi bi-chat-left-text'; }
+                if (item) {
+                    link.classList.remove('is-unread');
+                    const icon=link.querySelector('.topbar-reminder-icon i');
+                    if(icon)icon.className='bi bi-chat-left-text';
+                    const time=link.querySelector('.topbar-reminder-time');
+                    const state=String(item.estado||'normal').trim().toLowerCase();
+                    if(time)time.className='topbar-reminder-time is-'+(['normal','vencida','proxima','hoy','manana'].includes(state)?state:'normal');
+                }
             }
             showNext();
         });

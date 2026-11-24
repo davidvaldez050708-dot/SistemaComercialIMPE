@@ -20,8 +20,8 @@ change(script,"        } catch (error) {\n            content.innerHTML =", "   
 anchor="    window.addEventListener('impe:phone-notices-refresh',()=>void load());"
 change(script,anchor,anchor+"\n    window.addEventListener('impe:agenda-comments-refresh',()=>void load({fresh:true}));\n    window.addEventListener('impe:marketing-agenda-toast-closed',()=>notifyUnseen(currentItems));")
 helper='app/services/AgendaMarketingNotificationService.php'
-previous=[subprocess.check_output(['git','show',f'{revision}:tools/agenda_marketing_20261124/agenda_marketing.js'],cwd=HERE).decode('utf-8').replace('\r\n','\n') for revision in ['b3643b4c','4558f3b7']]
-data={'version':'marketing-agenda-v3','patches':replacements,
+previous=[subprocess.check_output(['git','show',f'{revision}:tools/agenda_marketing_20261124/agenda_marketing.js'],cwd=HERE).decode('utf-8').replace('\r\n','\n') for revision in ['b3643b4c','4558f3b7','5555dd43']]
+data={'version':'marketing-agenda-v4','patches':replacements,
       'append':{'path':script,'marker':'/* IMPE_AGENDA_MARKETING_V1 */','previous':previous,'text':(HERE/'agenda_marketing.js').read_text(encoding='utf-8')},
       'new_files':{helper:{'sha256':hashlib.sha256((HERE/'files'/helper).read_text(encoding='utf-8').encode()).hexdigest()}}}
 (HERE/'cambios.json').write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8',newline='\n')

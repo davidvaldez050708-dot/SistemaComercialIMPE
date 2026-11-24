@@ -66,5 +66,5 @@ for file in "${CHANGED[@]}"; do
   mv -f -- "$install" "$LIVE/$file"
 done
 php "$SOURCE/preparar.php" despues "$LIVE" "$TMP"
-echo "OK: APPLY marketing-agenda-v3 terminado en $LIVE. Comentarios y sonido de Agenda habilitados en la campana de Marketing."
+echo "OK: APPLY marketing-agenda-v4 terminado en $LIVE. Diseño de comentarios de Agenda unificado en la campana de Marketing."
 echo 'Recarga Marketing y prueba enviándole un comentario NUEVO desde otra cuenta; los comentarios ya anunciados no se repiten.'

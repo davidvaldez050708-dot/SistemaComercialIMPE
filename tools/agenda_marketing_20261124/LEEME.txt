@@ -1,5 +1,10 @@
 AGENDA EN LA CAMPANA DE MARKETING
 
+Versión v4: los comentarios de la lista de Marketing usan el diseño de la
+campana general: sin punto azul ni fondo de no leído y etiqueta Sin hora gris.
+Conserva los colores del estado del recordatorio, el contador, las lecturas,
+los toasts, el sonido y el diseño de los otros tipos de notificación.
+
 Auditoría de configuración por perfil (sólo SELECT y lectura de archivos):
   php tools/agenda_marketing_20261124/auditar_perfiles.php /ruta/public_html
 Sin ruta utiliza $HOME/domains/fundacionrededumex.org/public_html.
