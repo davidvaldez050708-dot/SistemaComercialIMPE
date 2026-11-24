@@ -1252,6 +1252,8 @@ class SeguimientoVinculacionModel
 
     public function actualizarContactoSeguimiento($seguimientoId, $usuarioId, $datos, $marcarVerificado)
     {
+        require_once __DIR__.'/../services/VerificacionTelefonoCorreoService.php';
+        if ($marcarVerificado && !VerificacionTelefonoCorreoService::tieneEfectiva($this->connection,(int)$seguimientoId,(int)$usuarioId)) return false;
         $sql = "UPDATE seguimientos_vinculacion
                 SET telefono_verificado = ?,
                     whatsapp_verificado = ?,
@@ -1293,6 +1295,8 @@ class SeguimientoVinculacionModel
 
     public function marcarDatosVerificadosSeguimiento($seguimientoId, $usuarioId)
     {
+        require_once __DIR__.'/../services/VerificacionTelefonoCorreoService.php';
+        if (!VerificacionTelefonoCorreoService::tieneEfectiva($this->connection,(int)$seguimientoId,(int)$usuarioId)) return false;
         $sql = "UPDATE seguimientos_vinculacion
                 SET datos_verificados = 1,
                     datos_verificados_at = NOW(),
@@ -1772,6 +1776,9 @@ class SeguimientoVinculacionModel
             ];
         }
 
+        require_once __DIR__.'/../services/VerificacionTelefonoCorreoService.php';
+        $condicionVerificacion=VerificacionTelefonoCorreoService::tablaDisponible($this->connection)
+            ? VerificacionTelefonoCorreoService::condicionSql('interacciones_vinculacion') : '0=1';
         $sql = "SELECT
                     COUNT(*) AS registros_llamada,
                     COALESCE(SUM(
@@ -1801,7 +1808,7 @@ class SeguimientoVinculacionModel
                         END
                     ), 0) AS llamadas_con_contacto,
                     COUNT(DISTINCT CASE
-                        WHEN notas LIKE '%[VERIFICACION_EFECTIVA]%'
+                        WHEN {$condicionVerificacion}
                          AND TRIM(COALESCE(proveedor_externo, '')) <> ''
                          AND TRIM(COALESCE(id_externo, '')) <> ''
                          AND COALESCE(duracion_segundos, 0) > 0

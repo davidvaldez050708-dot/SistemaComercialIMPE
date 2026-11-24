@@ -1,0 +1,117 @@
+{
+  "release": "telefono-correo-obligatorios-v1",
+  "files": [
+    {
+      "path": "app/services/VerificacionTelefonoCorreoService.php",
+      "new_file": true,
+      "content": "PD9waHAKLyoqIFVuYSBtaXNtYSBsbGFtYWRhIGRlYmUgYWNyZWRpdGFyIHRlbMOpZm9ubyB5IGNvcnJlbzsgbnVuY2EgYmFzdGEgZWwgdGV4dG8gZGUgbm90YXMuICovCmZpbmFsIGNsYXNzIFZlcmlmaWNhY2lvblRlbGVmb25vQ29ycmVvU2VydmljZQp7CiAgICBwcml2YXRlIHN0YXRpYyBhcnJheSAkdGFibGFzPVtdOwoKICAgIHB1YmxpYyBzdGF0aWMgZnVuY3Rpb24gdGFibGFEaXNwb25pYmxlKG15c3FsaSAkZGIpOiBib29sCiAgICB7CiAgICAgICAgJGlkPXNwbF9vYmplY3RfaWQoJGRiKTsKICAgICAgICBpZiAoIWFycmF5X2tleV9leGlzdHMoJGlkLHNlbGY6OiR0YWJsYXMpKSB7CiAgICAgICAgICAgICRyPSRkYi0+cXVlcnkoIlNIT1cgVEFCTEVTIExJS0UgJ3RlbGVmb25pYV92ZXJpZmljYWNpb25fZXZpZGVuY2lhcyciKTsKICAgICAgICAgICAgc2VsZjo6JHRhYmxhc1skaWRdPSRyLT5udW1fcm93cz4wOyRyLT5mcmVlKCk7CiAgICAgICAgfQogICAgICAgIHJldHVybiBzZWxmOjokdGFibGFzWyRpZF07CiAgICB9CgogICAgcHVibGljIHN0YXRpYyBmdW5jdGlvbiBjb25kaWNpb25TcWwoc3RyaW5nICRhbGlhcyk6IHN0cmluZwogICAgewogICAgICAgIGlmICghcHJlZ19tYXRjaCgnL15bQS1aYS16X11bQS1aYS16MC05X10qJC9EJywkYWxpYXMpKSB0aHJvdyBuZXcgSW52YWxpZEFyZ3VtZW50RXhjZXB0aW9uKCdBbGlhcyBpbnbDoWxpZG8uJyk7CiAgICAgICAgJHNxbD0iJGFsaWFzLmNhbmFsPSdMTEFNQURBX0lQJyBBTkQgJGFsaWFzLnByb3ZlZWRvcl9leHRlcm5vPSdaQURBUk1BJwogICAgICAgICAgICBBTkQgQ09BTEVTQ0UoJGFsaWFzLmR1cmFjaW9uX3NlZ3VuZG9zLDApPjAgQU5EIFRSSU0oQ09BTEVTQ0UoJGFsaWFzLmlkX2V4dGVybm8sJycpKTw+JycKICAgICAgICAgICAgQU5EICRhbGlhcy5mZWNoYV9maW4gSVMgTk9UIE5VTEwgQU5EICRhbGlhcy5mZWNoYV9maW4+JGFsaWFzLmZlY2hhX2luaWNpbyI7CiAgICAgICAgZm9yZWFjaCAoWyd0ZWxlZm9ubycsJ2NvcnJlbyddIGFzICRjYW1wbykgewogICAgICAgICAgICAkc3FsLj0iIEFORCBFWElTVFMgKFNFTEVDVCAxIEZST00gdGVsZWZvbmlhX3ZlcmlmaWNhY2lvbl9ldmlkZW5jaWFzIGV2XyRjYW1wbwogICAgICAgICAgICAgICAgV0hFUkUgZXZfJGNhbXBvLmludGVyYWNjaW9uX2lkPSRhbGlhcy5pZCBBTkQgZXZfJGNhbXBvLnVzdWFyaW9faWQ9JGFsaWFzLnVzdWFyaW9faWQKICAgICAgICAgICAgICAgICAgQU5EIGV2XyRjYW1wby5zZWd1aW1pZW50b19pZD0kYWxpYXMuc2VndWltaWVudG9faWQgQU5EIGV2XyRjYW1wby5jYW1wbz0nJGNhbXBvJwogICAgICAgICAgICAgICAgICBBTkQgZXZfJGNhbXBvLmVzdGFkbz0nQ09ORklSTUFEQScgQU5EIGV2XyRjYW1wby5hY2Npb249J0NPTkZJUk1BRE8nCiAgICAgICAgICAgICAgICAgIEFORCBUUklNKGV2XyRjYW1wby52YWxvcl9jb25maXJtYWRvKTw+JycgQU5EIGV2XyRjYW1wby5jb25maXJtZWRfYXQgSVMgTk9UIE5VTEwKICAgICAgICAgICAgICAgICAgQU5EIGV2XyRjYW1wby5wYnhfY2FsbF9pZD0kYWxpYXMuaWRfZXh0ZXJubykiOwogICAgICAgIH0KICAgICAgICByZXR1cm4gJygnLiRzcWwuJyknOwogICAgfQoKICAgIHB1YmxpYyBzdGF0aWMgZnVuY3Rpb24gdGllbmVFZmVjdGl2YShteXNxbGkgJGRiLGludCAkc2VndWltaWVudG8saW50ICR1c3VhcmlvKTogYm9vbAogICAgewogICAgICAgIGlmICghc2VsZjo6dGFibGFEaXNwb25pYmxlKCRkYikpIHJldHVybiBmYWxzZTsKICAgICAgICAkc3RtdD0kZGItPnByZXBhcmUoJ1NFTEVDVCBpLmlkIEZST00gaW50ZXJhY2Npb25lc192aW5jdWxhY2lvbiBpIFdIRVJFIGkuc2VndWltaWVudG9faWQ9PyBBTkQgaS51c3VhcmlvX2lkPT8gQU5EICcuc2VsZjo6Y29uZGljaW9uU3FsKCdpJykuJyBMSU1JVCAxJyk7CiAgICAgICAgJHN0bXQtPmJpbmRfcGFyYW0oJ2lpJywkc2VndWltaWVudG8sJHVzdWFyaW8pOyRzdG10LT5leGVjdXRlKCk7JG9rPShib29sKSRzdG10LT5nZXRfcmVzdWx0KCktPmZldGNoX2Fzc29jKCk7JHN0bXQtPmNsb3NlKCk7cmV0dXJuICRvazsKICAgIH0KfQo=",
+      "after_sha": "6402d9e799e1fcf841713e52a8a3eba0fe2e2e3ac4e3abc9df44a38ccbfedaa3"
+    },
+    {
+      "path": "app/services/VerificacionInstitucionalService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    }\n\n    public static function detalles(array $datos,array $actual): array\n    {\n        $mapa=[\n            'telefono'=>['verificacion_telefono_confirmado','nuevo_telefono_contacto',\n                ($actual['telefono_verificado'] ?? '') ?: ($actual['telefono_fuente'] ?? ''),'Teléfono'],\n            'correo'=>['verificacion_correo_confirmado','nuevo_correo_contacto',\n                ($actual['correo_verificado'] ?? '') ?: ($actual['correo_fuente'] ?? ''),'Correo'],\n            'contacto'=>['verificacion_contacto_confirmado','nuevo_contacto_nombre',$actual['contacto_nombre'] ?? '','Contacto institucional'],\n            'cargo'=>['','nuevo_contacto_cargo',$actual['contacto_cargo'] ?? '','Cargo o área']\n        ];\n        $out=[];\n        foreach ($mapa as $campo=>[$check,$nuevo,$anterior,$etiqueta]) {\n            $valor=($datos['resultado'] ?? '')==='CONTACTO_REFERIDO' ? trim((string)($datos[$nuevo] ?? '')) : '';\n            // Repetir datos vigentes no genera otra verificación, aunque llegue un POST antiguo.\n            $vigente = (int)($actual['datos_verificados'] ?? 0) === 1;\n            if ($vigente && ($valor === '' || self::mismoDato($campo, (string)$anterior, $valor))) continue;\n            if ($valor!=='') {\n                $out[]=['campo'=>$campo,'anterior'=>(string)$anterior,'valor'=>$valor,'accion'=>'REFERIDO','etiqueta'=>$etiqueta.' proporcionado'];\n            } elseif ($check!=='' && (int)($datos[$check] ?? 0)===1) {\n                if (trim((string)$anterior)==='') throw new DomainException('No hay '.$etiqueta.' registrado para confirmar.');\n                $out[]=['campo'=>$campo,'anterior'=>(string)$anterior,'valor'=>(string)$anterior,'accion'=>'CONFIRMADO','etiqueta'=>$etiqueta.' confirmado'];\n            }\n        }\n        return $out;\n",
+          "after": "    }\n\n    public static function datoConfirmable(array $datos,array $actual,string $campo): string\n    {\n        $actuales=[\n            'telefono'=>($actual['telefono_verificado']??'')?:($actual['telefono_fuente']??''),\n            'correo'=>($actual['correo_verificado']??'')?:($actual['correo_fuente']??''),\n            'contacto'=>$actual['contacto_nombre']??'', 'cargo'=>$actual['contacto_cargo']??''\n        ];\n        $inputs=['telefono'=>'nuevo_telefono_contacto','correo'=>'nuevo_correo_contacto','contacto'=>'nuevo_contacto_nombre','cargo'=>'nuevo_contacto_cargo'];\n        $nuevo=$datos[$inputs[$campo]]??'';\n        if (!is_string($nuevo)) throw new InvalidArgumentException('El dato de contacto no es válido.');\n        return trim($nuevo)!=='' ? trim($nuevo) : trim((string)$actuales[$campo]);\n    }\n\n    public static function detalles(array $datos,array $actual): array\n    {\n        $telefono=(string)($datos['verificacion_telefono_confirmado']??'')==='1';\n        $correo=(string)($datos['verificacion_correo_confirmado']??'')==='1';\n        $contacto=(string)($datos['verificacion_contacto_confirmado']??'')==='1';\n        $resultado=strtoupper(trim((string)($datos['resultado']??'')));\n        if (($resultado==='CONTACTO_CORRECTO' || $telefono || $correo || $contacto) && !($telefono && $correo)) {\n            throw new DomainException('Para registrar Contacto correcto o acreditar una verificación debes confirmar teléfono y correo durante esta misma llamada.');\n        }\n        if (!$telefono || !$correo) return [];\n        $out=[];\n        foreach (['telefono'=>'Teléfono','correo'=>'Correo','contacto'=>'Contacto institucional'] as $campo=>$etiqueta) {\n            if ($campo==='contacto' && !$contacto) continue;\n            $valor=self::datoConfirmable($datos,$actual,$campo);\n            if ($valor==='') throw new DomainException('Captura '.$etiqueta.' antes de confirmarlo durante la llamada.');\n            if ($campo==='correo' && (strlen($valor)>160 || !filter_var($valor,FILTER_VALIDATE_EMAIL))) throw new DomainException('El correo confirmado no es válido.');\n            if ($campo==='telefono' && !preg_match('/^[+0-9()\\- .]{7,40}$/D',$valor)) throw new DomainException('El teléfono confirmado no es válido.');\n            $anterior=self::datoConfirmable([],$actual,$campo);\n            $out[]=['campo'=>$campo,'anterior'=>$anterior,'valor'=>$valor,'accion'=>'CONFIRMADO','etiqueta'=>$etiqueta.' confirmado'];\n        }\n        return $out;\n"
+        }
+      ]
+    },
+    {
+      "path": "app/controllers/SeguimientoVinculacionController.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        );\n\n        $telefonoActual = trim((string)(\n            !empty($seguimiento['telefono_verificado'])\n                ? $seguimiento['telefono_verificado']\n                : ($seguimiento['telefono_fuente'] ?? '')\n        ));\n        $correoActual = trim((string)(\n            !empty($seguimiento['correo_verificado'])\n                ? $seguimiento['correo_verificado']\n                : ($seguimiento['correo_fuente'] ?? '')\n        ));\n        $contactoActual = trim((string)($seguimiento['contacto_nombre'] ?? ''));\n\n        if (\n",
+          "after": "        );\n\n        try {\n            $telefonoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'telefono');\n            $correoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'correo');\n            $contactoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'contacto');\n        } catch (InvalidArgumentException $e) { $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422); }\n\n\n        if (\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/InteraccionRutaService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        );\n\n        $telefonoActual = trim((string)(\n            !empty($seguimiento['telefono_verificado'])\n                ? $seguimiento['telefono_verificado']\n                : ($seguimiento['telefono_fuente'] ?? '')\n        ));\n        $correoActual = trim((string)(\n            !empty($seguimiento['correo_verificado'])\n                ? $seguimiento['correo_verificado']\n                : ($seguimiento['correo_fuente'] ?? '')\n        ));\n        $contactoActual = trim((string)($seguimiento['contacto_nombre'] ?? ''));\n        $evidenciasVerificacion = [];\n\n",
+          "after": "        );\n\n        try {\n            $telefonoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'telefono');\n            $correoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'correo');\n            $contactoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'contacto');\n        } catch (InvalidArgumentException $e) { return $this->error($e->getMessage(),422); }\n\n        $evidenciasVerificacion = [];\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/SeguimientoFlujoService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        }\n\n        return [\n            'ok' => true,\n",
+          "after": "        }\n\n        if ((int)($seguimiento['total_llamadas_validacion']??0)>0) {\n            require_once __DIR__.'/VerificacionTelefonoCorreoService.php';\n            if (!VerificacionTelefonoCorreoService::tieneEfectiva($this->connection,$seguimientoId,(int)$seguimiento['analista_id'])) {\n                $seguimiento['total_llamadas_validacion']=0;\n            }\n        }\n        return [\n            'ok' => true,\n"
+        },
+        {
+          "before": "                3,\n                'Continuar contacto por llamada',\n                'Ya se registró una llamada, pero todavía no existe una comunicación que permita validar el contacto. Vuelve a intentar hasta hablar con la institución o con la persona adecuada.',\n                $faltantesContacto,\n                [\n",
+          "after": "                3,\n                'Continuar contacto por llamada',\n                'Para avanzar debes registrar una llamada con teléfono y correo confirmados durante esa misma conversación y con respuesta y cierre acreditados por telefonía.',\n                $faltantesContacto,\n                [\n"
+        }
+      ]
+    },
+    {
+      "path": "app/models/SeguimientoVinculacionModel.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    public function actualizarContactoSeguimiento($seguimientoId, $usuarioId, $datos, $marcarVerificado)\n    {\n        if (!SeguimientoTerritorialScope::puedeTrabajar(['id' => (int)$seguimientoId], (int)$usuarioId, $this->connection)) return false;\n        $sql = \"UPDATE seguimientos_vinculacion\n",
+          "after": "    public function actualizarContactoSeguimiento($seguimientoId, $usuarioId, $datos, $marcarVerificado)\n    {\n        require_once __DIR__.'/../services/VerificacionTelefonoCorreoService.php';\n        if ($marcarVerificado && !VerificacionTelefonoCorreoService::tieneEfectiva($this->connection,(int)$seguimientoId,(int)$usuarioId)) return false;\n        if (!SeguimientoTerritorialScope::puedeTrabajar(['id' => (int)$seguimientoId], (int)$usuarioId, $this->connection)) return false;\n        $sql = \"UPDATE seguimientos_vinculacion\n"
+        },
+        {
+          "before": "    public function marcarDatosVerificadosSeguimiento($seguimientoId, $usuarioId)\n    {\n        if (!SeguimientoTerritorialScope::puedeTrabajar(['id' => (int)$seguimientoId], (int)$usuarioId, $this->connection)) return false;\n        $sql = \"UPDATE seguimientos_vinculacion\n",
+          "after": "    public function marcarDatosVerificadosSeguimiento($seguimientoId, $usuarioId)\n    {\n        require_once __DIR__.'/../services/VerificacionTelefonoCorreoService.php';\n        if (!VerificacionTelefonoCorreoService::tieneEfectiva($this->connection,(int)$seguimientoId,(int)$usuarioId)) return false;\n        if (!SeguimientoTerritorialScope::puedeTrabajar(['id' => (int)$seguimientoId], (int)$usuarioId, $this->connection)) return false;\n        $sql = \"UPDATE seguimientos_vinculacion\n"
+        },
+        {
+          "before": "        }\n\n        $sql = \"SELECT\n                    COUNT(*) AS registros_llamada,\n",
+          "after": "        }\n\n        require_once __DIR__.'/../services/VerificacionTelefonoCorreoService.php';\n        $condicionVerificacion=VerificacionTelefonoCorreoService::tablaDisponible($this->connection)\n            ? VerificacionTelefonoCorreoService::condicionSql('interacciones_vinculacion') : '0=1';\n        $sql = \"SELECT\n                    COUNT(*) AS registros_llamada,\n"
+        },
+        {
+          "before": "                    ), 0) AS llamadas_con_contacto,\n                    COUNT(DISTINCT CASE\n                        WHEN notas LIKE '%[VERIFICACION_EFECTIVA]%'\n                         AND TRIM(COALESCE(proveedor_externo, '')) <> ''\n                         AND TRIM(COALESCE(id_externo, '')) <> ''\n",
+          "after": "                    ), 0) AS llamadas_con_contacto,\n                    COUNT(DISTINCT CASE\n                        WHEN {$condicionVerificacion}\n                         AND TRIM(COALESCE(proveedor_externo, '')) <> ''\n                         AND TRIM(COALESCE(id_externo, '')) <> ''\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_interacciones.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "            const visible =\n                canal === 'LLAMADA' &&\n                resultadosConConversacion.includes(resultado) &&\n                !contactoEstaVerificado();\n\n            const normalizarDato = function (campo, valor) {\n",
+          "after": "            const visible =\n                canal === 'LLAMADA' &&\n                resultadosConConversacion.includes(resultado);\n\n            const normalizarDato = function (campo, valor) {\n"
+        },
+        {
+          "before": "                return valor === '—' ? '' : valor;\n            };\n            const telefonoActual = leerDatoVisible('[data-work-phone]');\n            const correoActual = leerDatoVisible('[data-work-email]');\n            const contactoActual = leerDatoVisible('[data-work-contact-name]');\n\n            [\n",
+          "after": "                return valor === '—' ? '' : valor;\n            };\n            const telefonoActual = String(campoTelefonoReferido?.value||'').trim() || leerDatoVisible('[data-work-phone]');\n            const correoActual = String(campoCorreoReferido?.value||'').trim() || leerDatoVisible('[data-work-email]');\n            const contactoActual = String(campoNombreReferido?.value||'').trim() || leerDatoVisible('[data-work-contact-name]');\n\n            [\n"
+        },
+        {
+          "before": "            }\n\n            if (notaEvidenciaVerificacion) {\n                notaEvidenciaVerificacion.textContent =\n                    resultado === 'CONTACTO_REFERIDO'\n                        ? 'El nuevo teléfono o correo registrado funciona como evidencia. También puedes marcar datos actuales que hayan sido confirmados.'\n                        : '“Contacto correcto” por sí solo no cuenta: marca únicamente los datos que realmente fueron confirmados durante la llamada.';\n            }\n        };\n\n        const campoPersonaAtendio = formulario.querySelector(\n            '[name=\"persona_atendio\"]'\n",
+          "after": "            }\n\n            if (notaEvidenciaVerificacion) notaEvidenciaVerificacion.textContent='Para Contacto correcto y para que la llamada cuente, confirma teléfono y correo durante esta misma conversación. Capturar datos en el borrador no los confirma automáticamente.';\n        };\n\n        formulario.addEventListener('input',event=>{if(event.target.matches('[name=\"nuevo_telefono_contacto\"],[name=\"nuevo_correo_contacto\"]'))actualizarEvidenciaVerificacion();});\n        const campoPersonaAtendio = formulario.querySelector(\n            '[name=\"persona_atendio\"]'\n"
+        },
+        {
+          "before": "\n        const limpiarValidacionesVerificacion = function () {\n            [campoPersonaAtendio, campoTelefonoReferido, campoCorreoReferido].forEach(function (campo) {\n                campo?.setCustomValidity('');\n                campo?.classList.remove('is-invalid');\n",
+          "after": "\n        const limpiarValidacionesVerificacion = function () {\n            [campoPersonaAtendio, campoTelefonoReferido, campoCorreoReferido, checkTelefono, checkCorreo, checkContacto].forEach(function (campo) {\n                campo?.setCustomValidity('');\n                campo?.classList.remove('is-invalid');\n"
+        },
+        {
+          "before": "\n            actualizarEvidenciaVerificacion();\n\n            if (resultado === 'CONTACTO_REFERIDO') {\n",
+          "after": "\n            actualizarEvidenciaVerificacion();\n            const algunaConfirmacion=Boolean(checkTelefono?.checked||checkCorreo?.checked||checkContacto?.checked);\n            if ((resultado==='CONTACTO_CORRECTO'||algunaConfirmacion) && !(checkTelefono?.checked&&checkCorreo?.checked)) {\n                const mensaje='Debes confirmar teléfono y correo durante esta misma llamada.';\n                mostrarToastLocal(mensaje,true);marcarCampoInvalido(!checkTelefono?.checked?checkTelefono:checkCorreo,mensaje);return false;\n            }\n\n            if (resultado === 'CONTACTO_REFERIDO') {\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_entrantes_analista.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        ].includes(result);\n        evidence.hidden = !allowEvidence;\n        referred.hidden=!enabled;\n        referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowEvidence));\n",
+          "after": "        ].includes(result);\n        evidence.hidden = !allowEvidence;\n        evidence.querySelector('p').textContent='Para Contacto correcto y para acreditar esta llamada debes confirmar teléfono y correo durante la conversación.';\n        referred.hidden=!enabled;\n        referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowEvidence));\n"
+        },
+        {
+          "before": "        if (isSubmitting) return;\n        if(!outgoingReady){showError('Puedes seguir capturando. El guardado se habilitará al confirmar esta llamada.');return;}\n        clearError();\n        if (!form.reportValidity()) return;\n",
+          "after": "        if (isSubmitting) return;\n        if(!outgoingReady){showError('Puedes seguir capturando. El guardado se habilitará al confirmar esta llamada.');return;}\n        const confirmaTelefono=form.elements.verificacion_telefono_confirmado.checked;\n        const confirmaCorreo=form.elements.verificacion_correo_confirmado.checked;\n        const confirmaContacto=form.elements.verificacion_contacto_confirmado.checked;\n        if ((resultInput.value==='CONTACTO_CORRECTO'||confirmaTelefono||confirmaCorreo||confirmaContacto) && !(confirmaTelefono&&confirmaCorreo)) {\n            showError('Debes confirmar teléfono y correo durante esta misma llamada.');return;\n        }\n        clearError();\n        if (!form.reportValidity()) return;\n"
+        }
+      ]
+    }
+  ]
+}

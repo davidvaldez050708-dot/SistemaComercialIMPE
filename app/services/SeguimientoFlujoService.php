@@ -91,6 +91,12 @@ class SeguimientoFlujoService
             return $this->error('No tienes acceso a este seguimiento.', 403);
         }
 
+        if ((int)($seguimiento['total_llamadas_validacion']??0)>0) {
+            require_once __DIR__.'/VerificacionTelefonoCorreoService.php';
+            if (!VerificacionTelefonoCorreoService::tieneEfectiva($this->connection,$seguimientoId,(int)$seguimiento['analista_id'])) {
+                $seguimiento['total_llamadas_validacion']=0;
+            }
+        }
         return [
             'ok' => true,
             'flujo' => $this->resolverFlujo($seguimiento)
@@ -381,7 +387,7 @@ class SeguimientoFlujoService
                 $pasos,
                 3,
                 'Continuar contacto por llamada',
-                'Ya se registró una llamada, pero todavía no existe una comunicación que permita validar el contacto. Vuelve a intentar hasta hablar con la institución o con la persona adecuada.',
+                'Para avanzar debes registrar una llamada con teléfono y correo confirmados durante esa misma conversación y con respuesta y cierre acreditados por telefonía.',
                 $faltantesContacto,
                 [
                     'codigo' => 'LLAMAR_IP',

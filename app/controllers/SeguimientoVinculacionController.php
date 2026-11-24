@@ -1225,17 +1225,12 @@ class SeguimientoVinculacionController
             true
         );
 
-        $telefonoActual = trim((string)(
-            !empty($seguimiento['telefono_verificado'])
-                ? $seguimiento['telefono_verificado']
-                : ($seguimiento['telefono_fuente'] ?? '')
-        ));
-        $correoActual = trim((string)(
-            !empty($seguimiento['correo_verificado'])
-                ? $seguimiento['correo_verificado']
-                : ($seguimiento['correo_fuente'] ?? '')
-        ));
-        $contactoActual = trim((string)($seguimiento['contacto_nombre'] ?? ''));
+        try {
+            $telefonoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'telefono');
+            $correoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'correo');
+            $contactoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'contacto');
+        } catch (InvalidArgumentException $e) { $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422); }
+
 
         if (
             $canalFormulario === 'LLAMADA' &&

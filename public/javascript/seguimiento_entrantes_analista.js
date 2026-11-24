@@ -130,6 +130,7 @@
             'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'
         ].includes(result);
         evidence.hidden = !allowEvidence;
+        evidence.querySelector('p').textContent='Para Contacto correcto y para acreditar esta llamada debes confirmar teléfono y correo durante la conversación.';
         referred.hidden=!enabled;
         referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowEvidence));
         window.IMPE_CALL_DRAFTS?.unificarContacto(form);
@@ -563,6 +564,12 @@
         if (isSubmitting) return;
         clearError();
         if (!form.reportValidity()) return;
+        const confirmaTelefono=form.elements.verificacion_telefono_confirmado.checked;
+        const confirmaCorreo=form.elements.verificacion_correo_confirmado.checked;
+        const confirmaContacto=form.elements.verificacion_contacto_confirmado.checked;
+        if ((resultInput.value==='CONTACTO_CORRECTO'||confirmaTelefono||confirmaCorreo||confirmaContacto) && !(confirmaTelefono&&confirmaCorreo)) {
+            showError('Debes confirmar teléfono y correo durante esta misma llamada.');return;
+        }
         if(resultInput.value==='CONTACTO_REFERIDO' && !Array.from(referred.querySelectorAll('input')).some(e=>e.type!=='hidden' && e.name!=='nombre_entidad_actualizado' && e.value.trim())) {showError('Captura algún dato de la persona o área referida.');return;}
         clearTimeout(draftTimer);
         const requestBody=new FormData(form);

@@ -373,9 +373,9 @@
                 ).trim();
                 return valor === '—' ? '' : valor;
             };
-            const telefonoActual = leerDatoVisible('[data-work-phone]');
-            const correoActual = leerDatoVisible('[data-work-email]');
-            const contactoActual = leerDatoVisible('[data-work-contact-name]');
+            const telefonoActual = String(campoTelefonoReferido?.value||'').trim() || leerDatoVisible('[data-work-phone]');
+            const correoActual = String(campoCorreoReferido?.value||'').trim() || leerDatoVisible('[data-work-email]');
+            const contactoActual = String(campoNombreReferido?.value||'').trim() || leerDatoVisible('[data-work-contact-name]');
 
             [
                 [checkTelefono, telefonoActual !== '', 'phone'],
@@ -409,20 +409,16 @@
                 });
             }
 
-            if (notaEvidenciaVerificacion) {
-                notaEvidenciaVerificacion.textContent =
-                    resultado === 'CONTACTO_REFERIDO'
-                        ? 'El nuevo teléfono o correo registrado funciona como evidencia. También puedes marcar datos actuales que hayan sido confirmados.'
-                        : '“Contacto correcto” por sí solo no cuenta: marca únicamente los datos que realmente fueron confirmados durante la llamada.';
-            }
+            if (notaEvidenciaVerificacion) notaEvidenciaVerificacion.textContent='Para Contacto correcto y para que la llamada cuente, confirma teléfono y correo durante esta misma conversación. Capturar datos en el borrador no los confirma automáticamente.';
         };
 
+        formulario.addEventListener('input',event=>{if(event.target.matches('[name="nuevo_telefono_contacto"],[name="nuevo_correo_contacto"]'))actualizarEvidenciaVerificacion();});
         const campoPersonaAtendio = formulario.querySelector(
             '[name="persona_atendio"]'
         );
 
         const limpiarValidacionesVerificacion = function () {
-            [campoPersonaAtendio, campoTelefonoReferido, campoCorreoReferido].forEach(function (campo) {
+            [campoPersonaAtendio, campoTelefonoReferido, campoCorreoReferido, checkTelefono, checkCorreo, checkContacto].forEach(function (campo) {
                 campo?.setCustomValidity('');
                 campo?.classList.remove('is-invalid');
             });
@@ -450,6 +446,13 @@
 
             if (canal !== 'LLAMADA') {
                 return true;
+            }
+
+            actualizarEvidenciaVerificacion();
+            const algunaConfirmacion=Boolean(checkTelefono?.checked||checkCorreo?.checked||checkContacto?.checked);
+            if ((resultado==='CONTACTO_CORRECTO'||algunaConfirmacion) && !(checkTelefono?.checked&&checkCorreo?.checked)) {
+                const mensaje='Debes confirmar teléfono y correo durante esta misma llamada.';
+                mostrarToastLocal(mensaje,true);marcarCampoInvalido(!checkTelefono?.checked?checkTelefono:checkCorreo,mensaje);return false;
             }
 
             if (resultado === 'CONTACTO_REFERIDO') {

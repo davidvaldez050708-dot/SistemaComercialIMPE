@@ -142,17 +142,12 @@ class InteraccionRutaService
             true
         );
 
-        $telefonoActual = trim((string)(
-            !empty($seguimiento['telefono_verificado'])
-                ? $seguimiento['telefono_verificado']
-                : ($seguimiento['telefono_fuente'] ?? '')
-        ));
-        $correoActual = trim((string)(
-            !empty($seguimiento['correo_verificado'])
-                ? $seguimiento['correo_verificado']
-                : ($seguimiento['correo_fuente'] ?? '')
-        ));
-        $contactoActual = trim((string)($seguimiento['contacto_nombre'] ?? ''));
+        try {
+            $telefonoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'telefono');
+            $correoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'correo');
+            $contactoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'contacto');
+        } catch (InvalidArgumentException $e) { return $this->error($e->getMessage(),422); }
+
         $evidenciasVerificacion = [];
 
         if ($canalFormulario === 'LLAMADA' && $resultadoAdmiteVerificacion) {
