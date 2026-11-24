@@ -77,9 +77,13 @@
   }catch(_){}finally{clearTimeout(timeout);}
  }
 
+ let detailRetryAt=0;
  const request=async url=>{
+  if(Date.now()<detailRetryAt){const error=Error('Telefonía está recuperándose. Espera antes de comprobar de nuevo.');error.status=503;throw error;}
   const controller=new AbortController();requestController=controller;const timeout=setTimeout(()=>controller.abort(),10000);
-  try{const r=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok){const e=Error(j.mensaje||'No se pudo consultar la llamada.');e.status=r.status;throw e;}return j;}
+  try{const r=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok){const e=Error(j.mensaje||'No se pudo consultar la llamada.');e.status=r.status;
+   if(r.status>=500||r.status===429)detailRetryAt=Date.now()+Math.max(5000,Math.min(300000,Math.max(Number(r.headers.get('Retry-After'))||0,Number(j.reintentar_en)||0)*1000));
+   throw e;}detailRetryAt=0;return j;}
   catch(error){if(error.name==='AbortError')throw Error('La consulta tardó demasiado. Vuelve a comprobar el cierre.');throw error;}
   finally{clearTimeout(timeout);if(requestController===controller)requestController=null;}
  };
@@ -87,7 +91,11 @@
  const readDraft=ref=>{try{const d=JSON.parse(sessionStorage.getItem(draftKey(ref))||'null');return d&&Date.now()-d.at<86400000?d:null;}catch(_){return null;}};
  const storeDraft=()=>{if((!callRef&&!openContext.sessionKey)||call?.registro)return;try{sessionStorage.setItem(draftKey(callRef),JSON.stringify({at:Date.now(),queued,captureNote:importedCaptureNote,values:Object.fromEntries(new FormData(form))}));}catch(_){}};
  const show=()=>{if(!window.bootstrap?.Modal)throw Error('No se cargó el formulario. Recarga la página.');bootstrap.Modal.getOrCreateInstance(modal).show();};
- const schedule=(ref,ext,attempt,version)=>{const delay=Math.min(1500*2**Math.min(attempt,3),12000);timer=setTimeout(()=>{if(version===cycle&&!disposed&&modal.classList.contains('show'))void open(ref,ext,attempt+1);},delay);};
+ const schedule=(ref,ext,attempt,version)=>{
+  if(attempt>=8){feedback.textContent='La confirmación sigue pendiente. La captura se conserva; vuelve a abrir la llamada para comprobarla.';return;}
+  const delay=Math.max(detailRetryAt-Date.now(),Math.min(1500*2**Math.min(attempt,3),12000));
+  timer=setTimeout(()=>{if(version===cycle&&!disposed&&modal.classList.contains('show'))void open(ref,ext,attempt+1);},delay);
+ };
  const resultRules=()=>{
   const result=form.elements.namedItem('resultado'),notes=form.elements.namedItem('observacion');
   if(!result||!notes)return;

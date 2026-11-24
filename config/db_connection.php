@@ -1,4 +1,7 @@
 <?php
+require_once dirname(__DIR__).'/app/helpers/PausaConsultasAutomaticas.php';
+require_once dirname(__DIR__).'/app/helpers/ControlCargaMysql.php';
+ImpeControlCargaMysql::comprobar();
 
 require_once __DIR__ . '/config.php';
 

@@ -1,0 +1,195 @@
+{
+  "release": "prevencion-carga-mysql-v1",
+  "files": [
+    {
+      "path": "app/helpers/ControlCargaMysql.php",
+      "new_file": true,
+      "content": "PD9waHAKLyoqIENvbmV4acOzbiBjb21wYXJ0aWRhIHBvciBwZXRpY2nDs24geSBmcmVubyBlbnRyZSBwZXRpY2lvbmVzIGFudGUgZmFsbG9zIHRlbXBvcmFsZXMuICovCmZpbmFsIGNsYXNzIEltcGVDb250cm9sQ2FyZ2FNeXNxbAp7CiAgICBwcml2YXRlIHN0YXRpYyA/bXlzcWxpICRjb25leGlvbiA9IG51bGw7CgogICAgcHJpdmF0ZSBzdGF0aWMgZnVuY3Rpb24gYXJjaGl2bygpOiBzdHJpbmcKICAgIHsKICAgICAgICByZXR1cm4gZGlybmFtZShfX0RJUl9fLDMpLicvaW1wZS1wcml2YXRlL215c3FsLWNpcmN1aXRvLmpzb24nOwogICAgfQoKICAgIHB1YmxpYyBzdGF0aWMgZnVuY3Rpb24gY29tcHJvYmFyKGJvb2wgJHBlcm1pdGlyQ2xpID0gdHJ1ZSk6IHZvaWQKICAgIHsKICAgICAgICBpZiAoJHBlcm1pdGlyQ2xpICYmIFBIUF9TQVBJID09PSAnY2xpJykgcmV0dXJuOwogICAgICAgICRkYXRhID0ganNvbl9kZWNvZGUoKHN0cmluZylAZmlsZV9nZXRfY29udGVudHMoc2VsZjo6YXJjaGl2bygpKSx0cnVlKTsKICAgICAgICAkZXNwZXJhID0gaXNfYXJyYXkoJGRhdGEpID8gKGludCkoJGRhdGFbJ2hhc3RhJ10gPz8gMCktdGltZSgpIDogMDsKICAgICAgICBpZiAoJGVzcGVyYSA8PSAwKSByZXR1cm47CiAgICAgICAgaWYgKFBIUF9TQVBJICE9PSAnY2xpJyAmJiAhaGVhZGVyc19zZW50KCkpIHsKICAgICAgICAgICAgaHR0cF9yZXNwb25zZV9jb2RlKDUwMyk7IGhlYWRlcignUmV0cnktQWZ0ZXI6ICcubWluKDEyMCwkZXNwZXJhKSk7CiAgICAgICAgICAgIGhlYWRlcignQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9qc29uOyBjaGFyc2V0PXV0Zi04Jyk7IGhlYWRlcignQ2FjaGUtQ29udHJvbDogbm8tc3RvcmUnKTsKICAgICAgICAgICAgZWNobyBqc29uX2VuY29kZShbJ29rJz0+ZmFsc2UsJ3JlaW50ZW50YXJfZW4nPT5taW4oMTIwLCRlc3BlcmEpLAogICAgICAgICAgICAgICAgJ21lbnNhamUnPT4nTGEgYmFzZSBkZSBkYXRvcyBlc3TDoSByZWN1cGVyw6FuZG9zZS4gRXNwZXJhIGFudGVzIGRlIHZvbHZlciBhIGludGVudGFyLiddLEpTT05fVU5FU0NBUEVEX1VOSUNPREUpOwogICAgICAgICAgICBleGl0OwogICAgICAgIH0KICAgICAgICB0aHJvdyBuZXcgSW1wZU15c3FsQ2lyY3VpdG9BYmllcnRvKCdNeVNRTCBlbiByZWN1cGVyYWNpw7NuIHRlbXBvcmFsLiBObyBzZSBpbnRlbnTDsyBvdHJhIGNvbmV4acOzbi4nKTsKICAgIH0KCiAgICBwdWJsaWMgc3RhdGljIGZ1bmN0aW9uIGNvbmV4aW9uKCk6IG15c3FsaQogICAgewogICAgICAgIGlmIChzZWxmOjokY29uZXhpb24gIT09IG51bGwpIHJldHVybiBzZWxmOjokY29uZXhpb247CiAgICAgICAgc2VsZjo6Y29tcHJvYmFyKGZhbHNlKTsKICAgICAgICB0cnkgewogICAgICAgICAgICByZXR1cm4gc2VsZjo6JGNvbmV4aW9uID0gbWV0aG9kX2V4aXN0cyhEYXRhYmFzZTo6Y2xhc3MsJ2NvbXBhcnRpZGEnKQogICAgICAgICAgICAgICAgPyBEYXRhYmFzZTo6Y29tcGFydGlkYSgpIDogKG5ldyBEYXRhYmFzZSgpKS0+Y29ubmVjdCgpOwogICAgICAgIH0gY2F0Y2ggKFRocm93YWJsZSAkZSkgeyBzZWxmOjpyZWdpc3RyYXJGYWxsbygkZSk7IHRocm93ICRlOyB9CiAgICB9CgogICAgcHVibGljIHN0YXRpYyBmdW5jdGlvbiBjb2RpZ29UZW1wb3JhbChUaHJvd2FibGUgJGVycm9yKTogaW50CiAgICB7CiAgICAgICAgZG8gewogICAgICAgICAgICBpZiAoaW5fYXJyYXkoKGludCkkZXJyb3ItPmdldENvZGUoKSxbMjAwMiwxMjAzLDExNDIsMTA0MF0sdHJ1ZSkpIHJldHVybiAoaW50KSRlcnJvci0+Z2V0Q29kZSgpOwogICAgICAgICAgICAkZXJyb3IgPSAkZXJyb3ItPmdldFByZXZpb3VzKCk7CiAgICAgICAgfSB3aGlsZSAoJGVycm9yICE9PSBudWxsKTsKICAgICAgICByZXR1cm4gMDsKICAgIH0KCiAgICBwdWJsaWMgc3RhdGljIGZ1bmN0aW9uIHJlZ2lzdHJhckZhbGxvKFRocm93YWJsZSAkZXJyb3IpOiB2b2lkCiAgICB7CiAgICAgICAgaWYgKCRlcnJvciBpbnN0YW5jZW9mIEltcGVNeXNxbENpcmN1aXRvQWJpZXJ0bykgcmV0dXJuOwogICAgICAgICRjb2RlID0gc2VsZjo6Y29kaWdvVGVtcG9yYWwoJGVycm9yKTsKICAgICAgICBpZiAoISRjb2RlKSByZXR1cm47CiAgICAgICAgJGZpbGUgPSBzZWxmOjphcmNoaXZvKCk7ICRkaXIgPSBkaXJuYW1lKCRmaWxlKTsKICAgICAgICBpZiAoIWlzX2RpcigkZGlyKSAmJiAhQG1rZGlyKCRkaXIsMDcwMCx0cnVlKSAmJiAhaXNfZGlyKCRkaXIpKSByZXR1cm47CiAgICAgICAgJGxvY2sgPSBAZm9wZW4oJGZpbGUuJy5sb2NrJywnYycpOwogICAgICAgIGlmICghJGxvY2sgfHwgIWZsb2NrKCRsb2NrLExPQ0tfRVgpKSB7IGlmIChpc19yZXNvdXJjZSgkbG9jaykpIGZjbG9zZSgkbG9jayk7IHJldHVybjsgfQogICAgICAgIHRyeSB7CiAgICAgICAgICAgICRvbGQgPSBqc29uX2RlY29kZSgoc3RyaW5nKUBmaWxlX2dldF9jb250ZW50cygkZmlsZSksdHJ1ZSk7CiAgICAgICAgICAgICRmYWxsb3MgPSBpc19hcnJheSgkb2xkKSAmJiAoaW50KSgkb2xkWyd1bHRpbW8nXSA/PyAwKT50aW1lKCktMzAwCiAgICAgICAgICAgICAgICA/IG1pbig4LChpbnQpKCRvbGRbJ2ZhbGxvcyddID8/IDApKzEpIDogMTsKICAgICAgICAgICAgJHNlY29uZHMgPSAkY29kZT09PTExNDIgPyAxMjAgOiBtaW4oMTIwLDIqKigkZmFsbG9zLTEpKTsKICAgICAgICAgICAgJHRtcCA9IEB0ZW1wbmFtKCRkaXIsJy5jaXJjdWl0by0nKTsKICAgICAgICAgICAgaWYgKCR0bXAgPT09IGZhbHNlKSByZXR1cm47CiAgICAgICAgICAgIEBjaG1vZCgkdG1wLDA2MDApOwogICAgICAgICAgICBpZiAoQGZpbGVfcHV0X2NvbnRlbnRzKCR0bXAsanNvbl9lbmNvZGUoWydjb2RpZ28nPT4kY29kZSwnZmFsbG9zJz0+JGZhbGxvcywKICAgICAgICAgICAgICAgICd1bHRpbW8nPT50aW1lKCksJ2hhc3RhJz0+dGltZSgpKyRzZWNvbmRzXSkpID09PSBmYWxzZSB8fCAhQHJlbmFtZSgkdG1wLCRmaWxlKSkgQHVubGluaygkdG1wKTsKICAgICAgICAgICAgaWYgKFBIUF9TQVBJICE9PSAnY2xpJyAmJiAhaGVhZGVyc19zZW50KCkpIGhlYWRlcignUmV0cnktQWZ0ZXI6ICcuJHNlY29uZHMpOwogICAgICAgIH0gZmluYWxseSB7IGZsb2NrKCRsb2NrLExPQ0tfVU4pOyBmY2xvc2UoJGxvY2spOyB9CiAgICB9Cn0KZmluYWwgY2xhc3MgSW1wZU15c3FsQ2lyY3VpdG9BYmllcnRvIGV4dGVuZHMgUnVudGltZUV4Y2VwdGlvbiB7fQo=",
+      "after_sha": "66a1f209afa79d989b16d1e97314210de93ddf0e0c281230dbfd567a41a9c694"
+    },
+    {
+      "path": "app/helpers/CatalogoPermisosInicializador.php",
+      "new_file": true,
+      "content": "PD9waHAKcmVxdWlyZV9vbmNlIF9fRElSX18uJy9Db250cm9sQ2FyZ2FNeXNxbC5waHAnOwoKLyoqIFPDs2xvIGV2aXRhIHJlcGV0aXIgbGEgaW5zdGFsYWNpw7NuIGRlbCBjYXTDoWxvZ287IE5PIGFsbWFjZW5hIGF1dG9yaXphY2nDs24gZGUgdXN1YXJpb3MuICovCmZpbmFsIGNsYXNzIEltcGVDYXRhbG9nb1Blcm1pc29zSW5pY2lhbGl6YWRvcgp7CiAgICBwdWJsaWMgc3RhdGljIGZ1bmN0aW9uIGVqZWN1dGFyKGNhbGxhYmxlICRpbnN0YWxhciwgYXJyYXkgJGZ1ZW50ZXMsID9zdHJpbmcgJGRpcmVjdG9yaW8gPSBudWxsLCA/Y2FsbGFibGUgJHJlbG9qID0gbnVsbCk6IHZvaWQKICAgIHsKICAgICAgICAkYWhvcmEgPSAkcmVsb2ogPyAkcmVsb2ooKSA6IHRpbWUoKTsKICAgICAgICAkZnVlbnRlc1tdID0gX19GSUxFX187CiAgICAgICAgJGhhc2hlcyA9IFtdOwogICAgICAgIGZvcmVhY2ggKCRmdWVudGVzIGFzICRmKSBpZiAoaXNfZmlsZSgkZikpICRoYXNoZXNbXSA9IGhhc2hfZmlsZSgnc2hhMjU2JywkZik7CiAgICAgICAgJHZlcnNpb24gPSBoYXNoKCdzaGEyNTYnLGltcGxvZGUoJ3wnLCRoYXNoZXMpKTsKICAgICAgICAkaWRlbnRpdHkgPSBfX0RJUl9fLid8Jy4oZGVmaW5lZCgnREJfSE9TVCcpP0RCX0hPU1Q6JycpLid8Jy4oZGVmaW5lZCgnREJfTkFNRScpP0RCX05BTUU6JycpOwogICAgICAgICRkaXIgPSAkZGlyZWN0b3JpbyA/PyBkaXJuYW1lKF9fRElSX18sMykuJy9pbXBlLXByaXZhdGUvY2F0YWxvZ29zJzsKICAgICAgICBpZiAoIWlzX2RpcigkZGlyKSAmJiAhQG1rZGlyKCRkaXIsMDcwMCx0cnVlKSAmJiAhaXNfZGlyKCRkaXIpKSB7CiAgICAgICAgICAgIHRocm93IG5ldyBSdW50aW1lRXhjZXB0aW9uKCdObyBzZSBwdWRvIHByZXBhcmFyIGVsIGNvbnRyb2wgcHJpdmFkbyBkZWwgY2F0w6Fsb2dvLicpOwogICAgICAgIH0KICAgICAgICAkZmlsZSA9ICRkaXIuJy8nLmhhc2goJ3NoYTI1NicsJGlkZW50aXR5KS4nLmpzb24nOwogICAgICAgICR2aWdlbnRlID0gc3RhdGljIGZ1bmN0aW9uICgpIHVzZSAoJGZpbGUsJHZlcnNpb24sJGFob3JhKTogYm9vbCB7CiAgICAgICAgICAgICRzID0ganNvbl9kZWNvZGUoKHN0cmluZylAZmlsZV9nZXRfY29udGVudHMoJGZpbGUpLHRydWUpOwogICAgICAgICAgICByZXR1cm4gaXNfYXJyYXkoJHMpICYmICgkc1sndmVyc2lvbiddID8/ICcnKT09PSR2ZXJzaW9uICYmCiAgICAgICAgICAgICAgICAoaW50KSgkc1snaGFzdGEnXSA/PyAwKT4kYWhvcmE7CiAgICAgICAgfTsKICAgICAgICBpZiAoJHZpZ2VudGUoKSkgcmV0dXJuOwogICAgICAgICRsb2NrID0gQGZvcGVuKCRmaWxlLicubG9jaycsJ2MnKTsKICAgICAgICBpZiAoISRsb2NrIHx8ICFmbG9jaygkbG9jayxMT0NLX0VYfExPQ0tfTkIpKSB7CiAgICAgICAgICAgIGlmIChpc19yZXNvdXJjZSgkbG9jaykpIGZjbG9zZSgkbG9jayk7CiAgICAgICAgICAgIGlmIChQSFBfU0FQSSE9PSdjbGknICYmICFoZWFkZXJzX3NlbnQoKSkgeyBodHRwX3Jlc3BvbnNlX2NvZGUoNTAzKTsgaGVhZGVyKCdSZXRyeS1BZnRlcjogNScpOyB9CiAgICAgICAgICAgIHRocm93IG5ldyBSdW50aW1lRXhjZXB0aW9uKCdFbCBjYXTDoWxvZ28gc2UgZXN0w6EgcHJlcGFyYW5kby4gRXNwZXJhIHVub3Mgc2VndW5kb3MuJyw1MDMpOwogICAgICAgIH0KICAgICAgICB0cnkgewogICAgICAgICAgICBpZiAoJHZpZ2VudGUoKSkgcmV0dXJuOwogICAgICAgICAgICB0cnkgeyAkaW5zdGFsYXIoKTsgfQogICAgICAgICAgICBjYXRjaCAoVGhyb3dhYmxlICRlKSB7IEltcGVDb250cm9sQ2FyZ2FNeXNxbDo6cmVnaXN0cmFyRmFsbG8oJGUpOyB0aHJvdyAkZTsgfQogICAgICAgICAgICAkdG1wID0gdGVtcG5hbSgkZGlyLCcuY2F0YWxvZ28tJyk7CiAgICAgICAgICAgIGlmICgkdG1wID09PSBmYWxzZSkgdGhyb3cgbmV3IFJ1bnRpbWVFeGNlcHRpb24oJ05vIHNlIHB1ZG8gcmVnaXN0cmFyIGxhIGluaWNpYWxpemFjacOzbiBkZWwgY2F0w6Fsb2dvLicpOwogICAgICAgICAgICBjaG1vZCgkdG1wLDA2MDApOwogICAgICAgICAgICB0cnkgewogICAgICAgICAgICAgICAgaWYgKGZpbGVfcHV0X2NvbnRlbnRzKCR0bXAsanNvbl9lbmNvZGUoWyd2ZXJzaW9uJz0+JHZlcnNpb24sJ2hhc3RhJz0+JGFob3JhKzIxNjAwXSkpPT09ZmFsc2UgfHwgIXJlbmFtZSgkdG1wLCRmaWxlKSkgewogICAgICAgICAgICAgICAgICAgIHRocm93IG5ldyBSdW50aW1lRXhjZXB0aW9uKCdObyBzZSBwdWRvIGd1YXJkYXIgZWwgY29udHJvbCBkZWwgY2F0w6Fsb2dvLicpOwogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9IGZpbmFsbHkgeyBpZiAoaXNfZmlsZSgkdG1wKSkgdW5saW5rKCR0bXApOyB9CiAgICAgICAgfSBmaW5hbGx5IHsgZmxvY2soJGxvY2ssTE9DS19VTik7IGZjbG9zZSgkbG9jayk7IH0KICAgIH0KfQo=",
+      "after_sha": "e3f7d0581ad75aa162f788bf05300a13366ee273939b1cbe80c51089893ba4f4"
+    },
+    {
+      "path": "config/db_connection.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "require_once dirname(__DIR__).'/app/helpers/PausaConsultasAutomaticas.php';\n",
+          "after": "require_once dirname(__DIR__).'/app/helpers/PausaConsultasAutomaticas.php';\nrequire_once dirname(__DIR__).'/app/helpers/ControlCargaMysql.php';\nImpeControlCargaMysql::comprobar();\n"
+        }
+      ]
+    },
+    {
+      "path": "app/models/RolModel.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n",
+          "after": "    {\n        require_once __DIR__.'/../helpers/ControlCargaMysql.php';\n        $this->connection = $connection ?? ImpeControlCargaMysql::conexion();\n    }\n"
+        },
+        {
+          "before": "    public function inicializarPermisosSistema()\n    {\n",
+          "after": "    public function inicializarPermisosSistema()\n    {\n        require_once __DIR__.'/../helpers/CatalogoPermisosInicializador.php';\n        ImpeCatalogoPermisosInicializador::ejecutar(function () {\n            $this->inicializarCatalogoPermisos();\n        }, [__FILE__,__DIR__.'/../helpers/AdminRolePolicy.php',\n            __DIR__.'/../helpers/FormularioPermisos.php',__DIR__.'/../helpers/InscritosPermisos.php',\n            __DIR__.'/../helpers/SupervisionRolePolicy.php']);\n    }\n\n    private function inicializarCatalogoPermisos()\n    {\n"
+        }
+      ]
+    },
+    {
+      "path": "app/models/UsuarioModel.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n",
+          "after": "    {\n        require_once __DIR__.'/../helpers/ControlCargaMysql.php';\n        $this->connection = $connection ?? ImpeControlCargaMysql::conexion();\n    }\n"
+        }
+      ]
+    },
+    {
+      "path": "app/controllers/LoginController.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        if (isset($this->usuarioModel, $this->rolModel)) return;\n        $conexion = Database::compartida();\n        $this->usuarioModel = $this->usuarioModel ?? new UsuarioModel($conexion);\n",
+          "after": "        if (isset($this->usuarioModel, $this->rolModel)) return;\n        $conexion = ImpeControlCargaMysql::conexion();\n        $this->usuarioModel = $this->usuarioModel ?? new UsuarioModel($conexion);\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaExtensionService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    {\n        $this->connection = $connection ?? (new Database())->connect();\n        $this->rootPath = dirname(__DIR__, 2);\n",
+          "after": "    {\n        require_once __DIR__.'/../helpers/ControlCargaMysql.php';\n        $this->connection = $connection ?? ImpeControlCargaMysql::conexion();\n        $this->rootPath = dirname(__DIR__, 2);\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaVentasLlamadasService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    private mysqli $db;\n    public function __construct(?mysqli $db=null) {$this->db=$db??(new Database())->connect();}\n    private function rows(string $sql,array $args=[]): array {\n",
+          "after": "    private mysqli $db;\n    public function __construct(?mysqli $db=null) {require_once __DIR__.'/../helpers/ControlCargaMysql.php';$this->db=$db??ImpeControlCargaMysql::conexion();}\n    private function rows(string $sql,array $args=[]): array {\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaDisponibilidadService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    public function __construct(?mysqli $db=null){\n        $this->db=$db??(new Database())->connect();\n    }\n",
+          "after": "    public function __construct(?mysqli $db=null){\n        require_once __DIR__.'/../helpers/ControlCargaMysql.php';\n        $this->db=$db??ImpeControlCargaMysql::conexion();\n    }\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_disponibilidad.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "  else if(id)url.searchParams.set('id',id);\n  const r=await fetch(url,options),json=await r.json();\n  if(!r.ok||!json.ok)throw Error(json.mensaje||'No se pudo actualizar la solicitud. Intenta de nuevo.');return json;\n };\n",
+          "after": "  else if(id)url.searchParams.set('id',id);\n  const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),12000);\n  try{\n   const r=await fetch(url,{...options,signal:abort.signal}),json=await r.json();\n   if(!r.ok||!json.ok){const error=Error(json.mensaje||'No se pudo actualizar la solicitud. Intenta de nuevo.');\n    error.retryAfterMs=Math.min(300000,Math.max(Number(r.headers.get('Retry-After'))||0,Number(json.reintentar_en)||0)*1000);throw error;}\n   return json;\n  }finally{clearTimeout(timeout);}\n };\n"
+        },
+        {
+          "before": "   const snapshot=watched,active=phone.getActiveCall();\n   const consultar=Date.now()>=consultarDevoluciones;\n",
+          "after": "   const snapshot=watched,active=phone.getActiveCall();\n   const statusBefore=phone.getPhoneStatus();\n   siguientePoll=Date.now()+(snapshot||received?2500:statusBefore.ready?5000:15000);\n   const consultar=Date.now()>=consultarDevoluciones;\n"
+        },
+        {
+          "before": "   fallosPoll=0;\n   if(consultar)consultarDevoluciones=Date.now()+15000;\n   // No pisar una solicitud creada mientras el polling estaba en vuelo.\n",
+          "after": "   fallosPoll=0;\n   if(consultar)consultarDevoluciones=Date.now()+60000;\n   // No pisar una solicitud creada mientras el polling estaba en vuelo.\n"
+        },
+        {
+          "before": "  }catch(e){\n   siguientePoll=Date.now()+Math.min(12000,3000*2**fallosPoll)+Math.floor(Math.random()*500);\n   fallosPoll=Math.min(fallosPoll+1,2);\n   if(watched)$('[data-availability-source-copy]').textContent=e.message;\n",
+          "after": "  }catch(e){\n   siguientePoll=Date.now()+Math.max(Number(e.retryAfterMs)||0,Math.min(60000,3000*2**fallosPoll))+Math.floor(Math.random()*500);\n   fallosPoll=Math.min(fallosPoll+1,5);\n   if(watched)$('[data-availability-source-copy]').textContent=e.message;\n"
+        },
+        {
+          "before": " };\n const respond=async which=>{\n",
+          "after": " };\n let telefonoListo=Boolean(phone.getPhoneStatus().ready);\n const alConectarTelefono=()=>{\n  const listo=Boolean(phone.getPhoneStatus().ready);\n  if(listo&&!telefonoListo&&fallosPoll===0){siguientePoll=0;void tick();}\n  telefonoListo=listo;\n };\n window.addEventListener('impe:phone-state-change',alConectarTelefono);\n window.addEventListener('storage',alConectarTelefono);\n const respond=async which=>{\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_shell.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": " }\n async function lookup(ref,version){\n  const initial=phone.getCallState(),sdk=identities(initial).find(x=>/^sdk-/.test(x));\n  if(fetching||(!pbx(ref)&&!candidate&&!sdk))return;fetching=true;const requestKeys=identities(initial);\n  const controller=typeof AbortController==='function'?new AbortController():null;\n",
+          "after": " }\n let lookupRetryAt=0,lookupFailures=0;\n async function lookup(ref,version){\n  const initial=phone.getCallState(),sdk=identities(initial).find(x=>/^sdk-/.test(x));\n  if(fetching||Date.now()<lookupRetryAt||(!pbx(ref)&&!candidate&&!sdk))return;fetching=true;const requestKeys=identities(initial);\n  const controller=typeof AbortController==='function'?new AbortController():null;\n"
+        },
+        {
+          "before": "   const r=await fetch(url,{credentials:'same-origin',cache:'no-store',...(controller?{signal:controller.signal}:{})}),j=await r.json();\n   const current=phone.getCallState();\n",
+          "after": "   const r=await fetch(url,{credentials:'same-origin',cache:'no-store',...(controller?{signal:controller.signal}:{})}),j=await r.json();\n   if(r.status>=500||r.status===429){const error=Error('PHONE_DETAIL_UNAVAILABLE');\n    error.retryAfterMs=Math.min(300000,Math.max(Number(r.headers?.get?.('Retry-After'))||0,Number(j.reintentar_en)||0)*1000);throw error;}\n   if(r.status===401||r.status===403){lookupRetryAt=Date.now()+60000;return;}\n   if(r.ok&&j.ok){lookupFailures=0;lookupRetryAt=0;}\n   const current=phone.getCallState();\n"
+        },
+        {
+          "before": "   hint.textContent=metadata.origen_extension?'Nombre informado por Recepción · Ext. '+metadata.origen_extension:'Atención comercial de tu extensión';\n  }catch(_){/* El historial conserva el pendiente mientras llega evidencia PBX. */}finally{if(timeout!==null)clearTimeout(timeout);fetching=false;render();}\n }\n",
+          "after": "   hint.textContent=metadata.origen_extension?'Nombre informado por Recepción · Ext. '+metadata.origen_extension:'Atención comercial de tu extensión';\n  }catch(error){\n   lookupFailures=Math.min(lookupFailures+1,7);\n   lookupRetryAt=Date.now()+Math.max(Number(error.retryAfterMs)||0,Math.min(60000,1000*2**(lookupFailures-1)));\n  }finally{if(timeout!==null)clearTimeout(timeout);fetching=false;render();}\n }\n"
+        },
+        {
+          "before": "  if(Date.now()<pendingRetryAt)return;\n  if(!force&&Date.now()-lastPending<10000)return;\n  pendingBusy=true;lastPending=Date.now();\n",
+          "after": "  if(Date.now()<pendingRetryAt)return;\n  if(!force&&Date.now()-lastPending<60000)return;\n  pendingBusy=true;lastPending=Date.now();\n"
+        },
+        {
+          "before": "  let serverWait=0;\n  try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pendientes','1');\n   const response=await fetch(url,{credentials:'same-origin',cache:'no-store'});\n   const retry=Number(response.headers?.get?.('Retry-After'));\n",
+          "after": "  let serverWait=0;\n  const pendingAbort=new AbortController(),pendingTimeout=setTimeout(()=>pendingAbort.abort(),12000);\n  try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pendientes','1');\n   const response=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:pendingAbort.signal});\n   const retry=Number(response.headers?.get?.('Retry-After'));\n"
+        },
+        {
+          "before": "   pendingRetryAt=Date.now()+Math.max(serverWait,Math.min(60000,10000*2**pendingFailures));\n  }finally{pendingBusy=false;render();}\n  };\n",
+          "after": "   pendingRetryAt=Date.now()+Math.max(serverWait,Math.min(60000,10000*2**pendingFailures));\n  }finally{clearTimeout(pendingTimeout);pendingBusy=false;render();}\n  };\n"
+        },
+        {
+          "before": "  if(!state.active){card.hidden=true;void recoverPending();}\n  if((currentRef||candidate||identities(state).some(x=>/^sdk-/.test(x)))&&Date.now()-lastLookup>(metadata?.finalizada?60000:Math.min(10000,1500*2**Math.min(tries,3)))&&(!metadata||!state.active)){\n   lastLookup=Date.now();tries++;void lookup(currentRef,revision);\n",
+          "after": "  if(!state.active){card.hidden=true;void recoverPending();}\n  if((currentRef||candidate||identities(state).some(x=>/^sdk-/.test(x)))&&Date.now()-lastLookup>(metadata?.finalizada||tries>=10?60000:Math.min(10000,1500*2**Math.min(tries,3)))&&(!metadata||!state.active)){\n   lastLookup=Date.now();tries++;void lookup(currentRef,revision);\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_ventas_resultados.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "\n const request=async url=>{\n  const controller=new AbortController();requestController=controller;const timeout=setTimeout(()=>controller.abort(),10000);\n  try{const r=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok){const e=Error(j.mensaje||'No se pudo consultar la llamada.');e.status=r.status;throw e;}return j;}\n  catch(error){if(error.name==='AbortError')throw Error('La consulta tardó demasiado. Vuelve a comprobar el cierre.');throw error;}\n",
+          "after": "\n let detailRetryAt=0;\n const request=async url=>{\n  if(Date.now()<detailRetryAt){const error=Error('Telefonía está recuperándose. Espera antes de comprobar de nuevo.');error.status=503;throw error;}\n  const controller=new AbortController();requestController=controller;const timeout=setTimeout(()=>controller.abort(),10000);\n  try{const r=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok){const e=Error(j.mensaje||'No se pudo consultar la llamada.');e.status=r.status;\n   if(r.status>=500||r.status===429)detailRetryAt=Date.now()+Math.max(5000,Math.min(300000,Math.max(Number(r.headers.get('Retry-After'))||0,Number(j.reintentar_en)||0)*1000));\n   throw e;}detailRetryAt=0;return j;}\n  catch(error){if(error.name==='AbortError')throw Error('La consulta tardó demasiado. Vuelve a comprobar el cierre.');throw error;}\n"
+        },
+        {
+          "before": " const show=()=>{if(!window.bootstrap?.Modal)throw Error('No se cargó el formulario. Recarga la página.');bootstrap.Modal.getOrCreateInstance(modal).show();};\n const schedule=(ref,ext,attempt,version)=>{const delay=Math.min(1500*2**Math.min(attempt,3),12000);timer=setTimeout(()=>{if(version===cycle&&!disposed&&modal.classList.contains('show'))void open(ref,ext,attempt+1);},delay);};\n const resultRules=()=>{\n",
+          "after": " const show=()=>{if(!window.bootstrap?.Modal)throw Error('No se cargó el formulario. Recarga la página.');bootstrap.Modal.getOrCreateInstance(modal).show();};\n const schedule=(ref,ext,attempt,version)=>{\n  if(attempt>=8){feedback.textContent='La confirmación sigue pendiente. La captura se conserva; vuelve a abrir la llamada para comprobarla.';return;}\n  const delay=Math.max(detailRetryAt-Date.now(),Math.min(1500*2**Math.min(attempt,3),12000));\n  timer=setTimeout(()=>{if(version===cycle&&!disposed&&modal.classList.contains('show'))void open(ref,ext,attempt+1);},delay);\n };\n const resultRules=()=>{\n"
+        }
+      ]
+    },
+    {
+      "path": "app/controllers/TelefoniaController.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "\n        if (isset($_SESSION['rol_id'])) {\n            $_SESSION['permisos'] =\n",
+          "after": "\n        if (isset($_SESSION['rol_id']) && !defined('IMPE_PERMISOS_REFRESCADOS')) {\n            $_SESSION['permisos'] =\n"
+        }
+      ]
+    },
+    {
+      "path": "index.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "set_exception_handler(static function (Throwable $error): void {\n    $ajax = in_array(strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), ['fetch', 'xmlhttprequest'], true);\n",
+          "after": "set_exception_handler(static function (Throwable $error): void {\n    if (class_exists(ImpeControlCargaMysql::class,false)) ImpeControlCargaMysql::registrarFallo($error);\n    $ajax = in_array(strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), ['fetch', 'xmlhttprequest'], true);\n"
+        },
+        {
+          "before": "        );\n}\n",
+          "after": "        );\n    define('IMPE_PERMISOS_REFRESCADOS',true);\n}\n"
+        }
+      ]
+    },
+    {
+      "path": "tools/explicar_consultas_mysql.php",
+      "new_file": true,
+      "content": "PD9waHAKLyoqIFPDs2xvIENMSSwgdHJlcyBFWFBMQUlOIGRlIGxlY3R1cmE7IG5vIGNyZWEgw61uZGljZXMgbmkgbXVlc3RyYSBkYXRvcyBkZSBwZXJzb25hcy4gKi8KaWYgKFBIUF9TQVBJIT09J2NsaScpIHtodHRwX3Jlc3BvbnNlX2NvZGUoNDA0KTtleGl0O30KcmVxdWlyZV9vbmNlIF9fRElSX18uJy8uLi9jb25maWcvZGJfY29ubmVjdGlvbi5waHAnOwokZGI9bnVsbDskc2FsaWRhPTA7CnRyeSB7CiAgICAkZGI9KG5ldyBEYXRhYmFzZSgpKS0+Y29ubmVjdChmYWxzZSk7CiAgICBmb3JlYWNoIChbCiAgICAgICAgJ1BFUk1JU09TJz0+IlNFTEVDVCBpZCBGUk9NIHBlcm1pc29zIFdIRVJFIGNvZGlnbz0ndGVsZWZvbmlhLnVzYXInIExJTUlUIDEiLAogICAgICAgICdFWFRFTlNJT05FUyc9PiJTRUxFQ1QgZXh0ZW5zaW9uIEZST00gdGVsZWZvbmlhX2V4dGVuc2lvbmVzIFdIRVJFIHVzdWFyaW9faWQ9MCBBTkQgcHJvdmVlZG9yPSdaQURBUk1BJyBBTkQgYWN0aXZvPTEgTElNSVQgMSIsCiAgICAgICAgJ1BFUk1JU09TX1JPTCc9PiJTRUxFQ1QgcC5jb2RpZ28gRlJPTSByb2xfcGVybWlzb3MgcnAgSk9JTiBwZXJtaXNvcyBwIE9OIHAuaWQ9cnAucGVybWlzb19pZCBXSEVSRSBycC5yb2xfaWQ9MCBBTkQgcC5lc3RhZG89MSBPUkRFUiBCWSBwLmNvZGlnbyIKICAgIF0gYXMgJG5hbWU9PiRzcWwpIHsKICAgICAgICBmb3JlYWNoICgkZGItPnF1ZXJ5KCdFWFBMQUlOICcuJHNxbCktPmZldGNoX2FsbChNWVNRTElfQVNTT0MpIGFzICRyb3cpIHsKICAgICAgICAgICAgZWNobyAkbmFtZS4nICcuanNvbl9lbmNvZGUoYXJyYXlfaW50ZXJzZWN0X2tleSgkcm93LGFycmF5X2ZsaXAoWyd0YWJsZScsJ3R5cGUnLCdwb3NzaWJsZV9rZXlzJywna2V5Jywncm93cycsJ0V4dHJhJ10pKSxKU09OX1VORVNDQVBFRF9VTklDT0RFKS5QSFBfRU9MOwogICAgICAgIH0KICAgIH0KfSBjYXRjaCAoVGhyb3dhYmxlICRlKSB7CiAgICBlY2hvICdFWFBMQUlOX05PX0RJU1BPTklCTEVfQ09ESUdPPScuKGludCkkZS0+Z2V0Q29kZSgpLlBIUF9FT0w7CiAgICAkc2FsaWRhPTE7Cn0gZmluYWxseSB7aWYgKCRkYiBpbnN0YW5jZW9mIG15c3FsaSkgJGRiLT5jbG9zZSgpO30KZXhpdCgkc2FsaWRhKTsK",
+      "after_sha": "d3761a56a43aadf8e1a89b64058a375e0c2f198d371f08c061c6bb03209075ce"
+    }
+  ]
+}

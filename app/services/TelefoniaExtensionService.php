@@ -9,7 +9,8 @@ class TelefoniaExtensionService
 
     public function __construct(?mysqli $connection=null)
     {
-        $this->connection = $connection ?? (new Database())->connect();
+        require_once __DIR__.'/../helpers/ControlCargaMysql.php';
+        $this->connection = $connection ?? ImpeControlCargaMysql::conexion();
         $this->rootPath = dirname(__DIR__, 2);
     }
 

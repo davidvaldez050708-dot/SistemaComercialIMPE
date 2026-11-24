@@ -30,50 +30,29 @@ const env={
   getItem:k=>storage.get(k)||null,
   setItem:(k,v)=>storage.set(k,v)
  },
- setTimeout:()=>1,clearTimeout:()=>{}
+ setTimeout:()=>1,clearTimeout:()=>{},setInterval:()=>1,clearInterval:()=>{},unlockAudio:()=>{}
 };
 vm.runInNewContext(script,env);
 const a=env.soundTest,call=(id=1,seconds=45)=>({id,version:1,segundos:seconds});
+// Contrato de audio de la versión instalada: dos notas y recordatorios cada 8 s.
 a.signalAvailability(call());
-assert.equal(starts.length,0,'No se reproduce antes de desbloquear WebAudio');
-a.setAudio(fakeAudio);
-a.playSound();
-assert.deepEqual(tones,[740,880,988],'Alerta distinguible de tres notas');
-assert.equal(starts.length,3);
-assert(gains.every(v=>v<=0.17),'Volumen moderado');
+assert.equal(starts.length,0,'Sin contexto de audio activo no emite');
+a.setAudio(fakeAudio);a.playSound();
+assert.deepEqual(tones,[740,990],'Melodía instalada de dos notas');
+assert.equal(starts.length,2);assert(gains.every(v=>v<=0.13));
 for(let i=0;i<7;i++)a.signalAvailability(call());
-assert.equal(starts.length,3,'Sin repeticiones por polling');
-time+=17000;a.signalAvailability(call());
-assert.equal(starts.length,3,'Sin recordatorio prematuro');
-time+=1100;a.signalAvailability(call());
-assert.deepEqual(tones,[740,880,988,740,880],'Único recordatorio más discreto');
-assert.equal(starts.length,5);
-assert(gains.at(-1)<=0.11,'Recordatorio más tenue');
-time+=1000;a.signalAvailability(call());
-assert.equal(starts.length,5,'A lo sumo un recordatorio');
-a.stopSound();
-a.signalAvailability(call());
-assert.equal(starts.length,5,'La misma solicitud no repite audio tras recuperar la vista');
-active=true;a.signalAvailability(call(2));
-a.playSound();
-assert.equal(starts.length,5,'Una llamada activa silencia aviso');
-active=false;hidden=true;a.playSound();
-assert.equal(starts.length,5,'Pestaña oculta no emite audio');
-hidden=false;ready=false;a.playSound();
-assert.equal(starts.length,5,'Teléfono desconectado no emite audio');
-ready=true;a.playSound();
-assert.equal(starts.length,8,'Al volver a estar listo conserva la solicitud');
-pending=true;time+=19000;a.playSound();
-assert.equal(starts.length,8,'No interrumpe el registro de un resultado previo');
-pending=false;a.playSound();
-assert.equal(starts.length,10,'Único recordatorio al quedar libre');
-a.stopSound();
-a.signalAvailability(call(3,26));a.playSound();
-assert.equal(starts.length,13);
-time+=18050; a.signalAvailability(call(3,8));
-assert.equal(starts.length,13,'No insistir cuando quedan menos de 10 segundos');
-time+=9000;a.signalAvailability(call(3,0));
-assert.equal(starts.length,13,'No reproducir tras vencimiento');
-a.stopSound();
-assert(!a.getSoundRequest(),'Responder o vencer elimina aviso activo');
-console.log('Aviso sonoro: consentimiento, notas, recordatorio único, ocupado, pendiente, oculto, vencimiento e idempotencia OK');
+assert.equal(starts.length,2,'El polling no repite inmediatamente');
+time+=7000;a.signalAvailability(call());assert.equal(starts.length,2);
+time+=1100;a.signalAvailability(call());assert.equal(starts.length,4,'Recordatorio al cumplir ocho segundos');
+time+=1000;a.signalAvailability(call());assert.equal(starts.length,4);
+time+=7100;a.signalAvailability(call());assert.equal(starts.length,6,'Recordatorios mientras siga pendiente');
+a.stopSound();a.signalAvailability(call());assert.equal(starts.length,6,'Misma solicitud recuperada sin repetición inmediata');
+active=true;a.signalAvailability(call(2));a.playSound();assert.equal(starts.length,6,'Una conversación activa silencia avisos');
+active=false;hidden=true;a.playSound();assert.equal(starts.length,8,'Se conserva el aviso en segundo plano');
+hidden=false;ready=false;time+=8100;a.playSound();assert.equal(starts.length,8,'Teléfono desconectado no emite');
+ready=true;pending=true;a.playSound();assert.equal(starts.length,8,'No interrumpe captura pendiente con recordatorio');
+pending=false;a.playSound();assert.equal(starts.length,10);
+a.stopSound();a.signalAvailability(call(3,1));a.playSound();assert.equal(starts.length,12);
+time+=1100;a.playSound();assert.equal(starts.length,12,'No emitir después de vencida');
+a.stopSound();assert(!a.getSoundRequest());
+console.log('Aviso instalado: dos notas, frecuencia mínima, conversación/resultado pendiente, segundo plano, vencimiento e idempotencia OK');

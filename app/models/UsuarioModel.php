@@ -6,10 +6,10 @@ class UsuarioModel
 {
     private $connection;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        require_once __DIR__.'/../helpers/ControlCargaMysql.php';
+        $this->connection = $connection ?? ImpeControlCargaMysql::conexion();
     }
 
     public function buscarPorUsuarioOCorreo($dato)

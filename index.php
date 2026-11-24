@@ -6,6 +6,16 @@ $impePerfilPeticion = ImpePerfilPeticion::iniciar(__DIR__);
 session_start();
 $impePerfilPeticion?->marca('sesion');
 
+set_exception_handler(static function (Throwable $error): void {
+    if (class_exists(ImpeControlCargaMysql::class,false)) ImpeControlCargaMysql::registrarFallo($error);
+    $ajax=in_array(strtolower($_SERVER['HTTP_X_REQUESTED_WITH']??''),['fetch','xmlhttprequest'],true);
+    if (class_exists(Database::class,false) && method_exists(Database::class,'responderFalloTemporal') && Database::responderFalloTemporal($error,$ajax)) return;
+    error_log('[impe_peticion] '.get_class($error).' en '.basename($error->getFile()).':'.$error->getLine());
+    http_response_code(500);header('Content-Type: '.($ajax?'application/json':'text/plain').'; charset=utf-8');
+    echo $ajax?'{"ok":false,"mensaje":"No se pudo completar la solicitud."}':'No se pudo completar la solicitud.';
+});
+
+
 if (isset($_SESSION['usuario_id'])) {
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     header('Pragma: no-cache');
@@ -207,6 +217,7 @@ if (isset($_SESSION['usuario_id'])) {
         $modeloRolSesion->obtenerCodigosPermisosPorRol(
             (int)$_SESSION['rol_id']
         );
+    define('IMPE_PERMISOS_REFRESCADOS',true);
 }
 
 

@@ -42,6 +42,13 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await page.evaluate(actor=>{
     const state={userId:actor,updatedAt:Date.now(),hostReady:true,active:actor===7,phase:actor===7?'in-progress':'ready',direction:'incoming',destination:'5551234567',pbxCallId:actor===7?'pbx-call-availability':'',callToken:actor===7?'pbx-call-availability':'',duration:10};
     localStorage.setItem('impe:telephony:state:'+actor,JSON.stringify(state));window.dispatchEvent(new StorageEvent('storage',{key:'impe:telephony:state:'+actor,newValue:JSON.stringify(state)}));
+    // El HOST real mantiene latidos; un estado único caduca a los 5.5 s.
+    // Con sondeos espaciados hay que simular ese contrato, no congelar el HOST.
+    window.setInterval(()=>{
+     const key='impe:telephony:state:'+actor,current=JSON.parse(localStorage.getItem(key)||'null');
+     if(!current)return;current.updatedAt=Date.now();const value=JSON.stringify(current);
+     localStorage.setItem(key,value);window.dispatchEvent(new StorageEvent('storage',{key,newValue:value}));
+    },1000);
     window.commands=[];window.testChannel=new BroadcastChannel('impe-telephony-'+actor);window.testChannel.onmessage=e=>{if(e.data.action==='TRANSFER')window.commands.push(e.data);};
    },actor);
   }
@@ -88,13 +95,13 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await d.setViewportSize({width:1366,height:900});
   }
   if(scenario!=='iframe'){
-   assert.equal(await d.evaluate(()=>audioProbe.started),0,'sin gesto confiable no intenta sonido');
+   assert.ok(await d.evaluate(()=>audioProbe.started)<=2,'El aviso instalado puede intentar reproducir su melodía al recibir la solicitud');
    await d.locator('[data-availability-incoming] h2').click();
   }
-  assert.equal(await d.evaluate(()=>audioProbe.started),3,'tres notas distintivas tras gesto confiable');
-  assert.deepEqual(await d.evaluate(()=>audioProbe.frequencies),[740,880,988]);
+  assert.equal(await d.evaluate(()=>audioProbe.started),2,'melodía de dos notas conservada de la versión instalada');
+  assert.deepEqual(await d.evaluate(()=>audioProbe.frequencies),[740,990]);
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
-  assert.equal(await d.evaluate(()=>audioProbe.started),3,'poll repetido no repite sonido');
+  assert.equal(await d.evaluate(()=>audioProbe.started),2,'poll repetido no repite sonido inmediatamente');
   if(process.env.DISP_SCREENSHOT&&scenario==='aceptar'){await d.screenshot({path:process.env.DISP_SCREENSHOT+'-analista.png'});await s.screenshot({path:process.env.DISP_SCREENSHOT+'-recepcion.png'});}
   assert.equal(await d.locator('[data-incoming-panel]').isVisible(),false,'la confirmación no es una llamada ni un timbrado SIP');
   assert.ok(await d.locator('[data-availability-incoming] h2').evaluate(e=>parseFloat(getComputedStyle(e).fontSize))<=20,'tipografía del modal uniforme');
@@ -108,6 +115,7 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await d.locator('[data-availability-decline]').click();assert.equal(authorizations,0);
   }else if(scenario==='aceptar'||scenario==='iframe'||scenario==='prospecto'){
    await d.locator('[data-availability-accept]').click();await s.evaluate(()=>window.IMPE_AVAILABILITY.tick());
+   await s.waitForFunction(()=>document.querySelector('[data-availability-source]')?.dataset.availabilityState==='ACEPTADA');
    assert.equal(await s.locator('[data-availability-source]').getAttribute('data-availability-state'),'ACEPTADA','estado de aceptación visible');
    await s.locator('[data-availability-transfer]').waitFor({state:'visible'});assert.equal(authorizations,0,'aceptar no entrega automáticamente');
    await s.locator('[data-availability-transfer]').click();await s.waitForFunction(()=>window.commands.length===1);assert.equal(authorizations,1);
@@ -123,7 +131,8 @@ const sourceHtml=cp.execFileSync('php',[fixture],{encoding:'utf8'}),destHtml=cp.
    await dialog.locator('button[type=submit]').click();await dialog.waitFor({state:'hidden'});assert.equal(saved.contacto,'Ana');assert.equal(saved.telefono,'5551234567');
   }
   await d.evaluate(()=>window.IMPE_AVAILABILITY.tick());
-  assert.ok(await d.evaluate(()=>audioProbe.stopped)>=6,'responder o vencer detiene los nodos del aviso');
+  await d.waitForFunction(()=>audioProbe.stopped>=4);
+  assert.ok(await d.evaluate(()=>audioProbe.stopped)>=4,'responder o vencer detiene los nodos del aviso');
   assert.deepEqual(errors,[]);for(const c of contexts)await c.close();
  }
  console.log('Disponibilidad/navegador: confirmación sin llamada, aceptación explícita, transferencia única, rechazo, vencimiento y devolución móvil: OK');

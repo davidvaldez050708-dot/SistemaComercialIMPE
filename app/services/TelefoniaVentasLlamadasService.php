@@ -7,7 +7,7 @@ require_once __DIR__.'/../helpers/ZadarmaPbxIdentifierHelper.php';
 final class TelefoniaVentasLlamadasService
 {
     private mysqli $db;
-    public function __construct(?mysqli $db=null) {$this->db=$db??(new Database())->connect();}
+    public function __construct(?mysqli $db=null) {require_once __DIR__.'/../helpers/ControlCargaMysql.php';$this->db=$db??ImpeControlCargaMysql::conexion();}
     private function rows(string $sql,array $args=[]): array {
         $s=$this->db->prepare($sql);if($args)$s->bind_param(str_repeat('s',count($args)),...$args);
         $s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $rows;

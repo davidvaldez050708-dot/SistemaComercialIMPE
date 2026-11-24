@@ -8,7 +8,8 @@ final class TelefoniaDisponibilidadService
 {
     private mysqli $db;
     public function __construct(?mysqli $db=null){
-        $this->db=$db??(new Database())->connect();
+        require_once __DIR__.'/../helpers/ControlCargaMysql.php';
+        $this->db=$db??ImpeControlCargaMysql::conexion();
         // Las consultas automáticas no deben repetir DDL en cada sondeo.
         // Si falta una tabla se conserva la preparación original completa.
         $tablasListas=$this->db->query("SELECT COUNT(*) FROM information_schema.TABLES

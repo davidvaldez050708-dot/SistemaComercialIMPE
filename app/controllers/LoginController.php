@@ -11,8 +11,10 @@ class LoginController
 
     private function prepararModelos()
     {
-        $this->usuarioModel = $this->usuarioModel ?? new UsuarioModel();
-        $this->rolModel = $this->rolModel ?? new RolModel();
+        require_once __DIR__.'/../helpers/ControlCargaMysql.php';
+        $conexion = ImpeControlCargaMysql::conexion();
+        $this->usuarioModel = $this->usuarioModel ?? new UsuarioModel($conexion);
+        $this->rolModel = $this->rolModel ?? new RolModel($conexion);
     }
 
     public function mostrarLogin()

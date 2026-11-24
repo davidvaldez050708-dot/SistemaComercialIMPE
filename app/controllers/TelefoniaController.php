@@ -19,7 +19,7 @@ class TelefoniaController
         $modeloRol = new RolModel();
         $modeloRol->inicializarPermisosSistema();
 
-        if (isset($_SESSION['rol_id'])) {
+        if (isset($_SESSION['rol_id']) && !defined('IMPE_PERMISOS_REFRESCADOS')) {
             $_SESSION['permisos'] =
                 $modeloRol->obtenerCodigosPermisosPorRol(
                     (int)$_SESSION['rol_id']

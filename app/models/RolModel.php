@@ -7,13 +7,23 @@ class RolModel
 {
     private $connection;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        require_once __DIR__.'/../helpers/ControlCargaMysql.php';
+        $this->connection = $connection ?? ImpeControlCargaMysql::conexion();
     }
 
     public function inicializarPermisosSistema()
+    {
+        require_once __DIR__.'/../helpers/CatalogoPermisosInicializador.php';
+        ImpeCatalogoPermisosInicializador::ejecutar(function () {
+            $this->inicializarCatalogoPermisos();
+        }, [__FILE__,__DIR__.'/../helpers/AdminRolePolicy.php',
+            __DIR__.'/../helpers/FormularioPermisos.php',__DIR__.'/../helpers/InscritosPermisos.php',
+            __DIR__.'/../helpers/SupervisionRolePolicy.php']);
+    }
+
+    private function inicializarCatalogoPermisos()
     {
         $permisos = $this->obtenerCatalogoInicialPermisos();
         $permisoImportacionMetaNuevo =
