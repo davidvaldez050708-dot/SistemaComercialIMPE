@@ -45,6 +45,16 @@ const html=`<!doctype html><meta charset="utf-8"><style>${css}</style><main data
    assert.equal(posts.length,scenario==='servidor_rechaza'?1:0);
    assert.equal(await page.locator('[name=nombre_entidad]').inputValue(),'Institución sintética','captura conservada');
    assert.equal(await page.locator('[data-incoming-submit]').isDisabled(),false,'permite corregir y reintentar');
+   if(scenario==='falta_resultado'){
+    await page.waitForTimeout(2600);
+    await page.locator('[data-incoming-submit]').click();
+    await page.waitForTimeout(1900);
+    assert.equal(await error.isVisible(),true,'Un error nuevo reinicia los 4200 ms');
+    await error.waitFor({state:'hidden',timeout:3000});
+    assert.equal(await page.locator('[name=nombre_entidad]').inputValue(),'Institución sintética','Ocultar el toast conserva la captura');
+    await page.locator('[data-incoming-submit]').click();await error.waitFor({state:'visible'});
+    await error.locator('button').click();assert.equal(await error.isVisible(),false,'Cierre manual inmediato');
+   }
   }
   if(process.env.ANALISTA_SCREENSHOT)await page.screenshot({path:process.env.ANALISTA_SCREENSHOT});
   assert.deepEqual(errors,[]);console.log('PASS '+scenario);await page.close();

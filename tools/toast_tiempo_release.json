@@ -1,0 +1,23 @@
+{
+  "release": "toast-tiempo-analista-20261125",
+  "files": [
+    {
+      "path": "public/javascript/seguimiento_entrantes_analista.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    modalEl.addEventListener('shown.bs.modal',()=>{if(interrupted){modal.hide();return;}modalEl.querySelector('.modal-body').scrollTop=0;decision.focus({preventScroll:true});});\n\n    // Los errores deben permanecer dentro del formulario, incluso sin el toast del shell.\n    const showError = message => {\n        let container=modalEl.querySelector('[data-incoming-toast-container]');\n        if(!container){container=document.createElement('div');container.dataset.incomingToastContainer='';container.className='toast-container position-fixed top-0 end-0 p-3';container.style.zIndex='1095';modalEl.append(container);}\n",
+          "after": "    modalEl.addEventListener('shown.bs.modal',()=>{if(interrupted){modal.hide();return;}modalEl.querySelector('.modal-body').scrollTop=0;decision.focus({preventScroll:true});});\n\n    // Mismo plazo de los errores de Seguimiento, sin depender del foco del modal.\n    let errorTimer;\n    const showError = message => {\n        clearTimeout(errorTimer);\n        let container=modalEl.querySelector('[data-incoming-toast-container]');\n        if(!container){container=document.createElement('div');container.dataset.incomingToastContainer='';container.className='toast-container position-fixed top-0 end-0 p-3';container.style.zIndex='1095';modalEl.append(container);}\n"
+        },
+        {
+          "before": "        errorBox.querySelector('button').onclick=()=>clearError();\n        container.append(errorBox);errorBox.focus({preventScroll:true});\n    };\n    // La validación nativa puede cancelar el envío antes de disparar submit.\n",
+          "after": "        errorBox.querySelector('button').onclick=()=>clearError();\n        container.append(errorBox);errorBox.focus({preventScroll:true});\n        errorTimer=setTimeout(clearError,4200);\n    };\n    // La validación nativa puede cancelar el envío antes de disparar submit.\n"
+        },
+        {
+          "before": "    },true);\n    const clearError = () => {\n        errorBox.textContent = '';\n        errorBox.classList.add('d-none');\n    };\n\n    const renderEvidence = () => {\n",
+          "after": "    },true);\n    const clearError = () => {\n        clearTimeout(errorTimer);\n        errorBox.textContent = '';\n        errorBox.classList.remove('show');\n        errorBox.classList.add('d-none');\n    };\n    modalEl.addEventListener('hidden.bs.modal',clearError);\n\n    const renderEvidence = () => {\n"
+        }
+      ]
+    }
+  ]
+}

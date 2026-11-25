@@ -164,8 +164,10 @@
     modalEl.addEventListener('hidden.bs.modal',()=>{++modalCycle;++searchSequence;clearTimeout(searchTimer);clearTimeout(draftTimer);if(callbackMode&&closingAfterSave)isSubmitting=false;closingAfterSave=false;interrupted=false;if(callbackMode&&!isSubmitting){form.querySelectorAll('input,select,textarea,button').forEach(e=>e.disabled=false);modalEl.querySelectorAll('[data-bs-dismiss]').forEach(e=>e.disabled=false);submit.innerHTML='<i class="bi bi-check2-circle"></i> Guardar resultado';}resultTrigger?.isConnected&&resultTrigger.focus({preventScroll:true});});
     modalEl.addEventListener('shown.bs.modal',()=>{if(interrupted){modal.hide();return;}modalEl.querySelector('.modal-body').scrollTop=0;decision.focus({preventScroll:true});});
 
-    // Los errores deben permanecer dentro del formulario, incluso sin el toast del shell.
+    // Mismo plazo de los errores de Seguimiento, sin depender del foco del modal.
+    let errorTimer;
     const showError = message => {
+        clearTimeout(errorTimer);
         let container=modalEl.querySelector('[data-incoming-toast-container]');
         if(!container){container=document.createElement('div');container.dataset.incomingToastContainer='';container.className='toast-container position-fixed top-0 end-0 p-3';container.style.zIndex='1095';modalEl.append(container);}
         errorBox.className='toast system-toast system-toast-error show';
@@ -175,6 +177,7 @@
         errorBox.querySelector('span').textContent=String(message || 'No fue posible guardar la llamada.');
         errorBox.querySelector('button').onclick=()=>clearError();
         container.append(errorBox);errorBox.focus({preventScroll:true});
+        errorTimer=setTimeout(clearError,4200);
     };
     // La validación nativa puede cancelar el envío antes de disparar submit.
     form.addEventListener('invalid', event => {
@@ -186,9 +189,12 @@
         showError('Revisa «'+label+'»: '+detalle);
     },true);
     const clearError = () => {
+        clearTimeout(errorTimer);
         errorBox.textContent = '';
+        errorBox.classList.remove('show');
         errorBox.classList.add('d-none');
     };
+    modalEl.addEventListener('hidden.bs.modal',clearError);
 
     const renderEvidence = () => {
         const enabled = ['existente','nueva'].includes(decision.value);
