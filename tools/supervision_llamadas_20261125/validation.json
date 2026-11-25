@@ -1,0 +1,118 @@
+{
+  "date": "2026-11-25",
+  "production_modified": false,
+  "migrations_executed": false,
+  "baseline_regression_reproduced": {
+    "passed": true,
+    "installed_failure": "sesion actual saved result: SIN_IDENTIFICAR instead of CONTACTADO"
+  },
+  "automated": [
+    {
+      "command": [
+        "C:\\Users\\diana\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+        ".\\output\\supervision_llamadas_preparacion\\build_test_copy.py"
+      ],
+      "output": "Built isolated test copy. Database/network providers are fixtures; production untouched.",
+      "passed": true
+    },
+    {
+      "command": [
+        "php",
+        ".\\output\\supervision_llamadas_preparacion\\test_repository.php"
+      ],
+      "output": "Repository: 120 synthetic checks passed; no database, telephony API or historical writes.",
+      "passed": true
+    },
+    {
+      "command": [
+        "php",
+        ".\\output\\supervision_llamadas_preparacion\\test_controller.php"
+      ],
+      "output": "Controller: detail/list agreement, notes, institution, link permissions, scope, method and authentication passed.",
+      "passed": true
+    },
+    {
+      "command": [
+        "C:\\Users\\diana\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+        ".\\output\\supervision_llamadas_preparacion\\test_deploy.py"
+      ],
+      "output": "Deployment: 30 checks passed in a temporary fixture; no live site or database used.",
+      "passed": true
+    },
+    {
+      "command": [
+        "C:\\Users\\diana\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+        ".\\output\\supervision_llamadas_preparacion\\verify_preservation.py"
+      ],
+      "output": "Preservation: permission/team SQL, filter handlers, audio transport/controller route, recording/card CSS and selective five-file payload unchanged outside intended areas.",
+      "passed": true
+    },
+    {
+      "command": [
+        "php",
+        "-l",
+        ".\\output\\supervision_llamadas_preparacion\\deploy.php"
+      ],
+      "output": "No syntax errors detected in .\\output\\supervision_llamadas_preparacion\\deploy.php",
+      "passed": true
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        ".\\output\\supervision_llamadas_preparacion\\production-candidate\\public\\javascript\\supervision_llamadas.js"
+      ],
+      "output": "",
+      "passed": true
+    },
+    {
+      "command": [
+        "php",
+        "-l",
+        ".\\output\\supervision_llamadas_preparacion\\production-candidate\\app\\controllers\\SupervisionLlamadasController.php"
+      ],
+      "output": "No syntax errors detected in .\\output\\supervision_llamadas_preparacion\\production-candidate\\app\\controllers\\SupervisionLlamadasController.php",
+      "passed": true
+    },
+    {
+      "command": [
+        "php",
+        "-l",
+        ".\\output\\supervision_llamadas_preparacion\\production-candidate\\app\\services\\SupervisionLlamadasRepository.php"
+      ],
+      "output": "No syntax errors detected in .\\output\\supervision_llamadas_preparacion\\production-candidate\\app\\services\\SupervisionLlamadasRepository.php",
+      "passed": true
+    },
+    {
+      "command": [
+        "php",
+        "-l",
+        ".\\output\\supervision_llamadas_preparacion\\production-candidate\\app\\views\\telefonia\\supervision_llamadas.php"
+      ],
+      "output": "No syntax errors detected in .\\output\\supervision_llamadas_preparacion\\production-candidate\\app\\views\\telefonia\\supervision_llamadas.php",
+      "passed": true
+    }
+  ],
+  "browser": {
+    "environment": "Isolated PHP test copy on loopback; actual view/CSS/JS, normalized synthetic data; fixture API and surrounding layout.",
+    "passed": [
+      "Incoming saved result/notes/institution/link",
+      "Unidentified stays unidentified",
+      "Outgoing saved result",
+      "Transferred saved result",
+      "Seven filters retained",
+      "Direction filter navigation",
+      "Mobile 390px no horizontal overflow",
+      "38px filter controls",
+      "Literal HTML-like notes stay text, zero injected script nodes"
+    ],
+    "live_analyst_accounts_tested": false,
+    "real_recording_playback_tested": false
+  },
+  "limitations": [
+    "No direct SQL connector to inspect actual historical rows; root cause reproduced from installed code and writer contract with synthetic rows.",
+    "Existing expediente destination rechecks its own permission and scope; Supervisión does not grant new expediente permissions.",
+    "PHP hashes use connector content plus trailing LF where required by API size; mandatory raw-file server preflight before any future apply.",
+    "No global deployment atomicity: per-file atomic replacement, backed up and guarded rollback."
+  ]
+}

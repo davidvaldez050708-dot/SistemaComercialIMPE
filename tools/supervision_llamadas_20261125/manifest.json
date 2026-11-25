@@ -1,0 +1,42 @@
+{
+  "domain": "fundacionrededumex.org",
+  "release": "supervision_llamadas_20261125",
+  "files": [
+    {
+      "path": "app/services/SupervisionLlamadasRepository.php",
+      "before_sha256": "a89215242d8323863c074bee3fe17147ab7e3398a06caeef592cc6a795b8171f",
+      "after_sha256": "d316e151e9808b4a976d1b50d65c97228c666fe3cc8966e9e62a3f285a7bc967",
+      "before_bytes": 27139,
+      "after_bytes": 30416
+    },
+    {
+      "path": "app/controllers/SupervisionLlamadasController.php",
+      "before_sha256": "1da0579ccd781c927aa20c2ac6b0d54359fef2b122907bfe6985dded646c4443",
+      "after_sha256": "a49bfe1e534533e20aa05085720ff0eed012670f26f63db372004f16322b9832",
+      "before_bytes": 5773,
+      "after_bytes": 6110
+    },
+    {
+      "path": "public/javascript/supervision_llamadas.js",
+      "before_sha256": "1bcc55bdd4a7fd524f4228fa8cdc8ee8428a560eaa6c8378ff973c0d65bb98de",
+      "after_sha256": "fb771960656b4cb871b419129e7f1e13ba93c8750c0d321123ee8f9607e446cd",
+      "before_bytes": 11667,
+      "after_bytes": 12684
+    },
+    {
+      "path": "app/views/telefonia/supervision_llamadas.php",
+      "before_sha256": "146d6b0977072aae59a783b99982dfa8b51e276554b732e6f986b490ba896ab1",
+      "after_sha256": "49859b5f04e24dc02d5bfd8415f527afc076d61f96002a2153298e8b6b6e3119",
+      "before_bytes": 11368,
+      "after_bytes": 11484
+    },
+    {
+      "path": "public/css/supervision_llamadas.css",
+      "before_sha256": "2d8570951ecf51011456abf9034a649064d1f646cd725fd8fbac45b01691a8ee",
+      "after_sha256": "8f6ad48435bc7f27a82e5e820386f7aed0daa17767bbf7f018647fc68adbfa5a",
+      "before_bytes": 11234,
+      "after_bytes": 11319
+    }
+  ],
+  "hash_basis": "Connector text plus trailing LF only if API byte size requires it; raw server preflight mandatory."
+}

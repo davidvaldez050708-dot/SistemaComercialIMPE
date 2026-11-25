@@ -1,0 +1,131 @@
+SUPERVISIÓN DE LLAMADAS — CORRECCIÓN PREPARADA SOBRE HOSTINGER
+25 de noviembre de 2026. Destino: fundacionrededumex.org.
+
+Estado
+Se corrigió una copia aislada con datos sintéticos. No se publicó en Hostinger,
+no se ejecutaron migraciones ni se modificaron registros históricos, expedientes,
+llamadas activas, permisos, WebRTC/Zadarma o grabaciones. La aplicación activa de
+XAMPP conserva sus cambios previos. El publicador se entrega para revisión;
+su aplicación en producción requiere la autorización solicitada por la usuaria.
+
+Causa reproducida
+SupervisionLlamadasRepository::normalizar verificaba interaccion_id pero descartaba
+el contenido de esa interacción. Para sesiones y entradas leía clasificacion o
+estado de la bandeja como resultado y observacion preliminar como nota, en vez de
+interacciones_vinculacion.resultado y notas. Así podía mostrar SIN_IDENTIFICAR
+aunque hubiera una interacción comercial válida del mismo analista. Cuando faltaba
+el puntero no consultaba la interacción por la referencia PBX/SDK exacta.
+El detalle del controlador tampoco exponía seguimiento_id ni el enlace al
+expediente. Las salientes guardadas en la tabla de clasificación de entradas
+podían etiquetarse como entrantes por la heurística anterior.
+
+La prueba de regresión falla con el repositorio instalado (SIN_IDENTIFICAR) y pasa
+con el candidato (CONTACTADO), sobre la misma fila sintética vinculada.
+Se comparó la lectura con el contrato del servicio instalado que guarda el
+resultado del analista en la interacción y sólo marca VINCULADA en la bandeja.
+No se inspeccionaron filas reales de llamadas por SQL: el conector no ofreció esa
+capacidad. No se afirma haber auditado el contenido de una llamada real concreta.
+
+Cambios selectivos: cinco archivos
+- app/services/SupervisionLlamadasRepository.php
+  Usa la interacción exacta del mismo autor y canal LLAMADA_IP. Sin puntero,
+  admite sólo una interacción por referencia/proveedor PBX o SDK exactos del
+  mismo usuario. Una transferencia debe resolverse por su operación ENTREGADA,
+  destinatario, extensión y alias SDK existentes. Si hay ambigüedad, no escoge
+  una interacción. Nunca relaciona por teléfono, nombre, duración ni proximidad
+  de hora. Un puntero explícito inválido no se sustituye por otro candidato.
+  Recupera resultado, notas, ID de interacción y expediente. Consulta por lotes
+  el nombre actual del expediente vinculado, sin reconstruir un nombre histórico.
+  Conserva Sin identificar si no hay resultado; Conectada sigue siendo sólo PBX.
+  Da prioridad a la referencia out_ para distinguir salientes clasificadas en la
+  tabla compartida. Precarga los detalles para concordar con el listado, sin N+1.
+- app/controllers/SupervisionLlamadasController.php
+  Expone IDs, institución y estado PBX en detalle. Ofrece la URL del expediente
+  sólo con el permiso existente seguimientos_vinculacion.ver. La ruta de destino
+  vuelve a validar su propio alcance; no se amplía el acceso al expediente.
+- public/javascript/supervision_llamadas.js
+  Añade Expediente vinculado con enlace al destino institucional del mismo origen
+  e ID validado. Muestra institución y observaciones como texto, sin innerHTML.
+  Los eventos de filtros, consultas de audio y sus sondeos permanecen iguales.
+- app/views/telefonia/supervision_llamadas.php
+  Permite consultar también una llamada con notas o expediente persistidos aunque
+  su resultado esté vacío; el detalle sigue indicando Sin identificar.
+- public/css/supervision_llamadas.css
+  Controles de 38 px en vez de mínimo 44, tipografía de 12 px, etiquetas de 11 px,
+  separación 10/12 px y relleno de 12 px. Se conservan los siete filtros y las
+  rejillas adaptables existentes: cuatro, dos o una columna según el ancho.
+  El resto de estilos de tarjetas, paginación y grabaciones permanece idéntico.
+
+Seguridad y rendimiento
+Se conservaron byte por byte los métodos de acceso y alcance de equipo, los
+controladores de eventos de filtros y la ruta de transporte de audio. El payload
+no incluye servicios de telefonía, grabaciones ni permisos. Sólo agrega consultas
+SELECT por lotes y consultas explícitas de detalle; no agrega sondeos automáticos.
+La selección de resultados comerciales de Ventas conserva su camino existente.
+
+Validación
+120 comprobaciones del repositorio con relaciones sintéticas, normalización y el
+reductor de hechos PBX instalado; dobles en las fronteras MySQL/servicios externos.
+Incluye entradas, salidas, transferencias y alias external, candidatos múltiples,
+autor/canal/proveedor incorrectos, teléfono/hora coincidentes sin referencia,
+vínculo inválido, resultado vacío y 40 tarjetas sin consultas por tarjeta.
+Pruebas del controlador: coincidencia con listado, notas, IDs, institución, permiso
+de enlace, rechazo 403 fuera de alcance, 405 para POST y 401 sin sesión.
+30 comprobaciones del publicador en carpeta temporal: hashes, rechazo de cambios,
+PHP inválido, respaldo fuera del document root, aplicación, reversión exacta,
+conservación de archivo ajeno y rechazo de reversión sobre una edición posterior.
+Se deshabilitaron proc_open, exec, shell_exec, passthru y system durante las pruebas
+del publicador. Éste usa TOKEN_PARSE y nunca ejecuta el código de la aplicación.
+Sintaxis PHP y JavaScript correcta. Validación adicional de conservación del código
+de permisos, filtros, audio y estilos fuera de las áreas previstas.
+
+Navegador
+Se usó una copia PHP aislada en loopback, sin MySQL, Zadarma ni producción.
+La vista instalada y el CSS/JS candidatos mostraron cuatro casos sintéticos:
+entrada vinculada, sin identificar, saliente y transferencia. El detalle mostró
+resultado, notas y expediente; el filtro Salientes dejó una tarjeta.
+A 390 px se conservaron los siete filtros, sin desbordamiento horizontal.
+Las notas con texto similar a HTML quedaron literales, sin nodos script inyectados.
+El marco de página y el endpoint visual son fixtures; no se afirma una validación
+integral con sesiones reales de los tres roles ni reproducción de grabaciones.
+Los servidores temporales y la pestaña de pruebas quedaron cerrados.
+
+Publicador
+deploy.php es exclusivamente CLI. Compara los cinco hashes anteriores y todos los
+payloads antes de reemplazar algo; después crea un respaldo privado verificado y
+un recibo. Preserva el modo de los archivos. Aplica mediante renombre por archivo,
+verifica hashes posteriores y ofrece --rollback=supervision-... .
+Ante fallo intenta restaurar los archivos ya cambiados; informa errores de
+recuperación. Una reversión rechaza archivos editados después del candidato.
+No es una transacción atómica de todos los archivos. No incluye SQL, migraciones,
+limpieza de caché, reinicio de telefonía ni cambios de permisos.
+
+Los hashes base se reconstruyen del texto del conector y un LF final sólo cuando
+el tamaño informado lo exige; no son hashes obtenidos por consola remota.
+El CHECK de bytes reales del servidor es obligatorio y no debe relajarse.
+La relectura de los cinco archivos de producción coincide en contenido y tamaño
+con la base usada. Véase production_recheck.json.
+
+Uso futuro: ejecutar el publicador desde una carpeta privada, fuera de public_html.
+CHECK: php deploy.php --root="$SITIO" --backup-root="$PRIVADO" --check
+APPLY: misma orden con --apply, sólo después de autorización.
+ROLLBACK: misma orden con --rollback=supervision-IDENTIFICADOR_DEL_RESPALDO
+El identificador real se imprime al aplicar; no usar el respaldo del módulo de
+registro de llamadas para revertir este cambio de Supervisión.
+
+No hacer git pull ni desplegar el repositorio completo sobre el sitio. La copia
+local difiere de Hostinger: utilizar exclusivamente los cinco archivos del
+manifiesto y el publicador selectivo de esta entrega.
+
+Reproducción local en output/supervision_llamadas_preparacion:
+python prepare_candidate.py
+python validate_release.py
+python build_visual_fixture.py
+php -S 127.0.0.1:8797 -t test-copy
+Abrir la URL local sólo mientras se revisa; detener el servidor al terminar.
+
+Pendiente tras una futura instalación autorizada
+Validar con cuentas reales de Administrador, Director y Cuenta Clave. Comparar
+una llamada real contra su interacción exacta y verificar permisos al abrir el
+expediente. Probar reproducción de grabaciones existentes mediante las rutas
+habituales. Estas comprobaciones no se sustituyen por fixtures sintéticos.
