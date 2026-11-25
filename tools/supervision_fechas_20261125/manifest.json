@@ -1,0 +1,14 @@
+{
+  "domain": "fundacionrededumex.org",
+  "release": "supervision_fechas_20261125",
+  "files": [
+    {
+      "path": "app/services/SupervisionLlamadasRepository.php",
+      "before_sha256": "d316e151e9808b4a976d1b50d65c97228c666fe3cc8966e9e62a3f285a7bc967",
+      "after_sha256": "0cba4a04c57e29165054014f37e70e9d7939203cfaf345ea8f84978754f05d98",
+      "before_bytes": 30416,
+      "after_bytes": 33144
+    }
+  ],
+  "hash_basis": "Hostinger connector text plus final LF if required by reported byte size; mandatory raw-file preflight."
+}

@@ -1,0 +1,63 @@
+SUPERVISIÓN DE LLAMADAS — HORA DE MÉXICO Y ORDEN DEL HISTORIAL
+
+Evidencia
+El diagnóstico de sólo lectura confirmó PHP en America/Mexico_City y la conexión
+MySQL en SYSTEM/UTC, con seis horas de diferencia el 25 de noviembre de 2026.
+El repositorio instalado coincide con la primera entrega publicada.
+En el caso auditado existen tres interacciones CONTACTADO con notas y expediente,
+y cinco clasificaciones de llamadas: tres VINCULADA y dos SIN_IDENTIFICAR.
+Las dos últimas tienen referencias distintas y carecen de interaccion_id y
+seguimiento_id. No se asociarán a otra llamada por coincidencia de teléfono.
+
+Causa restante
+Supervisión usaba created_at de la clasificación de entrada como fecha de llamada,
+sin convertir su UTC, mientras las interacciones ZADARMA ya estaban en hora local.
+Las clasificaciones podían crearse después de la conversación. Esta mezcla
+adelantaba las tarjetas sin identificar y relegaba las llamadas vinculadas al
+ordenar el historial, aunque sus resultados ya se recuperaban correctamente.
+
+Corrección selectiva
+Único archivo de producción: app/services/SupervisionLlamadasRepository.php.
+No cambia resultado, asociación, propietario, permisos, extensiones, duraciones,
+grabaciones, interfaz de analistas ni instrucciones de WebRTC/Zadarma.
+
+- Una llamada vinculada usa fecha_inicio de su interacción real.
+- ZADARMA mantiene su fecha local. ZADARMA_WEBRTC usa el helper instalado de UTC
+  a America/Mexico_City; no se aplica la conversión dos veces.
+- Sin interacción, se considera el evento PBX normalizado del tramo y extensión
+  exactos: inicio propio, tramo interno propio o respuesta propia. No se usa el
+  inicio de Recepción ni el de otra extensión.
+- Si no existe una fecha PBX única y válida, se conserva la fecha del registro,
+  convertida desde UTC para clasificaciones de entrada y sesiones WebRTC.
+- Los límites de filtros para registros UTC se expresan en UTC, incluyendo la
+  madrugada del siguiente día cuando corresponde al día elegido en México.
+- Las interacciones de proveedores locales y UTC usan sus límites respectivos.
+  Después de normalizar se comprueba otra vez el día de México antes de ordenar
+  y paginar. La deduplicación por identidad exacta se conserva.
+- Las fechas y la ruta de listado de asesoras permanecen sin cambios.
+
+Validación
+120 regresiones previas de resultados, permisos y carga por lotes.
+19 comprobaciones nuevas: registros UTC/local, interacción real frente a fecha
+tardía de clasificación, WebRTC, cambio de día, reglas históricas de horario de
+verano, límites SQL por proveedor, tramo PBX exacto y ambiguo, cinco llamadas
+deduplicadas (tres CONTACTADO y dos SIN_IDENTIFICAR), orden y conservación de Ventas.
+Publicador probado con copia temporal: CHECK, hash de destino/payload, rechazo de
+PHP inválido, respaldo privado y ROLLBACK byte por byte. Se ejecutó con proc_open,
+exec, shell_exec, passthru y system deshabilitadas. No hay consultas nuevas ni
+sondeos; se modifican condiciones temporales de las consultas existentes.
+Sintaxis PHP correcta. Sin migraciones ni escrituras a base de datos.
+
+Publicación selectiva
+El manifiesto exige exactamente el repositorio de la primera entrega instalada;
+CHECK rechazará cualquier revisión diferente. No hacer git pull ni reemplazar el
+sitio completo. El helper TelefoniaFechaHoraHelper.php ya existe y no se reemplaza.
+El aplicador genera un respaldo privado antes del reemplazo y muestra su ID.
+ROLLBACK debe ejecutarse con el deploy.php y manifest.json de ESTA entrega:
+php deploy.php --root="$SITIO" --backup-root="$PRIVADO" --rollback=ID_DEL_RESPALDO
+No utilizar el respaldo de otra entrega ni modificar sus hashes.
+
+La copia de pruebas no acredita reproducción de grabaciones reales. Tras aplicar,
+recargar Supervisión y contrastar las llamadas vinculadas con Seguimiento.
+Las tarjetas con referencias distintas y sin interacción seguirán sin identificar:
+no se inventa información ni se reparan vínculos históricos mediante escrituras.

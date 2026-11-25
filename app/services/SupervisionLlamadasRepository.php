@@ -5,6 +5,7 @@ require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
 require_once __DIR__.'/TelefoniaVentasEvidenciaService.php';
 require_once __DIR__.'/TelefoniaResultadoVentasCatalogo.php';
 require_once __DIR__.'/SupervisionVentasAudioCdrPolicy.php';
+require_once __DIR__.'/../helpers/TelefoniaFechaHoraHelper.php';
 
 /** Sólo lectura. La identidad histórica procede del autor/propietario persistido,
  * nunca del teléfono, de la hora o del usuario actual de una extensión. */
@@ -158,14 +159,52 @@ final class SupervisionLlamadasRepository
         if($f['area']==='asesores'&&!$auditSearch)return $this->listadoVentas($ids,$people,$f);
         return $this->listadoCompleto($ids,$people,$f);
     }
+    /** Límites de un día de México expresados como DATETIME UTC, con cambio de fecha. */
+    public static function limitesUtc(string $desde,string $hasta): array
+    {
+        $mexico=new DateTimeZone('America/Mexico_City');$utc=new DateTimeZone('UTC');
+        return [(new DateTimeImmutable($desde.' 00:00:00',$mexico))->setTimezone($utc)->format('Y-m-d H:i:s'),
+            (new DateTimeImmutable($hasta.' 23:59:59',$mexico))->setTimezone($utc)->format('Y-m-d H:i:s')];
+    }
+    /** Sólo presentación. Las fechas PBX normalizadas y las interacciones ZADARMA son locales. */
+    public static function fechaAnalista(string $source,array $row,?array $interaccion,array $events,string $extension): string
+    {
+        if($source==='venta')return (string)($row['fecha']??'');
+        if($interaccion!==null){
+            $local=TelefoniaFechaHoraHelper::normalizarInteraccion($interaccion);
+            if(!empty($local['fecha_inicio']))return (string)$local['fecha_inicio'];
+        }
+        // Usar sólo el tramo exacto: nunca el inicio de Recepción u otra extensión.
+        if($extension!=='')foreach(['NOTIFY_OUT_START','NOTIFY_START','NOTIFY_INTERNAL','NOTIFY_ANSWER'] as $type){
+            $dates=[];
+            foreach($events as $event){
+                if(($event['evento']??'')!==$type||(string)($event['internal']??'')!==$extension)continue;
+                $value=trim((string)($event['received_at']??''));
+                $parsed=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$value,new DateTimeZone('America/Mexico_City'));
+                if($parsed&&$parsed->format('Y-m-d H:i:s')===$value)$dates[$value]=true;
+            }
+            if(count($dates)===1)return (string)array_key_first($dates);
+            if(count($dates)>1)break; // Tramo temporal ambiguo: conservar el registro, convertido desde UTC.
+        }
+        $stored=(string)($row['fecha_inicio']??$row['created_at']??'');
+        return in_array($source,['entrante','sesion'],true)?TelefoniaFechaHoraHelper::aMexico($stored):$stored;
+    }
     private function listadoCompleto(array $ids,array $people,array $f): array
     {
         $all=[];$raw=[];
         if($ids)foreach(self::SOURCES as $source=>[$table,$date]){
             if(($f['area']==='asesores')!==($source==='venta')||!$this->tabla($table))continue;
             $marks=implode(',',array_fill(0,count($ids),'?'));
-            $rows=$this->rows("SELECT * FROM $table WHERE usuario_id IN ($marks) AND $date BETWEEN ? AND ?".
-                ($source==='interaccion'?" AND canal='LLAMADA_IP'":'')." ORDER BY $date DESC,id DESC".($source==='venta'?'':' LIMIT 3001'),array_merge($ids,[$f['desde'].' 00:00:00',$f['hasta'].' 23:59:59']));
+            $local=[$f['desde'].' 00:00:00',$f['hasta'].' 23:59:59'];
+            $utc=self::limitesUtc($f['desde'],$f['hasta']);
+            $dates="$date BETWEEN ? AND ?";$bounds=$local;
+            if(in_array($source,['entrante','sesion'],true))$bounds=$utc;
+            elseif($source==='interaccion'){
+                $dates="(($date BETWEEN ? AND ? AND COALESCE(proveedor_externo,'')<>'ZADARMA_WEBRTC') OR ($date BETWEEN ? AND ? AND proveedor_externo='ZADARMA_WEBRTC'))";
+                $bounds=array_merge($local,$utc);
+            }
+            $rows=$this->rows("SELECT * FROM $table WHERE usuario_id IN ($marks) AND $dates".
+                ($source==='interaccion'?" AND canal='LLAMADA_IP'":'')." ORDER BY $date DESC,id DESC".($source==='venta'?'':' LIMIT 3001'),array_merge($ids,$bounds));
             if($source!=='venta'&&count($rows)>3000)throw new InvalidArgumentException('Hay demasiadas llamadas. Reduce el periodo o selecciona una persona.');
             foreach($rows as $row)$raw[]=[$source,$row];
         }
@@ -175,6 +214,7 @@ final class SupervisionLlamadasRepository
         // Las sesiones sin vínculo inequívoco conservan su identidad independiente.
         $canonical=[];
         foreach($all as $call){
+            if($call['area']==='analistas'&&($call['fecha']<$f['desde'].' 00:00:00'||$call['fecha']>$f['hasta'].' 23:59:59'))continue;
             $identity=$call['usuario_id'].'|'.($call['pbx_call_id']!==''?'ref:'.$call['extension'].'|'.$call['pbx_call_id']:($call['interaccion_id']?'iv:'.$call['interaccion_id']:($call['session_id']!==''?'sesion:'.$call['session_id']:'key:'.$call['key'])));
             if(!isset($canonical[$identity]))$canonical[$identity]=$call;
         }
@@ -343,7 +383,7 @@ final class SupervisionLlamadasRepository
         return ['key'=>$source.':'.$r['id'],'source'=>$source,'usuario_id'=>$uid,'persona'=>$person['nombre'],'foto_perfil'=>$person['foto_perfil'],
             'activo'=>(bool)$person['activo'],'area'=>$source==='venta'?'asesores':'analistas','extension'=>$ext,'pbx_call_id'=>$ref,'session_id'=>$session,
             'interaccion_id'=>$iv,'seguimiento_id'=>$seguimientoId,'institucion'=>$institucion,'clasificacion'=>$classification,
-            'fecha'=>(string)($r['fecha']??$r['fecha_inicio']??$r['created_at']), 'direccion'=>$direction,
+            'fecha'=>self::fechaAnalista($source,$r,$interaccion,$events,$ext), 'direccion'=>$direction,
             'numero'=>$number,'nombre'=>$name,
             'resultado'=>$result,'resultado_texto'=>$resultadoTexto,
             'resultados_codigos'=>$source==='venta'?TelefoniaResultadoVentasCatalogo::seleccionesRegistro($registroVenta):($result!==''?[$result]:[]),
