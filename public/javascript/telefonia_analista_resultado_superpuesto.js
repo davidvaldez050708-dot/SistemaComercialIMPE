@@ -20,13 +20,15 @@
         // sin depender de navegar o recargar la pantalla de origen.
         let container=root.document.querySelector('[data-analyst-result-toasts]');
         if(!container){container=root.document.createElement('div');container.dataset.analystResultToasts='';
-            container.className='toast-container';container.style.cssText='position:fixed;top:18px;right:18px;z-index:13000;max-width:calc(100vw - 36px);display:grid;gap:10px';root.document.body.append(container);}
-        const toast=root.document.createElement('div');toast.className='toast system-toast show';
+            container.className='toast-container';container.style.cssText='position:fixed;top:16px;right:16px;z-index:13000;width:350px;max-width:calc(100vw - 32px);display:grid;gap:10px';root.document.body.append(container);}
+        const toast=root.document.createElement('div');toast.className='toast system-toast show'+(kind==='error'?' system-toast-error':'');
         toast.setAttribute('role',kind==='error'?'alert':'status');toast.setAttribute('aria-live',kind==='error'?'assertive':'polite');
-        toast.style.cssText='display:flex;align-items:center;gap:12px;width:420px;max-width:100%;padding:18px 20px;border:1px solid #e1e7ef;border-radius:15px;background:#fff;box-shadow:0 12px 32px #172b4d1a;font-family:Manrope,sans-serif;font-size:14px;font-weight:700;color:#24354c';
+        toast.style.cssText='box-sizing:border-box;width:100%;max-width:100%;border:1px solid #e5e9ef;border-radius:10px;background:#fff;box-shadow:0 14px 30px rgba(28,46,74,.10);font-family:Manrope,sans-serif';
+        const body=root.document.createElement('div');body.className='toast-body';
+        body.style.cssText='display:flex;align-items:center;gap:9px;padding:12px;color:#252525;font-size:12px;line-height:1.5;font-weight:800;overflow-wrap:anywhere';
         const icon=root.document.createElement('i');icon.className='bi '+(kind==='info'?'bi-info-circle':kind==='error'?'bi-exclamation-circle':'bi-check2-circle');
-        icon.setAttribute('aria-hidden','true');icon.style.color=kind==='info'?'#304ca0':kind==='error'?'#d92d20':'#009b83';
-        const text=root.document.createElement('span');text.textContent=message;toast.append(icon,text);container.append(toast);
+        icon.setAttribute('aria-hidden','true');icon.style.cssText='flex:none;font-size:15px;color:'+(kind==='error'?'#b42318':'#273a8a');
+        const text=root.document.createElement('span');text.textContent=message;body.append(icon,text);toast.append(body);container.append(toast);
         root.setTimeout(()=>toast.remove(),4500);
     };
     const close = function (saved, technical = false) {
