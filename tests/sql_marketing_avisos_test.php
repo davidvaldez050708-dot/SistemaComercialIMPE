@@ -35,7 +35,7 @@ foreach(['AvisosAnterior'=>$base,'AvisosCandidato'=>$root] as $ns=>$dir){
     cargarClase($ns,$dir.'/app/services/TelefoniaTransferenciaOperacionService.php','TelefoniaTransferenciaOperacionService');
     cargarClase($ns,$dir.'/app/services/TelefoniaLimpiezaGuard.php','TelefoniaLimpiezaGuard');
     eval('namespace '.$ns.';
-        class TelefoniaDisponibilidadService{function __construct($db){}function devoluciones($u){return [];}}
+        class TelefoniaDisponibilidadService{function __construct($db){}function devoluciones($u){return [];}function devolucionesParaAvisos($u){return [];}}
         class TelefoniaRecepcionMarketingService{
             private $db;function __construct($db){$this->db=$db;}
             function resumen($u){(new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($u);return ["llamadas"=>[]];}

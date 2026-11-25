@@ -179,6 +179,18 @@ final class TelefoniaTransferenciaOperacionService
     public function delUsuarioParaAvisos(int $user): array {
         $s=$this->db->prepare('SELECT * FROM telefonia_transferencia_operaciones WHERE (origen_usuario=? OR destino_usuario=?) AND created_at>=? ORDER BY id DESC LIMIT 100');
         $since=gmdate('Y-m-d H:i:s',time()-30*86400);$s->bind_param('iis',$user,$user,$since);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        return $this->actualizarLoteParaAvisos($rows);
+    }
+    public function porIdsParaAvisos(int $user,array $ids): array {
+        $ids=array_values(array_unique(array_filter(array_map('intval',$ids),static fn($id)=>$id>0)));$result=[];
+        foreach(array_chunk($ids,100) as $lote){
+            $s=$this->db->prepare('SELECT * FROM telefonia_transferencia_operaciones WHERE (origen_usuario=? OR destino_usuario=?) AND id IN ('.implode(',',array_fill(0,count($lote),'?')).')');
+            $s->bind_param(str_repeat('i',2+count($lote)),$user,$user,...$lote);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+            foreach($this->actualizarLoteParaAvisos($rows) as $row)$result[(int)$row['id']]=$row;
+        }
+        return $result;
+    }
+    private function actualizarLoteParaAvisos(array $rows): array {
         if(!$rows)return [];
         $desde=[];
         foreach($rows as $row){$ref=(string)$row['referencia'];$desde[$ref]=isset($desde[$ref])?min($desde[$ref],(int)$row['evento_desde']):(int)$row['evento_desde'];}

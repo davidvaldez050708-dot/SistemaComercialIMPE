@@ -27,6 +27,9 @@ class ConexionSqlPrueba {
     function rollback(){$this->queries++;return true;}
     function execute($sql,$args){
         $this->queries++;
+        if(str_contains($sql,'FROM telefonia_transferencia_operaciones')&&str_contains($sql,'AND id IN (')){
+            return array_values(array_filter($this->rows,fn($r)=>((int)$r['origen_usuario']===(int)$args[0]||(int)$r['destino_usuario']===(int)$args[1])&&in_array((int)$r['id'],array_map('intval',array_slice($args,2)),true)));
+        }
         if(str_starts_with($sql,'SELECT * FROM telefonia_transferencia_operaciones WHERE (origen_usuario=')){
             $rows=array_filter($this->rows,fn($r)=>((int)$r['origen_usuario']===(int)$args[0]||(int)$r['destino_usuario']===(int)$args[1])&&$r['created_at']>=$args[2]);
             usort($rows,fn($a,$b)=>$b['id']<=>$a['id']);return array_slice($rows,0,100);

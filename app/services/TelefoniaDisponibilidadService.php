@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__.'/../../config/db_connection.php';
 require_once __DIR__.'/TelefoniaTransferenciaOperacionService.php';
 
@@ -7,46 +9,63 @@ require_once __DIR__.'/TelefoniaTransferenciaOperacionService.php';
 final class TelefoniaDisponibilidadService
 {
     private mysqli $db;
+    private ?array $extensionesSondeo = null;
+    private bool $expiracionSondeo = false;
+    private ?array $transferenciasAvisos = null;
     public function __construct(?mysqli $db=null){
         require_once __DIR__.'/../helpers/ControlCargaMysql.php';
         $this->db=$db??ImpeControlCargaMysql::conexion();
-        // Las consultas automáticas no deben repetir DDL en cada sondeo.
-        // Si falta una tabla se conserva la preparación original completa.
-        $tablasListas=$this->db->query("SELECT COUNT(*) FROM information_schema.TABLES
-            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN
-            ('telefonia_presencia','telefonia_disponibilidad','telefonia_transferencia_operaciones')")->fetch_row();
-        if ((int)$tablasListas[0] === 3) return;
-        new TelefoniaTransferenciaOperacionService($this->db);
-        $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_presencia (
-            usuario_id INT PRIMARY KEY,extension VARCHAR(12) NOT NULL,ocupado TINYINT NOT NULL,
-            updated_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-        $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_disponibilidad (
-            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,origen_usuario INT NOT NULL,
-            origen_extension VARCHAR(12) NOT NULL,destino_usuario INT NOT NULL,destino_extension VARCHAR(12) NOT NULL,
-            referencia VARCHAR(100) NOT NULL,numero VARCHAR(40) NOT NULL,ruta_json TEXT NOT NULL,
-            estado VARCHAR(20) NOT NULL,version INT NOT NULL DEFAULT 1,expires_at DATETIME NOT NULL,
-            created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,
-            contacto VARCHAR(100) NOT NULL DEFAULT '',telefono VARCHAR(40) NOT NULL DEFAULT '',
-            nota VARCHAR(500) NOT NULL DEFAULT '',devolucion VARCHAR(12) NOT NULL DEFAULT '',
-            UNIQUE KEY uk_disp_origen(origen_usuario,referencia),KEY idx_disp_destino(destino_usuario,estado,expires_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
     private function one(string $sql,array $values=[]): ?array {
         $s=$this->db->prepare($sql);if($values)$s->bind_param(str_repeat('s',count($values)),...$values);
         $s->execute();$r=$s->get_result()->fetch_assoc();$s->close();return $r?:null;
     }
     private function change(int $id,array $values): void {
+        if (($values['devolucion'] ?? '') === 'PENDIENTE') {
+            $actual=$this->one('SELECT ruta_json FROM telefonia_disponibilidad WHERE id=?',[$id]);
+            $ruta=json_decode((string)($values['ruta_json'] ?? $actual['ruta_json'] ?? '{}'),true) ?: [];
+            if (($ruta['tipo'] ?? '') === 'PROSPECTO') {
+                $ruta['devolucion_solicitada_at']=gmdate('Y-m-d H:i:s');
+                $values['ruta_json']=json_encode($ruta,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+            }
+        }
         $sets=[];$args=[];foreach($values as $key=>$value){$sets[]="$key=?";$args[]=$value;}
         $args[]=gmdate('Y-m-d H:i:s');$args[]=$id;
         $s=$this->db->prepare('UPDATE telefonia_disponibilidad SET '.implode(',',$sets).',updated_at=? WHERE id=?');
         $s->bind_param(str_repeat('s',count($args)),...$args);$s->execute();$s->close();
     }
     private function extension(int $user): array {
+        if (isset($this->extensionesSondeo[$user])) return $this->extensionesSondeo[$user];
         $r=$this->one("SELECT t.*,GREATEST(t.created_at,t.updated_at) AS desde FROM telefonia_extensiones t JOIN usuarios u ON u.id=t.usuario_id AND u.estado=1 WHERE t.usuario_id=? AND t.activo=1 AND t.proveedor='ZADARMA' AND t.permite_entrantes=1",[$user]);
-        if(!$r)throw new DomainException('Tu extensión no está habilitada.');return $r;
+        if(!$r)throw new DomainException('Tu extensión no está habilitada.');
+        if ($this->extensionesSondeo !== null) $this->extensionesSondeo[$user] = $r;
+        return $r;
     }
     private function expire(): void {
+        if ($this->expiracionSondeo) return;
         $this->db->query("UPDATE telefonia_disponibilidad SET estado='VENCIDA',updated_at=UTC_TIMESTAMP() WHERE estado IN ('PENDIENTE','ACEPTADA') AND expires_at<=UTC_TIMESTAMP()");
+        $this->expiracionSondeo = $this->extensionesSondeo !== null;
+    }
+
+    public function sondear(
+        int $usuario,
+        bool $disponible,
+        int $id,
+        bool $contarDevoluciones,
+        ?Closure $buscarSolicitudSinId = null
+    ): array {
+        $this->extensionesSondeo = [];
+        try {
+            $this->presencia($usuario, $disponible);
+            return [
+                'solicitud' => $id > 0 ? $this->obtener($usuario, $id) : $buscarSolicitudSinId?->__invoke(),
+                'entrante' => $this->entrante($usuario),
+                'devoluciones' => $contarDevoluciones ? count($this->devoluciones($usuario)) : null,
+            ];
+        } finally {
+            $this->extensionesSondeo = null;
+            $this->expiracionSondeo = false;
+        }
     }
     private function live(int $user,string $ref): array {
         if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$ref))throw new DomainException('Espera a que se identifique la llamada.');
@@ -79,7 +98,7 @@ final class TelefoniaDisponibilidadService
         if($dest['extension']!==$route['extension'] || (int)$route['responsable_id']===$user)throw new DomainException('El responsable ya no está disponible.');
         if(($route['tipo']??'')==='INSTITUCION'){
             if((int)($route['seguimiento_id']??0)>0){
-                $inst=$this->one("SELECT nombre_entidad FROM seguimientos_vinculacion WHERE id=? AND analista_id=? AND estado_id=? AND activo=1 AND estado_seguimiento<>'DESCARTADO'",[$route['seguimiento_id'],$route['responsable_id'],$route['estado_id']]);
+                $inst=$this->one('SELECT nombre_entidad FROM seguimientos_vinculacion WHERE id=? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND estado_id=? AND activo=1 AND estado_seguimiento<>\'DESCARTADO\'',[$route['seguimiento_id'],$route['responsable_id'],$route['estado_id']]);
                 if(!$inst)throw new DomainException('El expediente no corresponde al responsable seleccionado.');$route['institucion_nombre']=$inst['nombre_entidad'];
             }elseif(mb_strlen(trim((string)($route['institucion_nombre']??'')))<2 || mb_strlen((string)$route['institucion_nombre'])>150)throw new DomainException('Escribe el nombre de la institución o persona que llama.');
         }
@@ -93,7 +112,9 @@ final class TelefoniaDisponibilidadService
             // Serializar también solicitudes simultáneas de la misma cuenta.
             $this->one('SELECT usuario_id FROM telefonia_extensiones WHERE usuario_id=? FOR UPDATE',[$user]);
             $r=$this->one('SELECT * FROM telefonia_disponibilidad WHERE origen_usuario=? AND referencia=? FOR UPDATE',[$user,$route['referencia_llamada']]);
-            if($r && (in_array($r['estado'],['PENDIENTE','ACEPTADA','ENVIANDO','TRANSFERIDA'],true)||$r['devolucion']==='PENDIENTE'))throw new DomainException('Esta llamada ya tiene una solicitud. Revisa su estado antes de enviar otra.');
+            if($r && (in_array($r['estado'],['PENDIENTE','ACEPTADA','ENVIANDO','TRANSFERIDA'],true)||$r['devolucion']==='PENDIENTE')){
+                $this->db->commit();return $this->obtener($user,(int)$r['id']);
+            }
             $now=gmdate('Y-m-d H:i:s');$until=gmdate('Y-m-d H:i:s',time()+45);$json=json_encode($route,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
             if($r){$id=(int)$r['id'];$this->change($id,['destino_usuario'=>$route['responsable_id'],'destino_extension'=>$route['extension'],'numero'=>$call['numero'],'ruta_json'=>$json,'estado'=>'PENDIENTE','version'=>(int)$r['version']+1,'expires_at'=>$until,'created_at'=>$now]);}
             else {
@@ -109,9 +130,19 @@ final class TelefoniaDisponibilidadService
         $r=$this->one('SELECT * FROM telefonia_disponibilidad WHERE id=? AND ((origen_usuario=? AND origen_extension=?) OR (destino_usuario=? AND destino_extension=?))',[$id,$user,$ext['extension'],$user,$ext['extension']]);
         if(!$r)return null;
         if(in_array($r['estado'],['ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR'],true)){
-            $opRow=$this->one('SELECT id FROM telefonia_transferencia_operaciones WHERE origen_usuario=? AND referencia=?',[$r['origen_usuario'],$r['referencia']]);
-            $op=$opRow?(new TelefoniaTransferenciaOperacionService($this->db))->obtener($user,(int)$opRow['id']):null;
+            $memo=$this->transferenciasAvisos[$id]??null;$desdeAvisos=false;
+            if($memo && $memo['solicitud']===array_intersect_key($r,array_flip(['origen_usuario','origen_extension','destino_usuario','destino_extension','referencia','estado','version','devolucion','updated_at']))){
+                $op=$memo['operacion'];$desdeAvisos=true;
+            }else{
+                $opRow=$this->one('SELECT id FROM telefonia_transferencia_operaciones WHERE origen_usuario=? AND referencia=?',[$r['origen_usuario'],$r['referencia']]);
+                $op=$opRow?(new TelefoniaTransferenciaOperacionService($this->db))->obtener($user,(int)$opRow['id']):null;
+            }
             $state=['ENVIADA'=>'ENVIADA','ENTREGADA'=>'TRANSFERIDA','FALLIDA'=>'FALLIDA','SIN_RESPUESTA'=>'SIN_RESPUESTA','SIN_CONFIRMAR'=>'SIN_CONFIRMAR','DEVUELTA'=>'FALLIDA'][$op['estado']??'']??'';
+            // Un lote sólo evita releer lo que no cambia. Antes de escribir, confirmar la operación actual.
+            if($desdeAvisos && $op && (($state&&$state!==$r['estado']) || ($state==='SIN_RESPUESTA'&&$r['devolucion']===''&&strlen(preg_replace('/\D/','',$r['numero']))>=7))){
+                $op=(new TelefoniaTransferenciaOperacionService($this->db))->obtener($user,(int)$op['id']);
+                $state=['ENVIADA'=>'ENVIADA','ENTREGADA'=>'TRANSFERIDA','FALLIDA'=>'FALLIDA','SIN_RESPUESTA'=>'SIN_RESPUESTA','SIN_CONFIRMAR'=>'SIN_CONFIRMAR','DEVUELTA'=>'FALLIDA'][$op['estado']??'']??'';
+            }
             $patch=[];if($state&&$state!==$r['estado'])$patch['estado']=$state;
             if($state==='SIN_RESPUESTA'&&$r['devolucion']===''&&strlen(preg_replace('/\D/','',$r['numero']))>=7){
                 $route=json_decode($r['ruta_json'],true)?:[];
@@ -124,6 +155,12 @@ final class TelefoniaDisponibilidadService
         $route=json_decode($r['ruta_json'],true)?:[];$r['responsable']=(string)($route['nombre_destino']??'Responsable');
         $r['institucion_nombre']=(string)($route['institucion_nombre']??'');$r['seguimiento_id']=(int)($route['seguimiento_id']??0);
         unset($r['ruta_json']);return $r;
+    }
+    public function delOrigen(int $user,string $ref): ?array {
+        if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$ref))return null;
+        $ext=$this->extension($user);
+        $r=$this->one('SELECT id FROM telefonia_disponibilidad WHERE origen_usuario=? AND origen_extension=? AND referencia=?',[$user,$ext['extension'],$ref]);
+        return $r?$this->obtener($user,(int)$r['id']):null;
     }
     public function entrante(int $user): ?array {
         $this->expire();$ext=$this->extension($user);
@@ -174,6 +211,28 @@ final class TelefoniaDisponibilidadService
             if(!$r)throw new DomainException('La aceptación caducó o ya se utilizó.');
             $this->change($id,['estado'=>'ENVIANDO']);$this->db->commit();
         }catch(Throwable $e){$this->db->rollback();throw $e;}
+    }
+    /** Sólo campana de Marketing: datos de trabajo de esta llamada, nunca caché entre peticiones. */
+    public function devolucionesParaAvisos(int $user,bool $historial=false): array {
+        if(!method_exists(TelefoniaTransferenciaOperacionService::class,'porIdsParaAvisos'))return $this->devoluciones($user,$historial);
+        $anteriores=[$this->extensionesSondeo,$this->expiracionSondeo,$this->transferenciasAvisos];
+        $this->extensionesSondeo=[];$this->expiracionSondeo=false;$this->transferenciasAvisos=[];
+        try{
+            $ext=$this->extension($user);
+            $s=$this->db->prepare("SELECT * FROM telefonia_disponibilidad WHERE (destino_usuario=? OR origen_usuario=?) AND estado IN ('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR') ORDER BY id DESC LIMIT 100");
+            $s->bind_param('ii',$user,$user);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();$ids=[];$porSolicitud=[];
+            foreach($rows as $row){
+                if(!(((int)$row['origen_usuario']===$user&&$row['origen_extension']===$ext['extension'])||((int)$row['destino_usuario']===$user&&$row['destino_extension']===$ext['extension'])))continue;
+                $op=$this->one('SELECT id FROM telefonia_transferencia_operaciones WHERE origen_usuario=? AND referencia=?',[$row['origen_usuario'],$row['referencia']]);
+                $porSolicitud[(int)$row['id']]=(int)($op['id']??0);if($op)$ids[]=(int)$op['id'];
+            }
+            $ops=(new TelefoniaTransferenciaOperacionService($this->db))->porIdsParaAvisos($user,$ids);
+            foreach($rows as $row)if(array_key_exists((int)$row['id'],$porSolicitud))$this->transferenciasAvisos[(int)$row['id']]=[
+                'solicitud'=>array_intersect_key($row,array_flip(['origen_usuario','origen_extension','destino_usuario','destino_extension','referencia','estado','version','devolucion','updated_at'])),
+                'operacion'=>$ops[$porSolicitud[(int)$row['id']]]??null
+            ];
+            return $this->devoluciones($user,$historial);
+        }finally{[$this->extensionesSondeo,$this->expiracionSondeo,$this->transferenciasAvisos]=$anteriores;}
     }
     public function devoluciones(int $user,bool $historial=false): array {
         $ext=$this->extension($user);

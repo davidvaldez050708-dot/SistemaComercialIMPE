@@ -34,12 +34,33 @@ final class TelefoniaNotificacionService
         $s=$this->db->prepare('INSERT IGNORE INTO telefonia_notificaciones (usuario_id,extension,llave,numero,titulo,mensaje,created_at) VALUES (?,?,?,?,?,?,?)');
         $s->bind_param('issssss',$user,$ext,$key,$number,$title,$message,$date);$s->execute();$s->close();
     }
+    /** Mismo INSERT IGNORE, agrupado; nunca vuelve a marcar leído/no leído un aviso existente. */
+    private function registrarPerdidasMarketing(int $user,string $ext,array $llamadas): void {
+        $perdidas=array_values(array_filter($llamadas,static fn($c)=>($c['fuente']??'')!=='OPERACION' && $c['tipo']==='Entrante' && $c['estado']==='Perdida'));
+        if(!$perdidas)return;
+        $refs=array_values(array_unique(array_map(static fn($c)=>(string)$c['pbx_call_id'],$perdidas)));$directas=[];
+        foreach(array_chunk($refs,100) as $lote){
+            $s=$this->db->prepare("SELECT referencia FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND modo='DIRECTA' AND referencia IN (".implode(',',array_fill(0,count($lote),'?')).")");
+            $s->bind_param('i'.str_repeat('s',count($lote)),$user,...$lote);$s->execute();
+            foreach($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row)$directas[strtolower((string)$row['referencia'])]=true;
+            $s->close();
+        }
+        $perdidas=array_values(array_filter($perdidas,static fn($c)=>!isset($directas[strtolower((string)$c['pbx_call_id'])])));
+        foreach(array_chunk($perdidas,100) as $lote){
+            $args=[];
+            foreach($lote as $c){$number=(string)($c['numero']??'Número privado');array_push($args,$user,$ext,'llamada:'.$c['pbx_call_id'],$number,'Llamada perdida',$number.' · Revisa el historial y coordina su devolución.',(string)$c['fecha']);}
+            $s=$this->db->prepare('INSERT IGNORE INTO telefonia_notificaciones (usuario_id,extension,llave,numero,titulo,mensaje,created_at) VALUES '.implode(',',array_fill(0,count($lote),'(?,?,?,?,?,?,?)')));
+            $s->bind_param(str_repeat('issssss',count($lote)),...$args);$s->execute();$s->close();
+        }
+    }
     public function sincronizar(int $user,bool $recepcion): void {
         $this->operativasActuales=[];
         $operacionesAvisos=null;
         if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';(new TelefoniaNotificacionVentasService($this->db))->pendientes($user);return;}
         $ext=$this->extension($user);if($ext==='')return;
-        foreach((new TelefoniaDisponibilidadService($this->db))->devoluciones($user) as $task){
+        $disponibilidad=new TelefoniaDisponibilidadService($this->db);
+        $loteDevoluciones=$recepcion && method_exists($disponibilidad,'devolucionesParaAvisos');
+        foreach(($loteDevoluciones?$disponibilidad->devolucionesParaAvisos($user):$disponibilidad->devoluciones($user)) as $task){
             if(($task['devolucion']??'')!=='PENDIENTE')continue;
             $this->operativasActuales['devolucion:'.$task['id'].':'.$task['version']]=true;
             $date=(new DateTimeImmutable($task['updated_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
@@ -52,7 +73,8 @@ final class TelefoniaNotificacionService
             $operacionesAvisos=(new TelefoniaTransferenciaOperacionService($this->db))->delUsuarioParaAvisos($user);
             $history=(new TelefoniaRecepcionMarketingService($this->db))->resumenParaAvisos($user,$operacionesAvisos);
         }else $history=(new TelefoniaEntrantesAnalistaService($this->db))->listar($user);
-        foreach($history['llamadas'] as $c){
+        if($recepcion)$this->registrarPerdidasMarketing($user,$ext,$history['llamadas']);
+        else foreach($history['llamadas'] as $c){
             if(($c['fuente']??'')==='OPERACION')continue; // Tiene su aviso exacto por intento debajo.
             $missed=$recepcion?($c['tipo']==='Entrante'&&$c['estado']==='Perdida'):
                 (($c['tipo_llamada']??'')!=='INTERNA' && empty($c['contestada']) && in_array($c['estado_pbx'],['ended'],true));
