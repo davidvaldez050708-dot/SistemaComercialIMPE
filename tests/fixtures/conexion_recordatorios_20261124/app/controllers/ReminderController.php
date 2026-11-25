@@ -1,0 +1,534 @@
+<?php
+
+require_once __DIR__ . '/../helpers/ReminderHelper.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../services/AgendaReunionService.php';
+require_once __DIR__ . '/../services/ReminderAgendaFilterService.php';
+require_once __DIR__ . '/../services/ReminderReunionFollowupService.php';
+require_once __DIR__ . '/../services/ReminderDirectLinkService.php';
+require_once __DIR__ . '/../services/ReminderObservacionService.php';
+require_once __DIR__ . '/../services/ReminderMeetingConfirmationService.php';
+require_once __DIR__ . '/../services/SeguimientoCambioDatosService.php';
+require_once __DIR__ . '/../services/AliadoSeguimientoReminderService.php';
+require_once __DIR__ . '/../services/AdminNotificationService.php';
+require_once __DIR__ . '/../services/AgendaComentarioService.php';
+
+class ReminderController
+{
+    private $agendaReunionService;
+    private $reminderAgendaFilterService;
+    private $reminderReunionFollowupService;
+    private $reminderDirectLinkService;
+    private $reminderObservacionService;
+    private $reminderMeetingConfirmationService;
+    private $seguimientoCambioDatosService;
+    private $aliadoSeguimientoReminderService;
+
+    public function __construct()
+    {
+        // Inicialización diferida y selectiva en pendientes(), después de validar sesión.
+    }
+
+    public function pendientes()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store');
+
+        $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+        $esAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $esSupervisor = tienePermiso('reuniones.gestionar');
+        $esAnalista = tienePermiso('reuniones.solicitar');
+        $puedeOperarSeguimientos = tienePermiso('seguimientos_vinculacion.operar_propios');
+        $puedeCentroReuniones =
+            tienePermiso('reuniones.ver') &&
+            ($esSupervisor || $esAnalista);
+        $puedeSeguimientoAliados =
+            tienePermiso('aliados.seguimiento_convocatorias');
+        $puedeTareasAliado = (int)($_SESSION['rol_id'] ?? 0) === 6 &&
+            tienePermiso('aliados.ver') &&
+            (tienePermiso('aliados.gestionar_programas') ||
+             (function_exists('puedeCrearConvocatoriaDesdeConvenio') && puedeCrearConvocatoriaDesdeConvenio()));
+        $puedeComercial=(int)($_SESSION['rol_id']??0)===3 && tienePermiso('ventas.embudo.ver');
+        $puedeTelefonia=tienePermiso('telefonia.usar')&&(tienePermiso('telefonia.recibir')||((int)($_SESSION['rol_id']??0)===3&&tienePermiso('telefonia.salientes')));
+
+        if ($usuarioId <= 0) {
+            http_response_code(403);
+            echo json_encode([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a estas notificaciones.'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // Observaciones conserva su deduplicación en sesión antes de liberarla.
+        $requiereSesionObservaciones = !$esAdministrador &&
+            (!empty($puedeOperarSeguimientos) || ($puedeCentroReuniones && $esAnalista));
+        if (!$requiereSesionObservaciones && session_status() === PHP_SESSION_ACTIVE) session_write_close();
+
+        // Conservar el orden y las conexiones independientes de los servicios usados.
+        // Fuera de try: un fallo al construir un servicio necesario no se oculta como 200.
+        $this->agendaReunionService = new AgendaReunionService();
+        if (!$esAdministrador && ($puedeOperarSeguimientos || ($puedeCentroReuniones && $esAnalista))) {
+            $this->reminderAgendaFilterService = new ReminderAgendaFilterService();
+            $this->reminderReunionFollowupService = new ReminderReunionFollowupService();
+            $this->reminderDirectLinkService = new ReminderDirectLinkService();
+            $this->reminderObservacionService = new ReminderObservacionService();
+        }
+        if (!$esAdministrador && $puedeCentroReuniones) {
+            $this->reminderMeetingConfirmationService = new ReminderMeetingConfirmationService();
+        }
+        if (!$esAdministrador && $puedeCentroReuniones && $esSupervisor) {
+            $this->seguimientoCambioDatosService = new SeguimientoCambioDatosService();
+        }
+        if (!$esAdministrador && $puedeSeguimientoAliados) {
+            $this->aliadoSeguimientoReminderService = new AliadoSeguimientoReminderService();
+        }
+
+        $horarios = [];
+        try {
+            $horarios = $this->agendaReunionService->avisosHorario($usuarioId);
+        } catch (Throwable $e) {
+            error_log('[agenda_horarios] ' . get_class($e));
+        }
+
+        if ($esAdministrador) {
+            $resultado = (new AdminNotificationService())->obtener();
+            // Integración de comentarios para cualquier perfil con Agenda,
+            // también cuando su campana utiliza el resumen administrativo.
+            $resultado['horarios'] = $horarios;
+            $resultado['servidor_at'] = time();
+            $resultado['zona_horaria'] = date_default_timezone_get();
+            $resultado['usuario_id'] = $usuarioId;
+            try {
+                $comentariosAgenda = new AgendaComentarioService();
+                $novedades = $comentariosAgenda->notificaciones($usuarioId);
+                $resultado['recordatorios'] = array_merge($resultado['recordatorios'] ?? [], $novedades['recordatorios']);
+                $resultado['avisos'] = array_merge($resultado['avisos'] ?? [], $novedades['avisos']);
+                $resultado['horarios'] = array_merge($horarios, $novedades['horarios'] ?? []);
+                $resultado['total'] = (int)($resultado['total'] ?? 0) + count($novedades['recordatorios']);
+                if (empty($resultado['ok']) && ($novedades['recordatorios'] || $resultado['horarios'])) { $resultado['parcial'] = true; }
+                $comentariosAgenda->registrarEntregados($usuarioId, $novedades['recordatorios']);
+            } catch (Throwable $e) { error_log('[agenda_comentarios_campana] '.get_class($e)); }
+
+            echo json_encode(
+                $resultado,
+                JSON_UNESCAPED_UNICODE |
+                JSON_INVALID_UTF8_SUBSTITUTE
+            );
+            exit;
+        }
+
+        $recordatoriosAgenda = [];
+        $avisosAgenda = [];
+        $recordatoriosConfirmacion = [];
+        $avisosConfirmacion = [];
+
+        if ($puedeCentroReuniones) {
+            /*
+             * Algunos servicios de recordatorio todavía reciben el identificador
+             * histórico del actor operativo. La autorización real ya fue resuelta
+             * por permisos antes de llegar aquí.
+             */
+            $rolContexto = $esSupervisor
+                ? AgendaReunionService::ROL_CUENTA_CLAVE
+                : AgendaReunionService::ROL_ANALISTA;
+
+            $agenda = $this->agendaReunionService->obtenerNotificacionesCampana(
+                $usuarioId,
+                $rolContexto,
+                10
+            );
+            $recordatoriosAgenda = array_values(
+                $agenda['recordatorios'] ?? []
+            );
+            $avisosAgenda = array_values($agenda['avisos'] ?? []);
+
+            // Las reuniones que siguen SOLICITADAS requieren una lectura adicional.
+            $confirmaciones =
+                $this->reminderMeetingConfirmationService->obtener(
+                    $usuarioId,
+                    $rolContexto,
+                    10
+                );
+            $recordatoriosConfirmacion = array_values(
+                $confirmaciones['recordatorios'] ?? []
+            );
+            $avisosConfirmacion = array_values(
+                $confirmaciones['avisos'] ?? []
+            );
+
+            if ($esSupervisor && !empty($recordatoriosConfirmacion)) {
+                $reunionesUrgentes = [];
+                foreach (
+                    $recordatoriosConfirmacion as $recordatorioConfirmacion
+                ) {
+                    $reunionId =
+                        (int)($recordatorioConfirmacion['reunion_id'] ?? 0);
+                    if ($reunionId > 0) {
+                        $reunionesUrgentes[$reunionId] = true;
+                    }
+                }
+
+                if (!empty($reunionesUrgentes)) {
+                    $recordatoriosAgenda = array_values(array_filter(
+                        $recordatoriosAgenda,
+                        static function ($item) use ($reunionesUrgentes) {
+                            $reunionId = (int)(
+                                $item['reunion_id'] ??
+                                $item['id'] ??
+                                0
+                            );
+                            return $reunionId <= 0 ||
+                                !isset($reunionesUrgentes[$reunionId]);
+                        }
+                    ));
+                }
+            }
+        }
+
+        $requiereMigracion = false;
+        $ok = true;
+        $recordatorios = array_merge(
+            $recordatoriosConfirmacion,
+            $recordatoriosAgenda
+        );
+        $avisos = array_merge(
+            $avisosConfirmacion,
+            $avisosAgenda
+        );
+
+        if ($puedeCentroReuniones && $esSupervisor) {
+            $cambiosDatos = $this->seguimientoCambioDatosService->obtenerNotificaciones(
+                $usuarioId,
+                10
+            );
+            $recordatoriosCambios = array_values(
+                $cambiosDatos['recordatorios'] ?? []
+            );
+            $avisosCambios = array_values(
+                $cambiosDatos['avisos'] ?? []
+            );
+
+            $recordatorios = array_merge(
+                $recordatoriosCambios,
+                $recordatoriosConfirmacion,
+                $recordatoriosAgenda
+            );
+            $avisos = array_values(array_merge(
+                $avisosCambios,
+                $avisosConfirmacion,
+                $avisosAgenda
+            ));
+        }
+
+        if ($puedeOperarSeguimientos || ($puedeCentroReuniones && $esAnalista)) {
+            $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId);
+            $recordatoriosSeguimiento = serializarRecordatoriosSeguimiento(
+                $resultado['recordatorios'] ?? []
+            );
+
+            // Los pasos administrados por la agenda/reunión no deben conservar
+            // recordatorios antiguos como "Enviar oficio/correo".
+            $recordatoriosSeguimiento = $this->reminderAgendaFilterService
+                ->filtrarRecordatoriosSeguimiento($recordatoriosSeguimiento, $usuarioId);
+            $avisosSeguimiento = $this->reminderAgendaFilterService
+                ->filtrarAvisosSeguimiento($resultado['avisos'] ?? [], $usuarioId);
+
+            // Después de una reunión realizada con acuerdos pendientes usamos un
+            // recordatorio propio: "Dar seguimiento a acuerdos".
+            $seguimientoReunion = $this->reminderReunionFollowupService->obtener(
+                $usuarioId,
+                10
+            );
+            $recordatoriosAcuerdos = array_values(
+                $seguimientoReunion['recordatorios'] ?? []
+            );
+            $avisosAcuerdos = array_values(
+                $seguimientoReunion['avisos'] ?? []
+            );
+
+            // Las observaciones de Cuenta Clave se muestran como notificaciones
+            // persistentes hasta que el Analista abra ese seguimiento.
+            $observaciones = $this->reminderObservacionService->obtener(
+                $usuarioId,
+                10
+            );
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+            $recordatoriosObservaciones = array_values(
+                $observaciones['recordatorios'] ?? []
+            );
+            $avisosObservaciones = array_values(
+                $observaciones['avisos'] ?? []
+            );
+
+            // Si el servicio especializado ya reconoce un seguimiento como
+            // "Dar seguimiento a acuerdos", eliminamos cualquier recordatorio o
+            // aviso genérico del mismo seguimiento. Esto evita que sobrevivan
+            // mensajes de etapas anteriores como "Enviar oficio/correo".
+            $idsAcuerdos = [];
+            foreach ($recordatoriosAcuerdos as $itemAcuerdos) {
+                $idAcuerdos = (int)($itemAcuerdos['seguimiento_id'] ?? $itemAcuerdos['id'] ?? 0);
+                if ($idAcuerdos > 0) {
+                    $idsAcuerdos[$idAcuerdos] = true;
+                }
+            }
+
+            if (!empty($idsAcuerdos)) {
+                $recordatoriosSeguimiento = array_values(array_filter(
+                    $recordatoriosSeguimiento,
+                    static function ($item) use ($idsAcuerdos) {
+                        $id = (int)($item['seguimiento_id'] ?? $item['id'] ?? 0);
+                        return $id <= 0 || !isset($idsAcuerdos[$id]);
+                    }
+                ));
+
+                $avisosSeguimiento = array_values(array_filter(
+                    $avisosSeguimiento,
+                    static function ($item) use ($idsAcuerdos) {
+                        $id = (int)($item['seguimiento_id'] ?? $item['id'] ?? 0);
+                        return $id <= 0 || !isset($idsAcuerdos[$id]);
+                    }
+                ));
+            }
+
+            // Las notificaciones operativas del Analista deben abrir directamente
+            // el panel "Trabajar" del seguimiento. Las notificaciones de agenda
+            // conservan su URL propia hacia la reunión correspondiente.
+            $recordatoriosSeguimiento = $this->reminderDirectLinkService->aplicar(
+                $recordatoriosSeguimiento,
+                $usuarioId
+            );
+            $avisosSeguimiento = $this->reminderDirectLinkService->aplicar(
+                $avisosSeguimiento,
+                $usuarioId
+            );
+            $recordatoriosAcuerdos = $this->reminderDirectLinkService->aplicar(
+                $recordatoriosAcuerdos,
+                $usuarioId
+            );
+            $avisosAcuerdos = $this->reminderDirectLinkService->aplicar(
+                $avisosAcuerdos,
+                $usuarioId
+            );
+
+            $recordatorios = array_merge(
+                $recordatoriosObservaciones,
+                $recordatoriosAcuerdos,
+                $recordatoriosSeguimiento,
+                $recordatorios
+            );
+            $avisos = array_values(array_merge(
+                $avisosObservaciones,
+                $avisosAcuerdos,
+                $avisosSeguimiento,
+                $avisos
+            ));
+            $requiereMigracion = (bool)($resultado['requiere_migracion'] ?? false);
+            $ok = (bool)($resultado['ok'] ?? true);
+        }
+
+        if ($puedeSeguimientoAliados) {
+            $seguimientoAliados =
+                $this->aliadoSeguimientoReminderService->obtener(
+                    $usuarioId,
+                    10
+                );
+
+            $recordatorios = array_merge(
+                array_values($seguimientoAliados['recordatorios'] ?? []),
+                $recordatorios
+            );
+            $avisos = array_values(array_merge(
+                $seguimientoAliados['avisos'] ?? [],
+                $avisos
+            ));
+            $requiereMigracion =
+                $requiereMigracion ||
+                (bool)($seguimientoAliados['requiere_migracion'] ?? false);
+            $ok =
+                $ok &&
+                (bool)($seguimientoAliados['ok'] ?? true);
+        }
+
+        // Las tareas de Cuenta Clave provienen de la base de datos, no de los
+        // permisos de Marketing ni de marcar como leída una notificación.
+        if ($puedeTareasAliado) {
+            try {
+                require_once __DIR__ . '/../services/AliadoConvocatoriaPendienteService.php';
+                $tareas = (new AliadoConvocatoriaPendienteService((new Database())->connect()))
+                    ->obtener($usuarioId, false, 100);
+                // Un permiso de Aliados no concede acceso al editor de Convocatorias.
+                $puedePublicar = puedeCrearConvocatoriaDesdeConvenio();
+                $tareas = array_values(array_filter($tareas, static function ($tarea) use ($puedePublicar) {
+                    return $puedePublicar || ($tarea['etiqueta'] ?? '') === 'Configurar programas';
+                }));
+                $recordatorios = array_merge($tareas, $recordatorios);
+            } catch (Throwable $e) {
+                error_log('[campana_aliados_convocatorias] ' . get_class($e));
+            }
+        }
+
+        try {
+            $comentariosAgenda = new AgendaComentarioService();
+            $novedades = $comentariosAgenda->notificaciones($usuarioId);
+            $recordatorios = array_merge($recordatorios, $novedades['recordatorios']);
+            $avisos = array_merge($avisos, $novedades['avisos']);
+            $horarios = array_merge($horarios, $novedades['horarios'] ?? []);
+        } catch (Throwable $e) { error_log('[agenda_comentarios_campana] '.get_class($e)); }
+
+        $telefoniaOk=false;
+        if($puedeTelefonia){
+            try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';
+                $phone=(new TelefoniaNotificacionService())->pendientes($usuarioId,false);
+                $recordatorios=array_merge($phone,$recordatorios);$telefoniaOk=true;
+            }catch(Throwable $e){error_log('[campana_telefonia] '.get_class($e));}
+        }
+        $comercialOk=false;
+        if($puedeComercial){
+            try {
+                require_once __DIR__.'/../services/EmbudoComercialV3RecordatoriosService.php';
+                $comercial=(new EmbudoComercialV3RecordatoriosService())->obtener($usuarioId);
+                $recordatorios=array_merge($comercial['recordatorios'],$recordatorios);
+                $avisos=array_merge($comercial['avisos'],$avisos);$comercialOk=true;
+            } catch(Throwable $e){error_log('[campana_comercial] '.get_class($e));}
+        }
+        // La campana debe priorizar obligaciones vencidas y acciones que requieren
+        // intervención, sin depender del orden en que cada servicio fue consultado.
+        // La campana conserva todas las obligaciones telefónicas actuales,
+        // además de los 12 recordatorios habituales de los demás módulos.
+        $accionesPendientes = array_values(array_filter($recordatorios,
+            static fn($item) => array_key_exists('tipo_anticipo', $item)));
+        $ordenados = $this->ordenarRecordatorios($recordatorios);
+        $telefoniaActiva = array_values(array_filter($ordenados,
+            static fn($item) => (int)($item['telefonia_id'] ?? 0) > 0 && !empty($item['pendiente_operativo'])));
+        $aliadosActivos = array_values(array_filter($ordenados,
+            static fn($item) => ($item['tipo'] ?? '') === 'ALIADO_CONVOCATORIA_PENDIENTE'));
+        $comercialesActivos = array_values(array_filter($ordenados,
+            static fn($item) => (int)($item['comercial_id'] ?? 0) > 0));
+        $otros = array_values(array_filter($ordenados,
+            static fn($item) => !((int)($item['telefonia_id'] ?? 0) > 0 && !empty($item['pendiente_operativo']))
+                && ($item['tipo'] ?? '') !== 'ALIADO_CONVOCATORIA_PENDIENTE'
+                && (int)($item['comercial_id'] ?? 0) === 0));
+        $recordatorios = array_merge($telefoniaActiva, $aliadosActivos, $comercialesActivos, $this->seleccionarRecordatoriosCampana($otros));
+        if ($comercialesActivos) $recordatorios = $this->ordenarRecordatorios($recordatorios);
+
+        if (isset($comentariosAgenda)) {
+            $comentariosAgenda->registrarEntregados($usuarioId, $recordatorios);
+        }
+
+        echo json_encode([
+            'ok' => $ok||$telefoniaOk||$comercialOk,
+            'parcial' => !$ok || ($puedeComercial&&!$comercialOk),
+            'comercial_ok' => !$puedeComercial||$comercialOk,
+            'requiere_migracion' => $requiereMigracion,
+            'avisos' => array_values($avisos),
+            'horarios' => $horarios,
+            'servidor_at' => time(),
+            'zona_horaria' => date_default_timezone_get(),
+            'usuario_id' => $usuarioId,
+            'acciones_pendientes' => $accionesPendientes,
+            'recordatorios' => $recordatorios,
+            'total' => count($recordatorios)
+        ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        exit;
+    }
+
+    private function seleccionarRecordatoriosCampana($items)
+    {
+        $ordenados = $this->ordenarRecordatorios($items);
+        // Conservar los doce avisos prioritarios y todas las próximas acciones
+        // pendientes, incluso si vencen. Mostrar el toast no las da por atendidas.
+        return array_values(array_filter($ordenados, static function ($item, $indice) {
+            return $indice < 12 || array_key_exists('tipo_anticipo', $item);
+        }, ARRAY_FILTER_USE_BOTH));
+    }
+
+    private function ordenarRecordatorios($items)
+    {
+        $items = array_values(is_array($items) ? $items : []);
+
+        foreach ($items as $indice => &$item) {
+            $item['_orden_original'] = $indice;
+        }
+        unset($item);
+
+        usort($items, function ($a, $b) {
+            $prioridadA = $this->prioridadRecordatorio($a);
+            $prioridadB = $this->prioridadRecordatorio($b);
+
+            if ($prioridadA !== $prioridadB) {
+                return $prioridadA <=> $prioridadB;
+            }
+
+            $telefonoA=(int)($a['telefonia_id']??0)>0;
+            $telefonoB=(int)($b['telefonia_id']??0)>0;
+            // Orden total: a igual prioridad, conservar delante las acciones
+            // operativas; ordenar luego los avisos telefónicos por novedad.
+            if($telefonoA!==$telefonoB)return $telefonoA?1:-1;
+            if($telefonoA){
+                $fechaTelefonoA=strtotime((string)($a['created_at']??$a['fecha']??''))?:0;
+                $fechaTelefonoB=strtotime((string)($b['created_at']??$b['fecha']??''))?:0;
+                return ($fechaTelefonoB<=>$fechaTelefonoA)?:((int)$b['telefonia_id']<=>(int)$a['telefonia_id']);
+            }
+
+            $fechaA = strtotime((string)($a['fecha'] ?? '')) ?: 0;
+            $fechaB = strtotime((string)($b['fecha'] ?? '')) ?: 0;
+
+            if ($fechaA !== $fechaB && $fechaA > 0 && $fechaB > 0) {
+                // Para vencidas/próximas, la fecha más inmediata va primero.
+                // Para informativas, mostramos primero lo más reciente.
+                return $prioridadA <= 2
+                    ? ($fechaA <=> $fechaB)
+                    : ($fechaB <=> $fechaA);
+            }
+
+            return (int)($a['_orden_original'] ?? 0) <=>
+                (int)($b['_orden_original'] ?? 0);
+        });
+
+        foreach ($items as &$item) {
+            unset($item['_orden_original']);
+        }
+        unset($item);
+
+        return $items;
+    }
+
+    private function prioridadRecordatorio($item)
+    {
+        if (isset($item['prioridad']) && is_numeric($item['prioridad'])) {
+            return max(0, min(9, (int)$item['prioridad']));
+        }
+
+        $estado = strtolower(trim((string)($item['estado'] ?? '')));
+        $etiqueta = strtolower(trim((string)($item['etiqueta'] ?? '')));
+        $accion = strtolower(trim((string)($item['accion'] ?? '')));
+
+        if (
+            $estado === 'vencida' ||
+            strpos($etiqueta, 'vencida') !== false ||
+            strpos($etiqueta, 'ayer') !== false
+        ) {
+            return 0;
+        }
+
+        if (
+            $etiqueta === 'nueva' ||
+            strpos($accion, 'solicita cambiar') !== false ||
+            strpos($accion, 'reunión confirmada') !== false ||
+            strpos($accion, 'reunion confirmada') !== false
+        ) {
+            return 1;
+        }
+
+        if ($estado === 'proxima' || $estado === 'hoy') {
+            return 2;
+        }
+
+        if ($estado === 'manana' || $estado === 'mañana') {
+            return 3;
+        }
+
+        return 4;
+    }
+}

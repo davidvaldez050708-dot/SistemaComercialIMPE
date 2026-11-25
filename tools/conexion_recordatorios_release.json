@@ -1,0 +1,169 @@
+{
+  "release": "conexion-recordatorios-v1",
+  "files": [
+    {
+      "path": "app/services/ReminderAgendaFilterService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    private $connection;\n\n    public function __construct()\n    {\n        $database = new Database();\n        $this->connection = $database->connect();\n    }\n\n",
+          "after": "    private $connection;\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/ReminderReunionFollowupService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    private $connection;\n\n    public function __construct()\n    {\n        $database = new Database();\n        $this->connection = $database->connect();\n    }\n\n",
+          "after": "    private $connection;\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/ReminderDirectLinkService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    private $cacheEstados = [];\n\n    public function __construct()\n    {\n        $database = new Database();\n        $this->connection = $database->connect();\n    }\n\n",
+          "after": "    private $cacheEstados = [];\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/ReminderObservacionService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    private $connection;\n\n    public function __construct()\n    {\n        $database = new Database();\n        $this->connection = $database->connect();\n    }\n\n",
+          "after": "    private $connection;\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/ReminderMeetingConfirmationService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    private $connection;\n\n    public function __construct()\n    {\n        $database = new Database();\n        $this->connection = $database->connect();\n    }\n\n",
+          "after": "    private $connection;\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/SeguimientoCambioDatosService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    ];\n\n    public function __construct()\n    {\n        $database = new Database();\n        $this->connection = $database->connect();\n    }\n\n",
+          "after": "    ];\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/AgendaReunionRepository.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    private $connection;\n\n    public function __construct()\n    {\n        $database = new Database();\n        $this->connection = $database->connect();\n    }\n\n",
+          "after": "    private $connection;\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/AgendaReunionService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    private $ecardService;\n\n    public function __construct()\n    {\n        $this->repo = new AgendaReunionRepository();\n        $this->ecardService = new EcardReunionService($this->repo->connection());\n    }\n",
+          "after": "    private $ecardService;\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->repo = new AgendaReunionRepository($connection);\n        $this->ecardService = new EcardReunionService($this->repo->connection());\n    }\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/AliadoSeguimientoReminderService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    private $connection;\n\n    public function __construct()\n    {\n        $this->modelo = new AliadoModel();\n\n        $database = new Database();\n        $this->connection = $database->connect();\n    }\n\n",
+          "after": "    private $connection;\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->modelo = new AliadoModel($connection);\n\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/AdminNotificationService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "{\n    private $connection;\n\n    public function __construct()\n    {\n        $database = new Database();\n        $this->connection = $database->connect();\n    }\n\n",
+          "after": "{\n    private $connection;\n    private $conexionInyectada;\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->conexionInyectada = $connection;\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n\n"
+        },
+        {
+          "before": "            // no haya un usuario de Marketing consultando su campana.\n            try {\n                (new ConvocatoriaModel())->sincronizarConvocatoriasPorFecha();\n            } catch (Throwable $error) {\n                error_log(\n",
+          "after": "            // no haya un usuario de Marketing consultando su campana.\n            try {\n                (new ConvocatoriaModel($this->conexionInyectada))->sincronizarConvocatoriasPorFecha();\n            } catch (Throwable $error) {\n                error_log(\n"
+        }
+      ]
+    },
+    {
+      "path": "app/helpers/ReminderHelper.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "\nif (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {\n    function obtenerRecordatoriosSeguimientoAnalista($usuarioId, $limite = 8)\n    {\n        $usuarioId = (int)$usuarioId;\n",
+          "after": "\nif (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {\n    function obtenerRecordatoriosSeguimientoAnalista($usuarioId, $limite = 8, ?mysqli $connection = null)\n    {\n        $usuarioId = (int)$usuarioId;\n"
+        },
+        {
+          "before": "\n        try {\n            $database = new Database();\n            $connection = $database->connect();\n\n            $sql = 'SELECT\n",
+          "after": "\n        try {\n            $connection = $connection ?? (new Database())->connect();\n\n            $sql = 'SELECT\n"
+        },
+        {
+          "before": "\nif (!function_exists('obtenerAvisosPendientesRecordatoriosAnalista')) {\n    function obtenerAvisosPendientesRecordatoriosAnalista($usuarioId)\n    {\n        $usuarioId = (int)$usuarioId;\n",
+          "after": "\nif (!function_exists('obtenerAvisosPendientesRecordatoriosAnalista')) {\n    function obtenerAvisosPendientesRecordatoriosAnalista($usuarioId, ?mysqli $connection = null)\n    {\n        $usuarioId = (int)$usuarioId;\n"
+        },
+        {
+          "before": "        }\n\n        $recordatorios = obtenerRecordatoriosSeguimientoAnalista($usuarioId, 50);\n\n        try {\n            $database = new Database();\n            $connection = $database->connect();\n\n            if (!existeTablaRecordatoriosVinculacion($connection)) {\n",
+          "after": "        }\n\n        $recordatorios = obtenerRecordatoriosSeguimientoAnalista($usuarioId, 50, $connection);\n\n        try {\n            $connection = $connection ?? (new Database())->connect();\n\n            if (!existeTablaRecordatoriosVinculacion($connection)) {\n"
+        }
+      ]
+    },
+    {
+      "path": "app/controllers/ReminderController.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        if (!$requiereSesionObservaciones && session_status() === PHP_SESSION_ACTIVE) session_write_close();\n\n        // Conservar el orden y las conexiones independientes de los servicios usados.\n        // Fuera de try: un fallo al construir un servicio necesario no se oculta como 200.\n        $this->agendaReunionService = new AgendaReunionService();\n        if (!$esAdministrador && ($puedeOperarSeguimientos || ($puedeCentroReuniones && $esAnalista))) {\n            $this->reminderAgendaFilterService = new ReminderAgendaFilterService();\n            $this->reminderReunionFollowupService = new ReminderReunionFollowupService();\n            $this->reminderDirectLinkService = new ReminderDirectLinkService();\n            $this->reminderObservacionService = new ReminderObservacionService();\n        }\n        if (!$esAdministrador && $puedeCentroReuniones) {\n            $this->reminderMeetingConfirmationService = new ReminderMeetingConfirmationService();\n        }\n        if (!$esAdministrador && $puedeCentroReuniones && $esSupervisor) {\n            $this->seguimientoCambioDatosService = new SeguimientoCambioDatosService();\n        }\n        if (!$esAdministrador && $puedeSeguimientoAliados) {\n            $this->aliadoSeguimientoReminderService = new AliadoSeguimientoReminderService();\n        }\n\n",
+          "after": "        if (!$requiereSesionObservaciones && session_status() === PHP_SESSION_ACTIVE) session_write_close();\n\n        // Compartir una conexión dentro de este recolector; no hay una transacción envolvente.\n        require_once __DIR__.'/../helpers/ControlCargaMysql.php';\n        $conexionRecordatorios=ImpeControlCargaMysql::conexion();\n        // Fuera de try: un fallo al construir un servicio necesario no se oculta como 200.\n        $this->agendaReunionService = new AgendaReunionService($conexionRecordatorios);\n        if (!$esAdministrador && ($puedeOperarSeguimientos || ($puedeCentroReuniones && $esAnalista))) {\n            $this->reminderAgendaFilterService = new ReminderAgendaFilterService($conexionRecordatorios);\n            $this->reminderReunionFollowupService = new ReminderReunionFollowupService($conexionRecordatorios);\n            $this->reminderDirectLinkService = new ReminderDirectLinkService($conexionRecordatorios);\n            $this->reminderObservacionService = new ReminderObservacionService($conexionRecordatorios);\n        }\n        if (!$esAdministrador && $puedeCentroReuniones) {\n            $this->reminderMeetingConfirmationService = new ReminderMeetingConfirmationService($conexionRecordatorios);\n        }\n        if (!$esAdministrador && $puedeCentroReuniones && $esSupervisor) {\n            $this->seguimientoCambioDatosService = new SeguimientoCambioDatosService($conexionRecordatorios);\n        }\n        if (!$esAdministrador && $puedeSeguimientoAliados) {\n            $this->aliadoSeguimientoReminderService = new AliadoSeguimientoReminderService($conexionRecordatorios);\n        }\n\n"
+        },
+        {
+          "before": "\n        if ($esAdministrador) {\n            $resultado = (new AdminNotificationService())->obtener();\n            // Integración de comentarios para cualquier perfil con Agenda,\n            // también cuando su campana utiliza el resumen administrativo.\n",
+          "after": "\n        if ($esAdministrador) {\n            $resultado = (new AdminNotificationService($conexionRecordatorios))->obtener();\n            // Integración de comentarios para cualquier perfil con Agenda,\n            // también cuando su campana utiliza el resumen administrativo.\n"
+        },
+        {
+          "before": "            $resultado['usuario_id'] = $usuarioId;\n            try {\n                $comentariosAgenda = new AgendaComentarioService();\n                $novedades = $comentariosAgenda->notificaciones($usuarioId);\n                $resultado['recordatorios'] = array_merge($resultado['recordatorios'] ?? [], $novedades['recordatorios']);\n",
+          "after": "            $resultado['usuario_id'] = $usuarioId;\n            try {\n                $comentariosAgenda = new AgendaComentarioService(new AgendaComentarioRepository($conexionRecordatorios));\n                $novedades = $comentariosAgenda->notificaciones($usuarioId);\n                $resultado['recordatorios'] = array_merge($resultado['recordatorios'] ?? [], $novedades['recordatorios']);\n"
+        },
+        {
+          "before": "\n        if ($puedeOperarSeguimientos || ($puedeCentroReuniones && $esAnalista)) {\n            $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId);\n            $recordatoriosSeguimiento = serializarRecordatoriosSeguimiento(\n                $resultado['recordatorios'] ?? []\n",
+          "after": "\n        if ($puedeOperarSeguimientos || ($puedeCentroReuniones && $esAnalista)) {\n            $resultado = obtenerAvisosPendientesRecordatoriosAnalista($usuarioId, $conexionRecordatorios);\n            $recordatoriosSeguimiento = serializarRecordatoriosSeguimiento(\n                $resultado['recordatorios'] ?? []\n"
+        },
+        {
+          "before": "            try {\n                require_once __DIR__ . '/../services/AliadoConvocatoriaPendienteService.php';\n                $tareas = (new AliadoConvocatoriaPendienteService((new Database())->connect()))\n                    ->obtener($usuarioId, false, 100);\n                // Un permiso de Aliados no concede acceso al editor de Convocatorias.\n",
+          "after": "            try {\n                require_once __DIR__ . '/../services/AliadoConvocatoriaPendienteService.php';\n                $tareas = (new AliadoConvocatoriaPendienteService($conexionRecordatorios))\n                    ->obtener($usuarioId, false, 100);\n                // Un permiso de Aliados no concede acceso al editor de Convocatorias.\n"
+        },
+        {
+          "before": "\n        try {\n            $comentariosAgenda = new AgendaComentarioService();\n            $novedades = $comentariosAgenda->notificaciones($usuarioId);\n            $recordatorios = array_merge($recordatorios, $novedades['recordatorios']);\n",
+          "after": "\n        try {\n            $comentariosAgenda = new AgendaComentarioService(new AgendaComentarioRepository($conexionRecordatorios));\n            $novedades = $comentariosAgenda->notificaciones($usuarioId);\n            $recordatorios = array_merge($recordatorios, $novedades['recordatorios']);\n"
+        },
+        {
+          "before": "        if($puedeTelefonia){\n            try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';\n                $phone=(new TelefoniaNotificacionService())->pendientes($usuarioId,false);\n                $recordatorios=array_merge($phone,$recordatorios);$telefoniaOk=true;\n            }catch(Throwable $e){error_log('[campana_telefonia] '.get_class($e));}\n",
+          "after": "        if($puedeTelefonia){\n            try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';\n                $phone=(new TelefoniaNotificacionService($conexionRecordatorios))->pendientes($usuarioId,false);\n                $recordatorios=array_merge($phone,$recordatorios);$telefoniaOk=true;\n            }catch(Throwable $e){error_log('[campana_telefonia] '.get_class($e));}\n"
+        },
+        {
+          "before": "            try {\n                require_once __DIR__.'/../services/EmbudoComercialV3RecordatoriosService.php';\n                $comercial=(new EmbudoComercialV3RecordatoriosService())->obtener($usuarioId);\n                $recordatorios=array_merge($comercial['recordatorios'],$recordatorios);\n                $avisos=array_merge($comercial['avisos'],$avisos);$comercialOk=true;\n",
+          "after": "            try {\n                require_once __DIR__.'/../services/EmbudoComercialV3RecordatoriosService.php';\n                $comercial=(new EmbudoComercialV3RecordatoriosService($conexionRecordatorios))->obtener($usuarioId);\n                $recordatorios=array_merge($comercial['recordatorios'],$recordatorios);\n                $avisos=array_merge($comercial['avisos'],$avisos);$comercialOk=true;\n"
+        }
+      ]
+    }
+  ]
+}

@@ -12,9 +12,9 @@ class AgendaReunionService
     private $repo;
     private $ecardService;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $this->repo = new AgendaReunionRepository();
+        $this->repo = new AgendaReunionRepository($connection);
         $this->ecardService = new EcardReunionService($this->repo->connection());
     }
 
@@ -129,14 +129,15 @@ class AgendaReunionService
         $rolId = (int)$rolId;
         $mes = $this->normalizarMes($mes);
 
-        if (!$this->puedeAcceder($rolId)) {
+        if ($usuarioId <= 0 || !tienePermiso('agenda.ver')) {
             return $this->error('No tienes acceso a la agenda de reuniones.', 403);
         }
 
-        if (!$this->tablaDisponible()) {
+        $puedeVerReuniones = $this->puedeAcceder($rolId);
+        if (!$puedeVerReuniones || !$this->tablaDisponible()) {
             return [
                 'ok' => true,
-                'requiere_migracion' => true,
+                'requiere_migracion' => $puedeVerReuniones,
                 'mes' => $mes,
                 'reuniones' => [],
                 'seguimientos_elegibles' => []
@@ -333,7 +334,7 @@ class AgendaReunionService
         }
 
         if (!$this->repo->confirmar($reunionId, (int)$usuarioId, $zoomUrl, $ubicacion, $notas)) {
-            return $this->error('La solicitud fue atendida por otro usuario.', 409);
+            return $this->error('No fue posible actualizar la solicitud. Actualiza la agenda para comprobar su estado y la fecha propuesta.', 409);
         }
 
         $this->repo->registrarInteraccion(
@@ -379,7 +380,7 @@ class AgendaReunionService
         }
 
         if (!$this->repo->solicitarCambio($reunionId, (int)$usuarioId, $motivo)) {
-            return $this->error('La solicitud fue atendida por otro usuario.', 409);
+            return $this->error('No fue posible actualizar la solicitud. Actualiza la agenda para comprobar su estado y la fecha propuesta.', 409);
         }
 
         $this->repo->registrarInteraccion(
@@ -540,7 +541,7 @@ class AgendaReunionService
             }
 
             $seguimientoId = (int)$reunion['seguimiento_id'];
-            $analistaId = (int)$reunion['analista_id'];
+            $analistaId = (int)$usuarioId;
 
             $this->repo->cancelarReprogramacionesPendientes($reunionId);
             $this->repo->limpiarReunionPostEnvio($seguimientoId);
@@ -659,13 +660,13 @@ class AgendaReunionService
         }
     }
 
-    public function ajustarFlujoAnalista($seguimientoId, $usuarioId, $flujo)
+    public function ajustarFlujoAnalista($seguimientoId, $usuarioId, $flujo, $soloLectura = false)
     {
         if (!is_array($flujo) || !$this->tablaDisponible() || (int)($flujo['paso_actual'] ?? 0) !== 11) {
             return $flujo;
         }
 
-        $reunion = $this->repo->ultimaReunionSeguimiento((int)$seguimientoId, (int)$usuarioId);
+        $reunion = $this->repo->ultimaReunionSeguimiento((int)$seguimientoId, (int)$usuarioId, $soloLectura);
         $flujo['accion_principal'] = [
             'codigo' => 'AGENDAR_REUNION',
             'etiqueta' => 'Abrir agenda',
@@ -706,6 +707,26 @@ class AgendaReunionService
         return $flujo;
     }
 
+    public function avisosHorario(int $usuario): array
+    {
+        if ($usuario <= 0 || $usuario !== (int)($_SESSION['usuario_id'] ?? 0)
+            || !tienePermiso('reuniones.ver') || !$this->tablaDisponible()) {
+            return [];
+        }
+        $ahora = new DateTimeImmutable();
+        $filas = $this->repo->horariosProximos($usuario, $ahora->modify('-90 seconds')->format('Y-m-d H:i:s'),
+            $ahora->modify('+30 minutes')->format('Y-m-d H:i:s'));
+        return array_map(static function (array $fila): array {
+            return [
+                'reunion_id' => (int)$fila['id'],
+                'agenda_horario_at' => strtotime($fila['fecha_propuesta']),
+                'agenda_horario_mensaje' => $fila['nombre_entidad'],
+                'icono' => 'bi-calendar-check',
+                'url' => 'index.php?controller=agendaReunion&action=index&reunion_id=' . (int)$fila['id'],
+            ];
+        }, $filas);
+    }
+
     public function obtenerNotificacionesCampana($usuarioId, $rolId, $limite = 10)
     {
         if (!$this->puedeAcceder($rolId) || !$this->tablaDisponible()) {
@@ -713,13 +734,16 @@ class AgendaReunionService
         }
 
         $esSupervisor =
-            tienePermiso('reuniones.gestionar') &&
-            !tienePermiso('reuniones.solicitar');
+            tienePermiso('reuniones.gestionar');
 
         $filas = $esSupervisor
-            ? $this->repo->pendientesKam((int)$limite)
+            ? $this->repo->pendientesKam((int)$limite, (int)$usuarioId)
             : $this->repo->pendientesAnalista((int)$usuarioId, (int)$limite);
         $salida = [];
+        $avisos = [];
+        $mostrados = is_array($_SESSION['agenda_reunion_avisos_mostrados'] ?? null)
+            ? $_SESSION['agenda_reunion_avisos_mostrados']
+            : [];
         $ahora = new DateTimeImmutable();
 
         foreach ($filas as $fila) {
@@ -738,7 +762,9 @@ class AgendaReunionService
             $prioridad = 4;
 
             if ($esSupervisor) {
-                $accion = 'Confirmar solicitud de reunión';
+                // Misma clave que el recordatorio urgente: el controlador puede
+                // conservar ese registro al quitar duplicados de la campana.
+                $accion = 'Confirmar reunión o solicitar ajuste';
                 $etiqueta = 'Pendiente de Cuenta Clave';
                 $icono = 'bi-calendar-check';
                 $estadoUi = 'proxima';
@@ -813,9 +839,48 @@ class AgendaReunionService
                 'prioridad' => $prioridad,
                 'url' => 'index.php?controller=agendaReunion&action=index&reunion_id=' . $id
             ];
+
+            // Los eventos informativos usan el presentador y la cola existentes.
+            // No consumen los campos notificado_* reservados al vencimiento.
+            if (!$fecha || $fecha <= $ahora) {
+                continue;
+            }
+            if ($esSupervisor && $estado === 'SOLICITADA') {
+                $tipoAviso = 'REUNION_SOLICITADA';
+                $tituloAviso = 'Nueva solicitud de reunión';
+                $mensajeAviso = 'El Analista de Datos propuso una reunión con ' .
+                    (string)$fila['nombre_entidad'] . ' para ' . $this->fechaLegible($fechaTexto) . '.';
+                $version = (string)($fila['updated_at'] ?? '');
+            } elseif (!$esSupervisor && $estado === 'CONFIRMADA') {
+                $tipoAviso = 'REUNION_CONFIRMADA';
+                $tituloAviso = 'Reunión confirmada por Cuenta Clave';
+                $mensajeAviso = 'Cuenta Clave confirmó la reunión con ' .
+                    (string)$fila['nombre_entidad'] . ' para ' . $this->fechaLegible($fechaTexto) . '.';
+                $version = (string)($fila['confirmada_at'] ?? $fila['updated_at'] ?? '');
+            } else {
+                continue;
+            }
+            $claveAviso = (int)$usuarioId . '|' . $tipoAviso . '|' . $id . '|' .
+                hash('sha256', $fechaTexto . '|' . $version);
+            if (isset($mostrados[$claveAviso])) {
+                continue;
+            }
+            // Incluir acción y fecha del pendiente permite que recordatorios.js
+            // conserve el toast al navegar y descarte los de acciones resueltas.
+            $avisos[] = array_merge($salida[count($salida) - 1], [
+                'tipo' => $tipoAviso,
+                'titulo' => $tituloAviso,
+                'mensaje' => $mensajeAviso
+            ]);
+            $mostrados[$claveAviso] = time();
         }
 
-        return ['recordatorios' => $salida, 'avisos' => []];
+        if (count($mostrados) > 200) {
+            arsort($mostrados);
+            $mostrados = array_slice($mostrados, 0, 200, true);
+        }
+        $_SESSION['agenda_reunion_avisos_mostrados'] = $mostrados;
+        return ['recordatorios' => $salida, 'avisos' => $avisos];
     }
 
 

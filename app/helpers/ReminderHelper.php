@@ -1,9 +1,10 @@
 <?php
 
+require_once __DIR__ . '/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 
 if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
-    function obtenerRecordatoriosSeguimientoAnalista($usuarioId, $limite = 8)
+    function obtenerRecordatoriosSeguimientoAnalista($usuarioId, $limite = 8, ?mysqli $connection = null)
     {
         $usuarioId = (int)$usuarioId;
         $limite = max(1, min(50, (int)$limite));
@@ -13,10 +14,9 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
         }
 
         try {
-            $database = new Database();
-            $connection = $database->connect();
+            $connection = $connection ?? (new Database())->connect();
 
-            $sql = "SELECT
+            $sql = 'SELECT
                         seguimientos.id,
                         seguimientos.estado_id,
                         seguimientos.nombre_entidad,
@@ -24,26 +24,27 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
                         (
                             SELECT TRIM(
                                 SUBSTRING_INDEX(
-                                    SUBSTRING_INDEX(interacciones.notas, 'Próxima acción: ', -1),
-                                    '\n',
+                                    SUBSTRING_INDEX(interacciones.notas, \'Próxima acción: \', -1),
+                                    \'
+\',
                                     1
                                 )
                             )
                             FROM interacciones_vinculacion interacciones
                             WHERE interacciones.seguimiento_id = seguimientos.id
-                                AND interacciones.notas LIKE '%Próxima acción:%'
+                                AND interacciones.notas LIKE \'%Próxima acción:%\'
                             ORDER BY interacciones.fecha_inicio DESC, interacciones.id DESC
                             LIMIT 1
                         ) AS proxima_accion_texto
                     FROM seguimientos_vinculacion seguimientos
-                    WHERE seguimientos.analista_id = ?
+                    WHERE ' . SeguimientoTerritorialScope::analista('seguimientos') . '
                         AND seguimientos.activo = 1
-                        AND seguimientos.estado_seguimiento <> 'DESCARTADO'
+                        AND seguimientos.estado_seguimiento <> \'DESCARTADO\'
                         AND seguimientos.proxima_accion_at IS NOT NULL
                         AND seguimientos.proxima_accion_at <= DATE_ADD(NOW(), INTERVAL 24 HOUR)
                     ORDER BY
                         CASE
-                            WHEN seguimientos.proxima_accion_at < NOW() THEN 0
+                            WHEN seguimientos.proxima_accion_at >= NOW() THEN 0
                             ELSE 1
                         END ASC,
                         CASE
@@ -54,7 +55,7 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
                             WHEN seguimientos.proxima_accion_at >= NOW()
                             THEN seguimientos.proxima_accion_at
                         END ASC
-                    LIMIT 100";
+                    LIMIT 100';
 
             $stmt = $connection->prepare($sql);
             $stmt->bind_param('i', $usuarioId);
@@ -88,7 +89,7 @@ if (!function_exists('obtenerRecordatoriosSeguimientoAnalista')) {
 }
 
 if (!function_exists('obtenerAvisosPendientesRecordatoriosAnalista')) {
-    function obtenerAvisosPendientesRecordatoriosAnalista($usuarioId)
+    function obtenerAvisosPendientesRecordatoriosAnalista($usuarioId, ?mysqli $connection = null)
     {
         $usuarioId = (int)$usuarioId;
 
@@ -101,11 +102,10 @@ if (!function_exists('obtenerAvisosPendientesRecordatoriosAnalista')) {
             ];
         }
 
-        $recordatorios = obtenerRecordatoriosSeguimientoAnalista($usuarioId, 50);
+        $recordatorios = obtenerRecordatoriosSeguimientoAnalista($usuarioId, 50, $connection);
 
         try {
-            $database = new Database();
-            $connection = $database->connect();
+            $connection = $connection ?? (new Database())->connect();
 
             if (!existeTablaRecordatoriosVinculacion($connection)) {
                 return [
@@ -347,6 +347,11 @@ if (!function_exists('serializarRecordatoriosSeguimiento')) {
                 'nombre_entidad' => (string)($recordatorio['nombre_entidad'] ?? 'Seguimiento'),
                 'accion' => $accion,
                 'fecha' => (string)($recordatorio['proxima_accion_at'] ?? ''),
+                'tipo_anticipo' => resolverTipoAvisoRecordatorio(
+                    (strtotime((string)($recordatorio['proxima_accion_at'] ?? '')) ?: 0) - time()
+                ),
+                'alerta_at' => !empty($recordatorio['proxima_accion_at'])
+                    ? strtotime($recordatorio['proxima_accion_at']) : null,
                 'etiqueta' => (string)($recordatorio['recordatorio']['etiqueta'] ?? ''),
                 'estado' => (string)($recordatorio['recordatorio']['estado'] ?? 'normal'),
                 'icono' => iconoAccionRecordatorioSeguimiento($accion)

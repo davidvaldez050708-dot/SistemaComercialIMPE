@@ -12,11 +12,12 @@ require_once __DIR__ . '/../models/ConvocatoriaModel.php';
 class AdminNotificationService
 {
     private $connection;
+    private $conexionInyectada;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        $this->conexionInyectada = $connection;
+        $this->connection = $connection ?? (new Database())->connect();
     }
 
     public function obtener()
@@ -28,7 +29,7 @@ class AdminNotificationService
             // Mantiene el estado temporal de convocatorias sincronizado aunque
             // no haya un usuario de Marketing consultando su campana.
             try {
-                (new ConvocatoriaModel())->sincronizarConvocatoriasPorFecha();
+                (new ConvocatoriaModel($this->conexionInyectada))->sincronizarConvocatoriasPorFecha();
             } catch (Throwable $error) {
                 error_log(
                     'No fue posible sincronizar convocatorias para el centro administrativo: ' .

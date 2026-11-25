@@ -15,10 +15,9 @@ class SeguimientoCambioDatosService
         'observaciones' => 'Observaciones'
     ];
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection ?? (new Database())->connect();
     }
 
     public function registrarCambios($seguimientoId, $autorId, $antes, $despues)
@@ -307,7 +306,6 @@ class SeguimientoCambioDatosService
                     FROM seguimientos_vinculacion s
                     JOIN asignaciones_territorio analista
                         ON analista.estado_id = s.estado_id
-                        AND analista.usuario_id = s.analista_id
                         AND analista.tipo_asignacion = 'ANALISTA_DATOS'
                         AND analista.activo = 1
                         AND (analista.fecha_inicio IS NULL OR analista.fecha_inicio <= CURDATE())
