@@ -72,12 +72,13 @@ try {
         $source = $rollback ? target($backup.'/files', $file['path']) : target(__DIR__.'/production-candidate', $file['path']);
         if (hash_file('sha256', $source) !== $file[$rollback ? 'before_sha256' : 'after_sha256']) fail('Payload/backup differs: '.$file['path']);
         if (!$rollback && str_ends_with($file['path'], '.php')) {
-            $process = proc_open([PHP_BINARY, '-l', $source], [0=>['pipe','r'], 1=>['pipe','w'], 2=>['pipe','w']], $pipes);
-            if (!is_resource($process)) fail('Cannot start PHP lint.');
-            fclose($pipes[0]);
-            $output = stream_get_contents($pipes[1]); fclose($pipes[1]);
-            $error = stream_get_contents($pipes[2]); fclose($pipes[2]);
-            if (proc_close($process) !== 0) fail('PHP lint rejected '.$file['path'].': '.$output.$error);
+            if (!function_exists('token_get_all')) fail('PHP tokenizer is required for syntax validation.');
+            try {
+                // Parse without executing application code or starting a subprocess.
+                token_get_all(file_get_contents($source), TOKEN_PARSE);
+            } catch (ParseError $error) {
+                fail('PHP syntax rejected '.$file['path'].': '.$error->getMessage());
+            }
         }
     }
     if (isset($options['check'])) { echo 'Preflight OK: '.count($files)." files; application unchanged.\n"; exit(0); }
