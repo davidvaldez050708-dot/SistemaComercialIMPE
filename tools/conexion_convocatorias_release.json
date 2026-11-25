@@ -1,0 +1,33 @@
+{
+  "release": "conexion-convocatorias-v1",
+  "files": [
+    {
+      "path": "app/models/ConvocatoriaNotificacionModel.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    private $connection;\n\n    public function __construct()\n    {\n        $database = new Database();\n        $this->connection = $database->connect();\n    }\n\n",
+          "after": "    private $connection;\n\n    public function __construct(?mysqli $connection = null)\n    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/controllers/ConvocatoriaNotificacionController.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "\n        try {\n            $convocatoriaModel = new ConvocatoriaModel();\n            $convocatoriaModel->sincronizarConvocatoriasPorFecha();\n\n            $usuarioId = (int)$_SESSION['usuario_id'];\n            $modelo = new ConvocatoriaNotificacionModel();\n            $phone=[];\n            if(tienePermiso('telefonia.usar')&&tienePermiso('telefonia.recibir')){\n                try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';$phone=(new TelefoniaNotificacionService())->pendientes($usuarioId,true);}\n                catch(Throwable $e){error_log('[campana_marketing_telefonia] '.get_class($e));}\n            }\n",
+          "after": "\n        try {\n            require_once __DIR__.'/../helpers/ControlCargaMysql.php';\n            $conexionAvisos = ImpeControlCargaMysql::conexion();\n            $convocatoriaModel = new ConvocatoriaModel($conexionAvisos);\n            $convocatoriaModel->sincronizarConvocatoriasPorFecha();\n\n            $usuarioId = (int)$_SESSION['usuario_id'];\n            $modelo = new ConvocatoriaNotificacionModel($conexionAvisos);\n            $phone=[];\n            if(tienePermiso('telefonia.usar')&&tienePermiso('telefonia.recibir')){\n                try{require_once __DIR__.'/../services/TelefoniaNotificacionService.php';$phone=(new TelefoniaNotificacionService($conexionAvisos))->pendientes($usuarioId,true);}\n                catch(Throwable $e){error_log('[campana_marketing_telefonia] '.get_class($e));}\n            }\n"
+        },
+        {
+          "before": "                try {\n                    require_once __DIR__ . '/../services/AliadoConvocatoriaPendienteService.php';\n                    $tareas = (new AliadoConvocatoriaPendienteService((new Database())->connect()))\n                        ->obtener($usuarioId, true, 100);\n                } catch (Throwable $e) {\n",
+          "after": "                try {\n                    require_once __DIR__ . '/../services/AliadoConvocatoriaPendienteService.php';\n                    $tareas = (new AliadoConvocatoriaPendienteService($conexionAvisos))\n                        ->obtener($usuarioId, true, 100);\n                } catch (Throwable $e) {\n"
+        },
+        {
+          "before": "\n            require_once __DIR__.'/../services/AgendaMarketingNotificationService.php';\n            $agendaMarketing=(new AgendaMarketingNotificationService())->obtener($usuarioId);\n\n            echo json_encode([\n",
+          "after": "\n            require_once __DIR__.'/../services/AgendaMarketingNotificationService.php';\n            require_once __DIR__.'/../services/AgendaComentarioService.php';\n            $agendaComentarios = new AgendaComentarioService(new AgendaComentarioRepository($conexionAvisos));\n            $agendaMarketing=(new AgendaMarketingNotificationService($agendaComentarios))->obtener($usuarioId);\n\n            echo json_encode([\n"
+        }
+      ]
+    }
+  ]
+}

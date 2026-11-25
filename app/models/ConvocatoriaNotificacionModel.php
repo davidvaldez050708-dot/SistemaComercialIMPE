@@ -6,10 +6,9 @@ class ConvocatoriaNotificacionModel
 {
     private $connection;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection ?? (new Database())->connect();
     }
 
     public function obtenerPorUsuario($usuarioId, $limite = 20)
@@ -34,11 +33,19 @@ class ConvocatoriaNotificacionModel
                 FROM notificaciones_convocatorias
                 WHERE usuario_id = ?
                   AND NOT (
-                      tipo_evento IN (
-                          'vencimiento_2_dias',
-                          'vencimiento_1_dia'
+                      leida = 1
+                      AND (
+                          tipo_evento IN ('vencimiento_2_dias', 'vencimiento_1_dia')
+                          OR (
+                              tipo_evento = 'vencimiento_hoy'
+                              AND COALESCE(
+                                  (SELECT fecha_termino
+                                   FROM convocatorias
+                                   WHERE id = notificaciones_convocatorias.convocatoria_id),
+                                  DATE(created_at)
+                              ) < CURDATE()
+                          )
                       )
-                      AND leida = 1
                   )
                 ORDER BY created_at DESC, id DESC
                 LIMIT " . $limite;

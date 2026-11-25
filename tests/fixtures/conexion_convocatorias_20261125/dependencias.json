@@ -1,0 +1,7 @@
+{
+  "ConvocatoriaModel": "    public function __construct(?mysqli $connection = null)\n    {\n        $this->connection = $connection ?? (new Database())->connect();\n    }",
+  "AgendaComentarioRepository": "    public function __construct($db = null)\n    {\n        $this->db = $db ?: (new Database())->connect();\n    }",
+  "AgendaComentarioService": "    public function __construct($repo = null, ?DateTimeImmutable $reloj = null)\n    {\n        $this->repo = $repo ?: new AgendaComentarioRepository();\n        $this->reloj = $reloj;\n    }",
+  "TelefoniaNotificacionService": "    public function __construct(?mysqli $db=null){\n        $this->db=$db??(new Database())->connect();\n        $this->db->query(\"CREATE TABLE IF NOT EXISTS telefonia_notificaciones (\n            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,usuario_id INT NOT NULL,\n            extension VARCHAR(12) NOT NULL,llave VARCHAR(150) NOT NULL,numero VARCHAR(40) NOT NULL,\n            titulo VARCHAR(160) NOT NULL,mensaje VARCHAR(300) NOT NULL,created_at DATETIME NOT NULL,\n            leida TINYINT NOT NULL DEFAULT 0,UNIQUE KEY uk_tel_aviso(usuario_id,extension,llave),\n            KEY idx_tel_aviso(usuario_id,extension,leida)\n        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4\");\n    }",
+  "AliadoConvocatoriaPendienteService": "    public function __construct(mysqli $db)\n    {\n        $this->db = $db;\n    }"
+}
