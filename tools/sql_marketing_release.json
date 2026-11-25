@@ -1,0 +1,69 @@
+{
+  "release": "sql-marketing-v1",
+  "files": [
+    {
+      "path": "app/services/TelefoniaTransferenciaOperacionService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "        $bound=$this->obtener($user,(int)$r['id']);return ($bound['sdk_consulta']??null)===$sdk?$bound:null;\n    }\n    private function actualizar(array $r): array {\n        $this->db->begin_transaction();\n        try{\n        // Los sondeos no pueden sobrescribir una entrega confirmada en otra petición.\n        $r=$this->fila('SELECT * FROM telefonia_transferencia_operaciones WHERE id=? FOR UPDATE',[$r['id']])??$r;\n        $s=$this->db->prepare('SELECT evento,internal,disposition,duration,received_at,payload_json FROM telefonia_zadarma_eventos WHERE pbx_call_id=? AND id>? ORDER BY id');\n        $s->bind_param('si',$r['referencia'],$r['evento_desde']);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();\n        $patch=[];$globalEnd=false;\n        foreach($events as $e){\n",
+          "after": "        $bound=$this->obtener($user,(int)$r['id']);return ($bound['sdk_consulta']??null)===$sdk?$bound:null;\n    }\n    private function evaluarEventos(array $r,array $events): array {\n        $patch=[];$globalEnd=false;\n        foreach($events as $e){\n"
+        },
+        {
+          "before": "            elseif($ringing&&$r['estado']==='SOLICITADA')$patch=['estado'=>'TIMBRANDO'];\n        }\n        if($patch){$this->guardar((int)$r['id'],$patch);$r=array_merge($r,$patch);}\n        $r['llamada_finalizada']=$globalEnd;\n",
+          "after": "            elseif($ringing&&$r['estado']==='SOLICITADA')$patch=['estado'=>'TIMBRANDO'];\n        }\n        return [$patch,$globalEnd];\n    }\n    private function actualizar(array $r): array {\n        $this->db->begin_transaction();\n        try{\n        // Los sondeos no pueden sobrescribir una entrega confirmada en otra petición.\n        $r=$this->fila('SELECT * FROM telefonia_transferencia_operaciones WHERE id=? FOR UPDATE',[$r['id']])??$r;\n        $s=$this->db->prepare('SELECT evento,internal,disposition,duration,received_at,payload_json FROM telefonia_zadarma_eventos WHERE pbx_call_id=? AND id>? ORDER BY id');\n        $s->bind_param('si',$r['referencia'],$r['evento_desde']);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();\n        [$patch,$globalEnd]=$this->evaluarEventos($r,$events);\n        if($patch){$this->guardar((int)$r['id'],$patch);$r=array_merge($r,$patch);}\n        $r['llamada_finalizada']=$globalEnd;\n"
+        },
+        {
+          "before": "        return array_map(fn($r)=>$this->actualizar($r),$rows);\n    }\n    public function tramoDestino(int $user,string $ref,array $call): array {\n        $r=$this->fila('SELECT numero,entregada_at FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND referencia=? AND entregada_at IS NOT NULL',[$user,$ref]);\n",
+          "after": "        return array_map(fn($r)=>$this->actualizar($r),$rows);\n    }\n    /** Lectura agrupada sólo para la campana; los cambios reales conservan el bloqueo de fila. */\n    public function delUsuarioParaAvisos(int $user): array {\n        $s=$this->db->prepare('SELECT * FROM telefonia_transferencia_operaciones WHERE (origen_usuario=? OR destino_usuario=?) AND created_at>=? ORDER BY id DESC LIMIT 100');\n        $since=gmdate('Y-m-d H:i:s',time()-30*86400);$s->bind_param('iis',$user,$user,$since);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();\n        if(!$rows)return [];\n        $desde=[];\n        foreach($rows as $row){$ref=(string)$row['referencia'];$desde[$ref]=isset($desde[$ref])?min($desde[$ref],(int)$row['evento_desde']):(int)$row['evento_desde'];}\n        $conditions=[];$args=[];\n        foreach($desde as $ref=>$id){$conditions[]='(pbx_call_id=? AND id>?)';$args[]=(string)$ref;$args[]=$id;}\n        $s=$this->db->prepare('SELECT pbx_call_id,id,evento,internal,disposition,duration,received_at,payload_json FROM telefonia_zadarma_eventos WHERE '.implode(' OR ',$conditions).' ORDER BY id');\n        $s->bind_param(str_repeat('si',count($desde)),...$args);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();\n        $porReferencia=[];\n        foreach($events as $event)$porReferencia[strtolower((string)$event['pbx_call_id'])][]=$event;\n        $result=[];\n        foreach($rows as $row){\n            $events=array_values(array_filter($porReferencia[strtolower((string)$row['referencia'])]??[],static fn($e)=>(int)$e['id']>(int)$row['evento_desde']));\n            [$patch,$globalEnd]=$this->evaluarEventos($row,$events);\n            $changed=false;foreach($patch as $key=>$value)if(($row[$key]??null)!==$value){$changed=true;break;}\n            if($changed)$row=$this->actualizar($row);\n            else $row['llamada_finalizada']=$globalEnd;\n            $result[]=$row;\n        }\n        return $result;\n    }\n    public function tramoDestino(int $user,string $ref,array $call): array {\n        $r=$this->fila('SELECT numero,entregada_at FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND referencia=? AND entregada_at IS NOT NULL',[$user,$ref]);\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaRecepcionMarketingService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "{\n    private $db;\n\n    public function __construct(?mysqli $connection=null)\n",
+          "after": "{\n    private $db;\n    private ?array $operacionesAvisos = null;\n\n    public function __construct(?mysqli $connection=null)\n"
+        },
+        {
+          "before": "    }\n\n    public function resumen(int $usuarioId): array\n    {\n",
+          "after": "    }\n\n    /** Reutiliza el lote de la misma petición, sin caché de permisos ni de llamadas entre peticiones. */\n    public function resumenParaAvisos(int $usuarioId,array $operaciones): array\n    {\n        $anterior=$this->operacionesAvisos;$this->operacionesAvisos=$operaciones;\n        try{return $this->resumen($usuarioId);}finally{$this->operacionesAvisos=$anterior;}\n    }\n\n    public function resumen(int $usuarioId): array\n    {\n"
+        },
+        {
+          "before": "\n        $llamadas = self::agruparEventos($eventos, $ext, $permitirSalientes === 1);\n        $operaciones=$this->operacionesDelUsuario($usuarioId);\n        foreach($operaciones as $op)foreach($llamadas as &$fila){\n            if((int)$op['origen_usuario']!==$usuarioId || $fila['pbx_call_id']!==$op['referencia'])continue;\n",
+          "after": "\n        $llamadas = self::agruparEventos($eventos, $ext, $permitirSalientes === 1);\n        $operaciones=$this->operacionesAvisos ?? $this->operacionesDelUsuario($usuarioId);\n        foreach($operaciones as $op)foreach($llamadas as &$fila){\n            if((int)$op['origen_usuario']!==$usuarioId || $fila['pbx_call_id']!==$op['referencia'])continue;\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaNotificacionService.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    public function sincronizar(int $user,bool $recepcion): void {\n        $this->operativasActuales=[];\n        if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';(new TelefoniaNotificacionVentasService($this->db))->pendientes($user);return;}\n        $ext=$this->extension($user);if($ext==='')return;\n",
+          "after": "    public function sincronizar(int $user,bool $recepcion): void {\n        $this->operativasActuales=[];\n        $operacionesAvisos=null;\n        if($this->esVentas($user)){require_once __DIR__.'/TelefoniaNotificacionVentasService.php';(new TelefoniaNotificacionVentasService($this->db))->pendientes($user);return;}\n        $ext=$this->extension($user);if($ext==='')return;\n"
+        },
+        {
+          "before": "        $s->bind_param('is',$user,$ext);$s->execute();$s->close();\n        try{\n        $history=$recepcion?(new TelefoniaRecepcionMarketingService($this->db))->resumen($user):(new TelefoniaEntrantesAnalistaService($this->db))->listar($user);\n        foreach($history['llamadas'] as $c){\n            if(($c['fuente']??'')==='OPERACION')continue; // Tiene su aviso exacto por intento debajo.\n",
+          "after": "        $s->bind_param('is',$user,$ext);$s->execute();$s->close();\n        try{\n        if($recepcion){\n            $operacionesAvisos=(new TelefoniaTransferenciaOperacionService($this->db))->delUsuarioParaAvisos($user);\n            $history=(new TelefoniaRecepcionMarketingService($this->db))->resumenParaAvisos($user,$operacionesAvisos);\n        }else $history=(new TelefoniaEntrantesAnalistaService($this->db))->listar($user);\n        foreach($history['llamadas'] as $c){\n            if(($c['fuente']??'')==='OPERACION')continue; // Tiene su aviso exacto por intento debajo.\n"
+        },
+        {
+          "before": "        }catch(Throwable $e){error_log('[campana_historial_llamadas] '.get_class($e));}\n        try{\n        foreach((new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($user) as $op){\n            if (TelefoniaLimpiezaGuard::bloqueada($this->db,$op['referencia'],$ext)) continue;\n            $direct=$op['modo']==='DIRECTA';$source=(int)$op['origen_usuario']===$user;\n            if($direct){\n",
+          "after": "        }catch(Throwable $e){error_log('[campana_historial_llamadas] '.get_class($e));}\n        try{\n        $operaciones=$recepcion?($operacionesAvisos ?? (new TelefoniaTransferenciaOperacionService($this->db))->delUsuarioParaAvisos($user)):(new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($user);\n        $bloqueadas=$recepcion?TelefoniaLimpiezaGuard::referenciasBloqueadas($this->db,array_column($operaciones,'referencia'),$ext):[];\n        foreach($operaciones as $op){\n            if ($recepcion ? isset($bloqueadas[(string)$op['referencia']]) : TelefoniaLimpiezaGuard::bloqueada($this->db,$op['referencia'],$ext)) continue;\n            $direct=$op['modo']==='DIRECTA';$source=(int)$op['origen_usuario']===$user;\n            if($direct){\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaLimpiezaGuard.php",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    }\n\n    public static function condicion(mysqli $db,string $ref,string $ext): string\n    {\n",
+          "after": "    }\n\n    /** Mismas exclusiones exactas, consultadas una vez para el lote de avisos. */\n    public static function referenciasBloqueadas(mysqli $db,array $refs,string $ext): array\n    {\n        $refs=array_values(array_unique(array_map('strval',$refs)));\n        if(!$refs || !self::existe($db))return [];\n        $where=implode(' OR ',array_fill(0,count($refs),'pbx_call_id=BINARY ?'));\n        $s=$db->prepare(\"SELECT pbx_call_id FROM telefonia_crm_exclusiones WHERE ($where) AND (extension='' OR extension=BINARY ?)\");\n        $args=array_merge($refs,[$ext]);$s->bind_param(str_repeat('s',count($args)),...$args);$s->execute();$result=[];\n        foreach($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row)$result[(string)$row['pbx_call_id']]=true;\n        $s->close();return $result;\n    }\n\n    public static function condicion(mysqli $db,string $ref,string $ext): string\n    {\n"
+        }
+      ]
+    }
+  ]
+}
