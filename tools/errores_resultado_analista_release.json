@@ -1,0 +1,15 @@
+{
+  "release": "errores-resultado-analista-v1",
+  "files": [
+    {
+      "path": "public/javascript/seguimiento_entrantes_analista.js",
+      "new_file": false,
+      "hunks": [
+        {
+          "before": "    modalEl.addEventListener('shown.bs.modal',()=>{if(interrupted){modal.hide();return;}modalEl.querySelector('.modal-body').scrollTop=0;decision.focus({preventScroll:true});});\n\n    const showError = message => window.IMPE_TELEPHONY_NOTIFY?.(String(message || 'No fue posible guardar la llamada.'),true);\n    const clearError = () => {\n        errorBox.textContent = '';\n",
+          "after": "    modalEl.addEventListener('shown.bs.modal',()=>{if(interrupted){modal.hide();return;}modalEl.querySelector('.modal-body').scrollTop=0;decision.focus({preventScroll:true});});\n\n    // Los errores deben permanecer dentro del formulario, incluso sin el toast del shell.\n    const showError = message => {\n        const text = String(message || 'No fue posible guardar la llamada.');\n        errorBox.textContent = text;\n        errorBox.classList.remove('d-none', 'mt-3');\n        errorBox.classList.add('mb-3');\n        errorBox.tabIndex = -1;\n        form.querySelector('.modal-body').prepend(errorBox);\n        errorBox.focus({preventScroll:true});\n        form.querySelector('.modal-body').scrollTop = 0;\n        window.IMPE_TELEPHONY_NOTIFY?.(text,true);\n    };\n    // La validación nativa puede cancelar el envío antes de disparar submit.\n    form.addEventListener('invalid', event => {\n        event.preventDefault();\n        const input = event.target;\n        if (Array.from(form.elements).find(el => el.willValidate && !el.validity.valid) !== input) return;\n        const label = (input.labels?.[0]?.textContent || input.name || 'el campo indicado').replace(/\\s+/g,' ').trim();\n        showError('Revisa «'+label+'»: '+(input.validationMessage || 'Completa este dato antes de guardar.'));\n    },true);\n    const clearError = () => {\n        errorBox.textContent = '';\n"
+        }
+      ]
+    }
+  ]
+}

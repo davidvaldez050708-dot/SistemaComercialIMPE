@@ -11,6 +11,11 @@
     if (!page || !form || !modalEl || !window.bootstrap) return;
 
     const callbackMode=page.dataset.resultMode==='DEVOLUCION';
+    const outgoingMode=page.dataset.outgoingResult==='1';
+    const addressParams=new URLSearchParams(location.search);
+    const preparingResult=outgoingMode && addressParams.get('impe_prepare_result')==='1' && window.parent!==window;
+    let outgoingReady=!preparingResult, preparedToken=addressParams.get('impe_prepare_token')||'', readyRef='', readyBusy=false;
+    let readyTimer=null;
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     const decision = form.querySelector('[data-incoming-decision]');
     const existing = form.querySelector('[data-incoming-existing]');
@@ -20,6 +25,14 @@
     const lookup = form.querySelector('[data-incoming-lookup]');
     const followup = form.querySelector('[data-incoming-followup]');
     const submit = form.querySelector('[data-incoming-submit]');
+    if(outgoingMode){
+        modalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(button=>{button.hidden=true;button.style.display='none';});
+    }
+    const confirmationStatus=document.createElement('p');
+    confirmationStatus.setAttribute('role','status');confirmationStatus.hidden=!preparingResult;
+    confirmationStatus.style.cssText='margin:0 0 18px;padding:12px 16px;border:1px solid #dce5f2;border-radius:12px;background:#f4f7fc;color:#526889;font-size:13px;line-height:1.5';
+    confirmationStatus.textContent='Puedes capturar el resultado. Estamos confirmando el cierre de esta llamada.';
+    if(preparingResult){form.querySelector('.modal-body').prepend(confirmationStatus);submit.disabled=true;}
     const resultInput = form.querySelector('[name="resultado"]');
     const evidence = form.querySelector('[data-incoming-evidence]');
     const sdkNotice = form.querySelector('[data-incoming-sdk-notice]');
@@ -30,6 +43,7 @@
         window.IMPE_CURRENT_USER_ID || 0);
     const municipality=form.querySelector('[data-incoming-municipality]');
     const stateInput=form.elements.namedItem('estado_id');
+    let territoryCatalogReady=Boolean(stateInput&&stateInput.options.length>1);
     const municipalityStatus=form.querySelector('[data-municipality-status]');
     let municipalitySequence=0;
     const loadMunicipalities=async(preferred='')=>{
@@ -89,10 +103,24 @@
         document.body.classList.add('impe-call-result-form-open');
         try { window.parent.IMPE_TELEPHONY_SHELL?.beginCallResult?.(resultModalToken,callRefs); } catch (_) {}
     });
+    modalEl.addEventListener('hide.bs.modal',event=>{
+        if(outgoingMode && !closingAfterSave && !interrupted){
+            event.preventDefault();
+            window.IMPE_TELEPHONY_NOTIFY?.('Guarda el resultado de esta llamada antes de cerrar el formulario.',true);
+        }
+    });
+    document.addEventListener('click',event=>{
+        if(!outgoingMode || closingAfterSave || !modalEl.classList.contains('show'))return;
+        const link=event.target.closest?.('a[href]');
+        if(!link || link.hasAttribute('download') || link.target==='_blank' || event.ctrlKey || event.metaKey || link.getAttribute('href').startsWith('#'))return;
+        event.preventDefault();event.stopImmediatePropagation();
+        window.IMPE_TELEPHONY_NOTIFY?.('Guarda el resultado de esta llamada antes de cambiar de módulo.',true);
+    },true);
     modalEl.addEventListener('hidden.bs.modal',releasePhone);
     window.addEventListener('pagehide',releasePhone);
     window.addEventListener('message',event=>{
         if(event.origin!==location.origin || event.source!==window.parent || event.data?.type!=='IMPE_CALL_RESULT_INTERRUPT')return;
+        if(outgoingMode && !window.parent.IMPE_TELEPHONY_SHELL?.getCallState?.()?.active)return;
         if(modalEl.classList.contains('show')){interrupted=true;modal.hide();}
     });
     const drafts=window.IMPE_CALL_DRAFTS;
@@ -103,6 +131,7 @@
     const writeDraft=async()=>{
         if(!drafts||!callRefs.length||isSubmitting)return;
         const cycle=modalCycle,values=draftValues(),ids=[...callRefs];
+        if(!outgoingReady){drafts.localSave(userId,ids,values);return;}
         try {await drafts.save(userId,ids,values,csrf());if(cycle===modalCycle){draftStatus.hidden=false;draftStatus.textContent='Borrador guardado.';}}
         catch(_){if(cycle===modalCycle){draftStatus.hidden=false;draftStatus.textContent='Borrador conservado en este navegador; pendiente de guardar en el servidor.';}}
     };
@@ -116,7 +145,26 @@
     modalEl.addEventListener('hidden.bs.modal',()=>{++modalCycle;++searchSequence;clearTimeout(searchTimer);clearTimeout(draftTimer);if(callbackMode&&closingAfterSave)isSubmitting=false;closingAfterSave=false;interrupted=false;if(callbackMode&&!isSubmitting){form.querySelectorAll('input,select,textarea,button').forEach(e=>e.disabled=false);modalEl.querySelectorAll('[data-bs-dismiss]').forEach(e=>e.disabled=false);submit.innerHTML='<i class="bi bi-check2-circle"></i> Guardar resultado';}resultTrigger?.isConnected&&resultTrigger.focus({preventScroll:true});});
     modalEl.addEventListener('shown.bs.modal',()=>{if(interrupted){modal.hide();return;}modalEl.querySelector('.modal-body').scrollTop=0;decision.focus({preventScroll:true});});
 
-    const showError = message => window.IMPE_TELEPHONY_NOTIFY?.(String(message || 'No fue posible guardar la llamada.'),true);
+    // Los errores deben permanecer dentro del formulario, incluso sin el toast del shell.
+    const showError = message => {
+        const text = String(message || 'No fue posible guardar la llamada.');
+        errorBox.textContent = text;
+        errorBox.classList.remove('d-none', 'mt-3');
+        errorBox.classList.add('mb-3');
+        errorBox.tabIndex = -1;
+        form.querySelector('.modal-body').prepend(errorBox);
+        errorBox.focus({preventScroll:true});
+        form.querySelector('.modal-body').scrollTop = 0;
+        window.IMPE_TELEPHONY_NOTIFY?.(text,true);
+    };
+    // La validación nativa puede cancelar el envío antes de disparar submit.
+    form.addEventListener('invalid', event => {
+        event.preventDefault();
+        const input = event.target;
+        if (Array.from(form.elements).find(el => el.willValidate && !el.validity.valid) !== input) return;
+        const label = (input.labels?.[0]?.textContent || input.name || 'el campo indicado').replace(/\s+/g,' ').trim();
+        showError('Revisa «'+label+'»: '+(input.validationMessage || 'Completa este dato antes de guardar.'));
+    },true);
     const clearError = () => {
         errorBox.textContent = '';
         errorBox.classList.add('d-none');
@@ -319,6 +367,7 @@
             }
             if(values.telefono && !form.elements.nuevo_telefono_contacto.value)form.elements.nuevo_telefono_contacto.value=values.telefono;
             if(values.correo && !form.elements.nuevo_correo_contacto.value)form.elements.nuevo_correo_contacto.value=values.correo;
+            if(preparingResult&&outgoingReady&&!hasAnswer)decision.value='sin_identificar';
             renderDecision();void loadMunicipalities(values.municipio_id||'');draftStatus.hidden=false;draftStatus.textContent='Borrador recuperado. Revisa el contacto: al guardar se actualizará la ficha del expediente seleccionado.';
         };
         void restore();
@@ -451,26 +500,35 @@
         }
         const error = panel.querySelector('[data-incoming-pbx-error]');
         const host = panel.querySelector('[data-incoming-pbx-audios]');
+        const heading=panel.querySelector('.linkage-call-inline-player-heading span');
+        heading.textContent='Verificando grabación…';error.hidden=true;host.replaceChildren();panel.hidden=false;
         const pbx = button.dataset.pbxId || '';
-        const url = new URL('prueba_telefonia/api/grabacion_transferida_pbx.php', document.baseURI);
+        const salidaInstitucion=button.dataset.pbxSalidaInstitucion==='1';
+        const url = new URL(salidaInstitucion
+            ? 'prueba_telefonia/api/grabacion_transferida_institucion.php'
+            : 'prueba_telefonia/api/grabacion_transferida_pbx.php', document.baseURI);
         url.searchParams.set('pbx_call_id', pbx);
+        if(salidaInstitucion)url.searchParams.set('seguimiento_id',button.dataset.seguimientoId||'0');
         url.searchParams.set('verificar', '1');
         button.disabled = true;
         try {
             const response = await fetch(url.toString(), {credentials:'same-origin', cache:'no-store'});
-            if (!response.ok) throw new Error('No se pudo verificar la llamada.');
-            const info = await response.json();
+            const info = await response.json().catch(()=>({}));
+            const message=window.IMPE_TELEPHONY_SEGMENTS.message(info,response.status);
+            if (!response.ok) throw new Error(message);
             if (!info.ok || !info.disponible || !(info.segmentos > 0)) {
-                throw new Error('Zadarma todavía no entrega todos los segmentos.');
+                throw new Error(message);
             }
             if (!window.IMPE_TELEPHONY_SEGMENTS?.create(
-                host, url.toString(), info.segmentos)) {
+                host, url.toString(), info.segmentos,info.segmentos_info||[])) {
                 throw new Error('No fue posible preparar el reproductor.');
             }
             error.hidden = true;
+            heading.textContent=message;
             panel.hidden = false;
             button.setAttribute('aria-expanded', 'true');
         } catch (e) {
+            heading.textContent='Consulta de grabación';
             error.textContent = e.message || 'Grabación no disponible.';
             error.hidden = false;
             panel.hidden = false;
@@ -562,14 +620,15 @@
     form.addEventListener('submit', async event => {
         event.preventDefault();
         if (isSubmitting) return;
-        clearError();
-        if (!form.reportValidity()) return;
+        if(!outgoingReady){showError('Puedes seguir capturando. El guardado se habilitará al confirmar esta llamada.');return;}
         const confirmaTelefono=form.elements.verificacion_telefono_confirmado.checked;
         const confirmaCorreo=form.elements.verificacion_correo_confirmado.checked;
         const confirmaContacto=form.elements.verificacion_contacto_confirmado.checked;
         if ((resultInput.value==='CONTACTO_CORRECTO'||confirmaTelefono||confirmaCorreo||confirmaContacto) && !(confirmaTelefono&&confirmaCorreo)) {
             showError('Debes confirmar teléfono y correo durante esta misma llamada.');return;
         }
+        clearError();
+        if (!form.reportValidity()) return;
         if(resultInput.value==='CONTACTO_REFERIDO' && !Array.from(referred.querySelectorAll('input')).some(e=>e.type!=='hidden' && e.name!=='nombre_entidad_actualizado' && e.value.trim())) {showError('Captura algún dato de la persona o área referida.');return;}
         clearTimeout(draftTimer);
         const requestBody=new FormData(form);
@@ -593,22 +652,30 @@
             }
             closingAfterSave=true;
             ++modalCycle;
+            const result=data.resultado||{};
+            const message=result.verificacion_confirmada ? 'Atención guardada con verificación efectiva. Máximo una institución por día.' :
+                result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : 'Resultado de llamada registrado correctamente.';
             for(const id of callRefs) {
                 try {
                     for(const prefix of ['call-draft','call-summary','transfer-context']) {
                         sessionStorage.removeItem('impe:crm:'+prefix+':'+userId+':'+id);
                     }
                 }catch(_){}
-                if(!callbackMode&&window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_RESULT_SAVED',callId:id},window.location.origin);
+                if(!callbackMode&&window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_RESULT_SAVED',callId:id,message},window.location.origin);
             }
             void drafts?.remove(userId,callRefs,requestBody.get('csrf_token')).catch(()=>{});
             if(callbackMode){
                 modalEl.dispatchEvent(new CustomEvent('impe:callback-result-saved',{detail:data.intento}));
                 modal.hide();return;
             }
-            const result=data.resultado||{};
-            const message=result.verificacion_confirmada ? 'Atención guardada con verificación efectiva. Máximo una institución por día.' :
-                result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : 'Atención guardada.';
+            // Al abrirse desde el auricular o una transferencia, el
+            // formulario está en una capa propia del shell: no sustituir
+            // ni redirigir el iframe donde el Analista estaba trabajando.
+            if (new URLSearchParams(location.search).get('impe_result_overlay') === '1' &&
+                window.parent !== window) {
+                modal.hide();
+                return;
+            }
             try {sessionStorage.setItem('impe:call-result-flash',message);}catch(_){}
             const linked=Number(result.seguimiento_id||0);
             const isUnifiedIncoming=new URLSearchParams(location.search).get('action')==='misLlamadas'
@@ -619,6 +686,7 @@
             modalEl.addEventListener('hidden.bs.modal',()=>window.location.assign(new URL(target,window.location.href).toString()),{once:true});
             modal.hide();
         } catch (error) {
+            if(outgoingMode && window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_OUTGOING_SAVE_UNCERTAIN',callId:form.querySelector('[data-incoming-pbx]').value},window.location.origin);
             showError(error.message || 'No fue posible guardar. Intenta nuevamente.');
         } finally {
             if (!closingAfterSave) {
@@ -662,7 +730,70 @@
             page.querySelector('.linkage-incoming-heading')?.after(info);
         }
     }
-    const focusId = String(page.dataset.autoCall || '').trim();
+    const confirmOutgoing=async()=>{
+        if(!preparingResult||outgoingReady||readyBusy||!readyRef||closingAfterSave)return;
+        readyBusy=true;
+        try{
+            const requestedRef=readyRef;
+            const url=new URL('index.php',document.baseURI);
+            url.searchParams.set('controller','seguimientoVinculacion');url.searchParams.set('action','estadoResultadoSaliente');url.searchParams.set('pbx_call_id',requestedRef);
+            const response=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+            const data=await response.json(),call=data.llamada;
+            if(!response.ok||!data.ok||requestedRef!==readyRef||call?.pbx_call_id!==requestedRef||!['ended','transferred'].includes(call.estado_pbx))throw new Error('pendiente');
+            if(['VINCULADA','SIN_IDENTIFICAR'].includes(call.clasificacion)){
+                window.parent.postMessage({type:'IMPE_ANALYST_RESULT_SAVED',callId:readyRef,message:'El resultado de esta llamada ya está guardado.'},location.origin);return;
+            }
+            if(!territoryCatalogReady){
+                // Si la referencia no existía al abrir, el GET inicial pudo
+                // no incluir territorios. Recuperarlos del mismo formulario
+                // autorizado, sin recargar ni reconstruir la captura.
+                const viewUrl=new URL(location.href);viewUrl.searchParams.delete('impe_prepare_result');
+                viewUrl.searchParams.set('saliente_ref',requestedRef);viewUrl.searchParams.set('pbx_call_id',requestedRef);
+                const viewResponse=await fetch(viewUrl,{credentials:'same-origin',cache:'no-store'});
+                const doc=new DOMParser().parseFromString(await viewResponse.text(),'text/html');
+                const catalog=doc.querySelector('[data-incoming-form] select[name="estado_id"]');
+                if(!viewResponse.ok||!catalog||requestedRef!==readyRef)throw new Error('catalogo');
+                const selected=stateInput.value;
+                stateInput.replaceChildren(...Array.from(catalog.options,option=>new Option(option.textContent,option.value)));
+                if(Array.from(stateInput.options).some(option=>option.value===selected))stateInput.value=selected;
+                territoryCatalogReady=true;
+            }
+            form.querySelector('[data-incoming-pbx]').value=readyRef;
+            callRefs=[...new Set([readyRef,preparedToken,...callRefs].filter(Boolean))];
+            form.querySelector('[data-incoming-number]').textContent=String(call.numero||'Número privado');
+            const seconds=Math.max(0,Math.floor(Number(call.duracion)||0));
+            form.querySelector('[data-incoming-duration]').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
+            hasAnswer=Boolean(call.contestada);
+            for(const option of decision.options)if(option.value!=='sin_identificar')option.disabled=!hasAnswer;
+            if(!hasAnswer)decision.value='sin_identificar';
+            modalEl.querySelector('[data-incoming-modal-description]').textContent=hasAnswer
+                ? 'Vincula la conversación a un expediente y registra su resultado.'
+                : 'Llamada sin conversación confirmada: registra el resultado del intento.';
+            outgoingReady=true;confirmationStatus.hidden=true;submit.disabled=false;renderDecision();
+            drafts?.localSave(userId,callRefs,draftValues());
+        }catch(_){
+            confirmationStatus.textContent='La confirmación sigue pendiente. Tu captura se conserva y el guardado se habilitará automáticamente.';
+            readyTimer=setTimeout(confirmOutgoing,1800);
+        }finally{readyBusy=false;}
+    };
+    window.addEventListener('message',event=>{
+        if(!preparingResult||event.origin!==location.origin||event.source!==window.parent||event.data?.token!==preparedToken)return;
+        if(event.data.type==='IMPE_ANALYST_OUTGOING_PREPARE'&&!outgoingReady){
+            form.querySelector('[data-incoming-number]').textContent=String(event.data.number||'Llamada saliente');
+            const observed=Number(event.data.duration);
+            if(Number.isFinite(observed)&&observed>=0){const seconds=Math.floor(observed);form.querySelector('[data-incoming-duration]').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');}
+        }else if(event.data.type==='IMPE_ANALYST_OUTGOING_READY'&&/^[a-zA-Z0-9_-]{6,100}$/.test(String(event.data.ref||''))){
+            readyRef=String(event.data.ref);clearTimeout(readyTimer);void confirmOutgoing();
+        }
+    });
+    if(preparingResult){
+        const provisional=document.createElement('button');
+        provisional.dataset.callId=addressParams.get('saliente_ref')||preparedToken;
+        provisional.dataset.answer='1';provisional.dataset.source='PBX';provisional.dataset.phone='Llamada saliente';
+        openRegistration(provisional);
+        submit.disabled=true;
+    }
+    const focusId = preparingResult?'':String(page.dataset.autoCall || '').trim();
     if (focusId) {
         // Tras una transferencia el enlace puede usar el ID WebRTC o PBX.
         // Ambas referencias identifican la misma tarjeta consolidada.
