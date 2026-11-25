@@ -1,0 +1,48 @@
+{
+  "domain": "fundacionrededumex.org",
+  "php_hash_basis": "Connector text plus final LF when required by API byte size; mandatory raw-file preflight on server.",
+  "files": [
+    {
+      "path": "app/services/VerificacionInstitucionalService.php",
+      "before_sha256": "206c3af939a1e28af8f33614edf1d5db4d8330e2a4433075ce0601c3d6917d65",
+      "after_sha256": "c106b4a4e19749c10c4588eedbff169fc49b6a26f2b0dd3e6b01b43784687575",
+      "before_bytes": 5648,
+      "after_bytes": 6589
+    },
+    {
+      "path": "public/javascript/seguimiento_interacciones.js",
+      "before_sha256": "5cb31956bc4c00aa36daf17061063fcbc4a53c2835e9f49f558cb1ee8ac415dc",
+      "after_sha256": "28cd3a597b471a79da57b5b7c777260395f5f23b96f8de7a70e9f570172f35da",
+      "before_bytes": 42183,
+      "after_bytes": 42221
+    },
+    {
+      "path": "app/services/InteraccionRutaService.php",
+      "before_sha256": "e0e31f9899e1ff25e6fc798233537cbde931fd76dcd7855f7e6cfebd0f95f568",
+      "after_sha256": "3efcc2f3f946ad5d6bba28bac4f87e7449f6953e08e75f4fb2e8a34ec5f40bd1",
+      "before_bytes": 22152,
+      "after_bytes": 22200
+    },
+    {
+      "path": "app/services/TelefoniaEntrantesAnalistaService.php",
+      "before_sha256": "e6cfb0871c2c73630d844d00c2e50bea2a63e0ebbf355cc48589bf0e364f811d",
+      "after_sha256": "e196f77aeaabb13f1593329a4fef2bab3ab3a841ef554da272c051a65c3c1377",
+      "before_bytes": 53338,
+      "after_bytes": 54090
+    },
+    {
+      "path": "app/controllers/SeguimientoVinculacionController.php",
+      "before_sha256": "ccb79e8d450ae4fa865b15b3600e4011845c3a5ab9de6b081c0df9bb64798921",
+      "after_sha256": "4ee15c9f829d847387be2e7bf03cdc422eaeeed1bb021a7889c262ef64aa306b",
+      "before_bytes": 137876,
+      "after_bytes": 138051
+    },
+    {
+      "path": "public/javascript/seguimiento_entrantes_analista.js",
+      "before_sha256": "2d0652ff6ae15ed29db50f7f5734e6ac40c373d92f14b3893edf0f1d88285494",
+      "after_sha256": "87e306fee273f78a13d8d6c2361b2cef4e7470f84d83a06c03fbe83e6215308d",
+      "before_bytes": 53521,
+      "after_bytes": 56783
+    }
+  ]
+}

@@ -1,10 +1,13 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 require_once __DIR__ . '/TelefoniaAnalistaWebrtcService.php';
 require_once __DIR__ . '/TelefoniaInternaGrabacionService.php';
 require_once __DIR__ . '/VerificacionInstitucionalService.php';
+require_once __DIR__ . '/TelefoniaSalienteAnalistaEstado.php';
+require_once __DIR__ . '/ZadarmaCallLookupService.php';
 require_once __DIR__ . '/TelefoniaVerificacionEvidenciaService.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 
@@ -51,7 +54,9 @@ class TelefoniaEntrantesAnalistaService
     private function extensionActual(int $usuarioId): array
     {
         $stmt = $this->db->prepare(
-            "SELECT te.extension, GREATEST(te.created_at, te.updated_at) AS desde
+            "SELECT te.extension, te.permite_salientes, GREATEST(te.created_at, te.updated_at) AS desde,
+                    EXISTS(SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id=rp.permiso_id
+                           WHERE rp.rol_id=u.rol_id AND p.codigo='telefonia.salientes' AND p.estado=1) AS permiso_salientes
              FROM telefonia_extensiones te
              INNER JOIN usuarios u ON u.id = te.usuario_id AND u.estado = 1
              WHERE te.usuario_id = ? AND te.proveedor = 'ZADARMA'
@@ -64,16 +69,50 @@ class TelefoniaEntrantesAnalistaService
         if (!$fila || !preg_match('/^[0-9]{3,6}$/', (string)$fila['extension'])) {
             throw new DomainException('Asigna y activa una extensión de llamadas entrantes al Analista.');
         }
+        // Normalizar una sola vez antes de filtrar historial y confirmar cierres.
+        require_once __DIR__ . '/../helpers/TelefoniaAsignacionFechaHelper.php';
+        $fila['desde'] = TelefoniaAsignacionFechaHelper::aMexico((string)$fila['desde']);
         return $fila;
     }
 
-    private function inicioVerificado(int $usuarioId, string $pbxCallId): array
+    private function inicioVerificado(int $usuarioId, string $pbxCallId, bool $permitirRegistrada = false): array
     {
         if ($usuarioId <= 0 || !preg_match('/^[a-zA-Z0-9_-]{3,100}$/', $pbxCallId)) {
             throw new InvalidArgumentException('Identificador de llamada no válido.');
         }
         $asignacion = $this->extensionActual($usuarioId);
         $ext = (string)$asignacion['extension'];
+        $saliente = TelefoniaSalienteAnalistaEstado::desdeEventos(
+            $this->eventos->obtenerPorPbxCallId($pbxCallId), $ext, $pbxCallId,
+            max(strtotime('-30 days'), strtotime((string)$asignacion['desde']) ?: 0)
+        );
+        // Si el webhook de fin no llegó, consultar las estadísticas PBX
+        // usando la referencia exacta de un inicio saliente ya firmado.
+        if ($saliente && ($saliente['estado'] ?? '') !== 'ended') {
+            try {
+                $estadistica = (new ZadarmaCallLookupService())->buscarPorPbxCallId($pbxCallId);
+                if ($estadistica) {
+                    $saliente = TelefoniaSalienteAnalistaEstado::desdeEstadistica(
+                        $saliente, $estadistica, $ext, $pbxCallId,
+                        max(strtotime('-30 days'), strtotime((string)$asignacion['desde']) ?: 0)
+                    );
+                }
+            } catch (Throwable $e) {
+                // La falta de la API nunca confirma artificialmente un cierre.
+                error_log('[saliente_analista_estadistica] '.get_class($e));
+            }
+        }
+        if ($saliente) {
+            if (empty($asignacion['permite_salientes']) || empty($asignacion['permiso_salientes'])) {
+                throw new DomainException('No tienes permiso para registrar llamadas salientes de esta extensión.');
+            }
+            $duplicada = $this->db->prepare("SELECT id AS interaccion_id, seguimiento_id FROM interacciones_vinculacion WHERE usuario_id=? AND proveedor_externo='ZADARMA' AND id_externo=? LIMIT 1");
+            $duplicada->bind_param('is', $usuarioId, $pbxCallId); $duplicada->execute();
+            $registrada = $duplicada->get_result()->fetch_assoc(); $duplicada->close();
+            if ($registrada && !$permitirRegistrada) throw new DomainException('Esta llamada ya tiene una interacción registrada. Consúltala desde el historial.');
+            $saliente['registro_previo'] = $registrada;
+            return $saliente;
+        }
         $stmt = $this->db->prepare(
             "SELECT received_at FROM telefonia_zadarma_eventos
              WHERE pbx_call_id = ? AND internal = ?
@@ -101,6 +140,30 @@ class TelefoniaEntrantesAnalistaService
         $llamada['extension'] = $ext;
         $llamada['fecha_evento'] = (string)$inicio['received_at'];
         return $llamada;
+    }
+
+    /** Abre exclusivamente la referencia seleccionada; no reclasifica el historial anterior. */
+    public function listarSaliente(int $usuarioId, string $referencia): array
+    {
+        $call = $this->inicioVerificado($usuarioId, $referencia, true);
+        if (($call['tipo_llamada'] ?? '') !== 'SALIENTE') throw new DomainException('La referencia no corresponde a una llamada saliente propia.');
+        $stmt = $this->db->prepare('SELECT estado, seguimiento_id, interaccion_id FROM telefonia_analista_entrantes WHERE usuario_id=? AND pbx_call_id=?');
+        $stmt->bind_param('is', $usuarioId, $referencia); $stmt->execute();
+        $registro = $stmt->get_result()->fetch_assoc() ?: []; $stmt->close();
+        if (!empty($call['registro_previo'])) $registro = array_merge($registro, $call['registro_previo'], ['estado'=>'VINCULADA']);
+        return ['extension'=>$call['extension'], 'llamadas'=>[[
+            'pbx_call_id'=>$referencia, 'numero'=>$call['caller_id'], 'transferida_desde'=>'',
+            'fuente'=>'PBX', 'tipo_llamada'=>'SALIENTE', 'fecha'=>$call['fecha_evento'],
+            'duracion'=>self::segundosAtendidos($call), 'estado_pbx'=>$call['estado'],
+            'contestada'=>$call['contestada'],
+            'pbx_conversacion_confirmada'=>$call['contestada'] && $call['estado']==='ended'
+                && empty($call['estadistica_solo']),
+            'cierre_estadistica'=>!empty($call['estadistica_solo']),
+            'clasificacion'=>$registro['estado'] ?? 'PENDIENTE',
+            'seguimiento_id'=>(int)($registro['seguimiento_id'] ?? 0),
+            'interaccion_id'=>(int)($registro['interaccion_id'] ?? 0),
+            'grabacion_pbx_reportada'=>false
+        ]]];
     }
 
     private static function segundosAtendidos(array $call): int
@@ -160,6 +223,23 @@ class TelefoniaEntrantesAnalistaService
 
         $llamadas = [];
         $operaciones=(new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($usuarioId);
+        // Sólo SALIENTES de Recepción transferidas a esta extensión para
+        // instituciones acreditadas: no depender del END del Analista.
+        require_once __DIR__.'/TelefoniaGrabacionesTransferenciaInstitucionService.php';
+        $grabacionesInstitucion=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
+        $audiosSalidaRecepcion=[];
+        foreach($operaciones as $op){
+            $ref=(string)($op['referencia']??'');
+            if((int)($op['destino_usuario']??0)!==$usuarioId ||
+               (string)($op['destino_extension']??'')!==$extension ||
+               (empty($op['entregada_at']) &&
+                !(($op['estado']??'')==='ENTREGADA'&&!empty($op['destino_atendida']))) ||
+               !preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$ref))continue;
+            try{
+                $v=$grabacionesInstitucion->verificar($ref,$usuarioId,$extension);
+                if($v['ids'])$audiosSalidaRecepcion[$ref]=true;
+            }catch(DomainException $ignored){ /* sin transferencia propia acreditada */ }
+        }
         $consultas=[];
         foreach($operaciones as $operacion)if((int)$operacion['destino_usuario']===$usuarioId && $operacion['modo']==='CONSULTADA')$consultas[$operacion['referencia']]=$operacion;
         $clasificadorInterno = new TelefoniaAnalistaWebrtcService($this->db);
@@ -186,13 +266,60 @@ class TelefoniaEntrantesAnalistaService
                 'clasificacion' => (string)($registro['estado'] ?? 'PENDIENTE'),
                 'seguimiento_id' => (int)($registro['seguimiento_id'] ?? 0),
                 'interaccion_id' => (int)($registro['interaccion_id'] ?? 0),
-                'grabacion_pbx_reportada' => !empty($call['answer_at']) &&
-                    in_array((string)($call['estado'] ?? ''), ['ended','transferred'], true) &&
-                    $this->eventos->buscarCallIdGrabacion($id) !== '',
+                'grabacion_institucion_transferida' => !empty($audiosSalidaRecepcion[$id]),
+                'grabacion_pbx_reportada' => !empty($audiosSalidaRecepcion[$id]) ||
+                    (!empty($call['answer_at']) &&
+                     in_array((string)($call['estado'] ?? ''), ['ended','transferred'], true) &&
+                     $this->eventos->buscarCallIdGrabacion($id) !== ''),
             ];
         }
         // Dos fuentes distintas: PBX firmada y observación de WebRTC local.
         // La segunda siempre se identifica como NO verificada por PBX.
+        // Las salientes del auricular también deben aparecer en la bandeja
+        // operativa. Sólo incorporar un NOTIFY_OUT_START firmado de esta
+        // extensión y posterior a su asignación; nunca buscar por teléfono.
+        $stmtSalientes = $this->db->prepare(
+            "SELECT pbx_call_id, MIN(received_at) AS fecha
+             FROM telefonia_zadarma_eventos
+             WHERE internal = ? AND evento = 'NOTIFY_OUT_START'
+               AND received_at >= ? AND pbx_call_id <> ''
+             GROUP BY pbx_call_id ORDER BY fecha DESC LIMIT 75"
+        );
+        $stmtSalientes->bind_param('ss', $extension, $desde);
+        $stmtSalientes->execute();
+        $salientesRecientes = $stmtSalientes->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtSalientes->close();
+        $idsExistentes = array_fill_keys(array_column($llamadas, 'pbx_call_id'), true);
+        foreach ($salientesRecientes as $salida) {
+            $id = (string)$salida['pbx_call_id'];
+            // Un inicio saliente firmado no distingue auricular de Seguimiento.
+            // Sólo incorporar el que YA tiene clasificación operativa propia:
+            // las llamadas de Seguimiento mantienen su registro en el expediente.
+            if (!isset($clasificaciones[$id]) || isset($idsExistentes[$id])) continue;
+            $call = TelefoniaSalienteAnalistaEstado::desdeEventos(
+                $this->eventos->obtenerPorPbxCallId($id), $extension, $id,
+                strtotime($desde) ?: 0
+            );
+            if (!$call || ($call['tipo_llamada'] ?? '') !== 'SALIENTE') continue;
+            $registro = $clasificaciones[$id] ?? [];
+            $estado = (string)($registro['estado'] ?? 'PENDIENTE');
+            $finalizada = in_array((string)($call['estado'] ?? ''), ['ended','transferred'], true);
+            $llamadas[] = [
+                'pbx_call_id'=>$id, 'numero'=>(string)$call['caller_id'],
+                'transferida_desde'=>'', 'fuente'=>'PBX', 'tipo_llamada'=>'SALIENTE',
+                'fecha'=>(string)$salida['fecha'],
+                'duracion'=>self::segundosAtendidos($call),
+                'estado_pbx'=>$finalizada || in_array($estado, ['SIN_IDENTIFICAR','VINCULADA'], true)
+                    ? 'ended' : (string)($call['estado'] ?? 'ringing'),
+                'contestada'=>!empty($call['contestada']),
+                'pbx_conversacion_confirmada'=>!empty($call['contestada']) && $finalizada,
+                'clasificacion'=>$estado,
+                'seguimiento_id'=>(int)($registro['seguimiento_id'] ?? 0),
+                'interaccion_id'=>(int)($registro['interaccion_id'] ?? 0),
+                'grabacion_pbx_reportada'=>false
+            ];
+            $idsExistentes[$id] = true;
+        }
         $sesiones = $clasificadorInterno->listar($usuarioId);
         foreach($operaciones as $operacion){
             if((int)$operacion['destino_usuario']!==$usuarioId || empty($operacion['sdk_consulta']))continue;
@@ -347,19 +474,33 @@ class TelefoniaEntrantesAnalistaService
         return $estados;
     }
 
+    /** Datos del expediente exacto con el mismo alcance territorial del guardado. */
+    public function contextoVerificacion(int $usuarioId, int $seguimientoId): array
+    {
+        if ($seguimientoId <= 0) return [];
+        $stmt = $this->db->prepare('SELECT s.id, s.datos_verificados, s.telefono_verificado,
+            s.telefono_fuente, s.correo_verificado, s.correo_fuente, s.contacto_nombre, s.contacto_cargo
+            FROM seguimientos_vinculacion s WHERE s.id=? AND ' . SeguimientoTerritorialScope::analista('s') . ' AND s.activo=1');
+        $stmt->bind_param('ii', $seguimientoId, $usuarioId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row ? [$row] : [];
+    }
+
     public function buscarSeguimientos(int $usuarioId, string $texto): array
     {
         $texto = trim($texto);
         if (mb_strlen($texto, 'UTF-8') < 2) return [];
         $like = '%' . $texto . '%';
         $stmt = $this->db->prepare(
-            "SELECT s.id, s.nombre_entidad, s.estado_id, e.nombre AS estado_nombre
+            'SELECT s.id, s.nombre_entidad, s.estado_id, e.nombre AS estado_nombre
              FROM seguimientos_vinculacion s
              INNER JOIN estados e ON e.id = s.estado_id
-             WHERE s.analista_id = ? AND s.activo = 1
+             WHERE ' . SeguimientoTerritorialScope::analista('s') . ' AND s.activo = 1
                AND (s.nombre_entidad LIKE ? OR s.telefono_fuente LIKE ?
                     OR s.telefono_verificado LIKE ?)
-             ORDER BY s.nombre_entidad LIMIT 20"
+             ORDER BY s.nombre_entidad LIMIT 20'
         );
         $stmt->bind_param('isss', $usuarioId, $like, $like, $like);
         $stmt->execute();
@@ -466,7 +607,8 @@ class TelefoniaEntrantesAnalistaService
         }
         // Una comunicación sin respuesta no debe figurar como contacto efectivo
         // ni generar un expediente: sólo admite clasificación sin identificar.
-        if (empty($call['answer_at']) && $decision !== 'sin_identificar') {
+        if (empty($call['answer_at']) && empty($call['estadistica_contestada']) &&
+            $decision !== 'sin_identificar') {
             throw new DomainException('La centralita no confirmó una conversación. Clasifica sin identificar o devuelve la llamada.');
         }
         $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion'] ?? ''));
@@ -572,6 +714,8 @@ class TelefoniaEntrantesAnalistaService
     /** Uso interno: el llamador aporta la llamada comprobada por el servidor y mantiene la transacción. */
     public function registrarAtencionEnExpediente(int $usuarioId,array $call,array $datos,bool $sdk=false,string $id='',string $aliasSdk=''): array
     {
+        require_once __DIR__.'/DatosContactoLlamadaService.php';
+        $contactoLlamada=DatosContactoLlamadaService::extraer($datos,'LLAMADA',strtoupper(trim((string)($datos['resultado']??''))));
         $decision=strtolower(trim((string)($datos['decision']??'')));
         if(!in_array($decision,['existente','nueva'],true))throw new DomainException('Selecciona una institución con seguimiento o una institución nueva.');
         $model=new SeguimientoVinculacionModel($this->db);$extension=(string)$call['extension'];
@@ -620,10 +764,10 @@ class TelefoniaEntrantesAnalistaService
             if ($decision === 'existente') {
                 $seguimientoId = (int)($datos['seguimiento_id'] ?? 0);
                 $stmt = $this->db->prepare(
-                    "SELECT id, telefono_fuente, telefono_verificado, correo_fuente,
+                    'SELECT id, telefono_fuente, telefono_verificado, correo_fuente,
                             correo_verificado, contacto_nombre, contacto_cargo, datos_verificados, estado_seguimiento
                      FROM seguimientos_vinculacion
-                     WHERE id = ? AND analista_id = ? AND activo = 1 FOR UPDATE"
+                     WHERE id = ? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND activo = 1 FOR UPDATE'
                 );
                 $stmt->bind_param('ii', $seguimientoId, $usuarioId);
                 $stmt->execute();
@@ -634,7 +778,6 @@ class TelefoniaEntrantesAnalistaService
                 }
             } else {
                 // Serializa altas simultáneas desde llamadas recibidas y devoluciones.
-                $lock=$this->db->prepare('SELECT id FROM usuarios WHERE id=? FOR UPDATE');$lock->bind_param('i',$usuarioId);$lock->execute();$lock->close();
                 $estadoId = (int)($datos['estado_id'] ?? 0);
                 $nombre = trim((string)($datos['nombre_entidad'] ?? ''));
                 $tipo = strtoupper(trim((string)($datos['tipo_entidad'] ?? 'INSTITUCION')));
@@ -646,11 +789,13 @@ class TelefoniaEntrantesAnalistaService
                 if (!in_array($estadoId, array_map('intval', $permitidos), true)) {
                     throw new DomainException('El estado no está asignado actualmente al Analista.');
                 }
+                $lock=$this->db->prepare('SELECT id FROM estados WHERE id=? FOR UPDATE');
+                $lock->bind_param('i',$estadoId);$lock->execute();$lock->close();
                 $stmt = $this->db->prepare(
-                    "SELECT id FROM seguimientos_vinculacion
-                     WHERE analista_id = ? AND estado_id = ?
+                    'SELECT id FROM seguimientos_vinculacion
+                     WHERE ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND estado_id = ?
                        AND LOWER(TRIM(nombre_entidad)) = LOWER(?)
-                       AND activo = 1 LIMIT 1"
+                       AND activo = 1 LIMIT 1'
                 );
                 $stmt->bind_param('iis', $usuarioId, $estadoId, $nombre);
                 $stmt->execute();
@@ -723,11 +868,12 @@ class TelefoniaEntrantesAnalistaService
                 $fechaFin = date('Y-m-d H:i:s');
             }
             $segundosConversacion = self::segundosAtendidos($call);
-            $admiteVerificacion=in_array($resultadoFormulario,['CONTACTO_CORRECTO','CONTACTO_REFERIDO',
-                'SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'],true);
+            $admiteVerificacion=VerificacionInstitucionalService::resultadoVerificable($resultadoFormulario);
             $referido=$resultadoFormulario==='CONTACTO_REFERIDO' ? VerificacionInstitucionalService::referido($datos) : [];
             $detalles=$admiteVerificacion ? VerificacionInstitucionalService::detalles(array_merge($datos,$referido),$seguimiento) : [];
             $evidencias=array_column($detalles,'etiqueta');
+            $parConfirmado=VerificacionInstitucionalService::tienePar($detalles);
+            $pbxFirmada = !$sdk && empty($call['estadistica_solo']);
             if ($evidencias && ($personaAtendio==='' || $segundosConversacion<=0)) {
                 throw new InvalidArgumentException('Indica con quién hablaste y confirma que hubo una conversación para verificar datos.');
             }
@@ -739,15 +885,17 @@ class TelefoniaEntrantesAnalistaService
             }
             $notas = trim(implode("\n", array_filter([
                 ($call['origen_registro'] ?? 'Llamada entrante recibida en la extensión ' . $extension . '.'),
-                $sdk ? '[WEBRTC OBSERVADO; SIN EVENTO PBX FIRMADO; RESULTADO DECLARADO POR ANALISTA]' : '',
+                $sdk ? '[WEBRTC OBSERVADO; SIN EVENTO PBX FIRMADO; RESULTADO DECLARADO POR ANALISTA]' :
+                    (!empty($call['estadistica_solo']) ? '[FIN CONFIRMADO POR ESTADISTICA ZADARMA; SIN WEBHOOK DE CIERRE]' : ''),
                 $personaAtendio !== '' ? 'Persona atendida: ' . $personaAtendio : '',
-                $evidencias ? ($sdk ? '[VERIFICACION_PENDIENTE_PBX]' : '[VERIFICACION_EFECTIVA]') : '',
+                $parConfirmado ? ($pbxFirmada ? '[VERIFICACION_EFECTIVA]' : '[VERIFICACION_PENDIENTE_PBX]') : '',
                 $evidencias ? 'Verificación obtenida: ' . implode(' · ', $evidencias) : '',
                 $resultadoFormulario === 'NO_INTERESADO' ? 'Resultado registrado: No interesado' : '',
                 $observacion,
                 $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : ''
             ])));
 
+            $notas=trim($notas."\n".DatosContactoLlamadaService::nota($contactoLlamada));
             $interaccionId = $model->registrarInteraccionManual(
                 $seguimientoId, $usuarioId, [
                     'canal' => 'LLAMADA_IP',
@@ -759,6 +907,7 @@ class TelefoniaEntrantesAnalistaService
                     'proxima_accion_at' => $fechaProxima,
                     'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0),
                     'preservar_estado'=>true,
+                    'contacto_llamada'=>$contactoLlamada,
                     'nuevo_telefono_contacto'=>$referido['nuevo_telefono_contacto'] ?? '',
                     'nuevo_correo_contacto'=>$referido['nuevo_correo_contacto'] ?? '',
                     'nuevo_contacto_nombre'=>$referido['nuevo_contacto_nombre'] ?? '',
@@ -776,10 +925,12 @@ class TelefoniaEntrantesAnalistaService
             }
 
             $evidenciaStore->guardar($interaccionId,$usuarioId,$seguimientoId,$detalles,$personaAtendio,
-                !$sdk,$sdk?'':$id,$sdk?$id:$aliasSdk);
+                $pbxFirmada,$pbxFirmada?$id:'',$sdk?$id:$aliasSdk);
 
         return ['seguimiento_id'=>$seguimientoId,'interaccion_id'=>$interaccionId,
-            'verificacion_confirmada'=>!$sdk && !empty($evidencias),'verificacion_pendiente'=>$sdk && !empty($evidencias)];
+            'verificacion_confirmada'=>$pbxFirmada && $parConfirmado,
+            'verificacion_pendiente'=>!$pbxFirmada && $parConfirmado,
+            'verificacion_parcial'=>!empty($evidencias) && !$parConfirmado];
     }
 
 }

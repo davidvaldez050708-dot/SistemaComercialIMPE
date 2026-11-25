@@ -24,11 +24,6 @@
         const urlResumenVerificacion =
             'index.php?controller=seguimientoVinculacion&action=resumenVerificacionTelefonicaHoy';
         const panelVerificacionDiaria = document.querySelector('[data-call-verification-daily]');
-        const accionesConHorarioObligatorio = [
-            'Volver a llamar',
-            'Enviar WhatsApp',
-            'Enviar oficio/correo'
-        ];
         const accionesQueCierranRecordatorio = [
             'Verificar información de contacto',
             'Generar oficio'
@@ -37,6 +32,7 @@
         let esperandoDecisionNoInteres = false;
         let toastInteraccionDiferido = false;
         let proximaAccionEditadaManualmente = false;
+        let ultimoResultado = String(selectorResultado?.value || '');
 
         if (
             !selectorResultado ||
@@ -61,7 +57,7 @@
             '<div class="alert alert-light border mb-1 py-2 px-3 small">' +
                 '<i class="bi bi-info-circle me-1"></i>' +
                 '<strong>Registro informativo.</strong> ' +
-                'Se guardará en el expediente sin modificar la ruta ni la próxima acción.' +
+        'Se guardará en el expediente sin modificar la etapa. Puedes programar la próxima acción.' +
             '</div>';
         filaFormulario?.prepend(avisoInformativo);
 
@@ -264,18 +260,18 @@
         contenedorContactoReferido.className = 'col-12 d-none';
         contenedorContactoReferido.setAttribute('data-work-referred-contact-wrapper', '');
         contenedorContactoReferido.innerHTML =
-            '<div class="linkage-referred-contact-box">' +
-                '<div class="linkage-referred-contact-head">' +
-                    '<strong>Nuevo contacto proporcionado</strong>' +
-                    '<span>El teléfono original se conservará como teléfono fuente.</span>' +
+            '<div>' +
+                '<div class="linkage-referred-contact-head text-muted small">' +
+                    '<input type="hidden" name="actualizar_datos_llamada" value="1">' +
+                    '<span>Al guardar el resultado se actualizará la ficha. Los campos vacíos conservan los datos actuales.</span>' +
                 '</div>' +
-                '<div class="row g-2">' +
+                '<div class="row g-2"><div class="col-12"><label class="form-label" for="work_institution_update">Nombre institucional actualizado (opcional)</label><input id="work_institution_update" name="nombre_entidad_actualizado" maxlength="180" class="form-control"></div>' +
                     '<div class="col-12 col-md-6">' +
-                        '<label class="form-label" for="work_referred_phone">Nuevo teléfono de contacto</label>' +
+                        '<label class="form-label" for="work_referred_phone">Teléfono de contacto</label>' +
                         '<input class="form-control" id="work_referred_phone" name="nuevo_telefono_contacto" maxlength="80" autocomplete="tel">' +
                     '</div>' +
                     '<div class="col-12 col-md-6">' +
-                        '<label class="form-label" for="work_referred_email">Nuevo correo de contacto</label>' +
+                        '<label class="form-label" for="work_referred_email">Correo electrónico</label>' +
                         '<input class="form-control" id="work_referred_email" name="nuevo_correo_contacto" type="email" maxlength="180" autocomplete="email">' +
                     '</div>' +
                     '<div class="col-12 col-md-6">' +
@@ -313,7 +309,8 @@
             const canal = String(
                 formulario.querySelector('[name="canal"]')?.value || ''
             ).toUpperCase();
-            const visible = resultado === 'CONTACTO_REFERIDO' && canal === 'LLAMADA';
+            const visible = canal === 'LLAMADA';
+            const editable = visible && (!resultado || ['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'].includes(resultado));
 
             contenedorContactoReferido.classList.toggle('d-none', !visible);
 
@@ -321,14 +318,11 @@
                 campoTelefonoReferido.required = false;
             }
 
-            if (!visible) {
-                [campoTelefonoReferido, campoCorreoReferido, campoNombreReferido, campoCargoReferido]
-                    .forEach(function (campo) {
-                        if (campo) {
-                            campo.value = '';
-                        }
-                    });
-            }
+            contenedorContactoReferido.querySelectorAll('input').forEach(input=>input.disabled=!editable);
+            window.IMPE_CALL_DRAFTS?.unificarContacto(formulario);
+            contenedorContactoReferido.querySelector('.linkage-referred-contact-head span').textContent = editable
+                ? 'Revisa el borrador antes de elegir el resultado. Al guardar se actualizará la ficha; los campos vacíos conservan sus datos actuales.'
+                : 'La captura se conserva. Este resultado sin contacto no actualiza los datos de la ficha.';
         };
 
         const bloqueEvidenciaVerificacion = formulario.querySelector(
@@ -360,12 +354,31 @@
                 'CONTACTO_CORRECTO',
                 'CONTACTO_REFERIDO',
                 'SOLICITO_INFORMACION',
-                'SOLICITO_LLAMAR_DESPUES',
-                'NO_INTERESADO'
+                'SOLICITO_LLAMAR_DESPUES'
             ];
-            const visible =
-                canal === 'LLAMADA' &&
-                resultadosConConversacion.includes(resultado);
+            const normalizarDato = function (campo, valor) {
+                let texto = String(valor || '').trim();
+                if (campo === 'telefono') {
+                    texto = texto.replace(/\D/g, '');
+                    if (texto.length === 12 && texto.startsWith('52')) texto = texto.slice(2);
+                    else if (texto.length === 13 && texto.startsWith('521')) texto = texto.slice(3);
+                    return texto;
+                }
+                return texto.replace(/\s+/g, ' ').toLocaleLowerCase('es');
+            };
+            const cambioReferido = resultado === 'CONTACTO_REFERIDO' && [
+                ['telefono', campoTelefonoReferido, '[data-work-phone]'],
+                ['correo', campoCorreoReferido, '[data-work-email]'],
+                ['contacto', campoNombreReferido, '[data-work-contact-name]'],
+                ['cargo', campoCargoReferido, '[data-work-contact-role]']
+            ].some(function ([campo, entrada, selector]) {
+                const nuevo = String(entrada?.value || '').trim();
+                const anterior = String(document.querySelector(selector)?.textContent || '').trim();
+                return nuevo !== '' && normalizarDato(campo, nuevo) !== normalizarDato(campo, anterior === '—' ? '' : anterior);
+            });
+            formulario.dataset.verificacionAplicable = String(!contactoEstaVerificado() || cambioReferido);
+            const visible = canal === 'LLAMADA' && resultadosConConversacion.includes(resultado) &&
+                formulario.dataset.verificacionAplicable === 'true';
 
             bloqueEvidenciaVerificacion.classList.toggle('d-none', !visible);
 
@@ -375,9 +388,9 @@
                 ).trim();
                 return valor === '—' ? '' : valor;
             };
-            const telefonoActual = leerDatoVisible('[data-work-phone]');
-            const correoActual = leerDatoVisible('[data-work-email]');
-            const contactoActual = leerDatoVisible('[data-work-contact-name]');
+            const telefonoActual = String(campoTelefonoReferido?.value||'').trim() || leerDatoVisible('[data-work-phone]');
+            const correoActual = String(campoCorreoReferido?.value||'').trim() || leerDatoVisible('[data-work-email]');
+            const contactoActual = String(campoNombreReferido?.value||'').trim() || leerDatoVisible('[data-work-contact-name]');
 
             [
                 [checkTelefono, telefonoActual !== '', 'phone'],
@@ -411,24 +424,30 @@
                 });
             }
 
-            if (notaEvidenciaVerificacion) {
-                notaEvidenciaVerificacion.textContent =
-                    resultado === 'CONTACTO_REFERIDO'
-                        ? 'El nuevo teléfono o correo registrado funciona como evidencia. También puedes marcar datos actuales que hayan sido confirmados.'
-                        : '“Contacto correcto” por sí solo no cuenta: marca únicamente los datos que realmente fueron confirmados durante la llamada.';
-            }
+            if (notaEvidenciaVerificacion) notaEvidenciaVerificacion.textContent='Puedes guardar sin confirmaciones o con datos parciales. Para contar como llamada efectiva y avanzar se requieren teléfono y correo confirmados en esta misma llamada, con evidencia de telefonía.';
         };
 
+        formulario.addEventListener('input',event=>{if(event.target.matches('[name="nuevo_telefono_contacto"],[name="nuevo_correo_contacto"]'))actualizarEvidenciaVerificacion();});
         const campoPersonaAtendio = formulario.querySelector(
             '[name="persona_atendio"]'
         );
 
         const limpiarValidacionesVerificacion = function () {
-            [campoPersonaAtendio, campoTelefonoReferido, campoCorreoReferido].forEach(function (campo) {
+            [campoPersonaAtendio, campoTelefonoReferido, campoCorreoReferido, checkTelefono, checkCorreo, checkContacto].forEach(function (campo) {
                 campo?.setCustomValidity('');
                 campo?.classList.remove('is-invalid');
             });
         };
+
+        // La validación nativa se ejecuta antes de submit: limpiar el error
+        // al corregir la selección, no sólo dentro del siguiente submit.
+        [checkTelefono, checkCorreo, checkContacto].forEach(function (campo) {
+            campo?.addEventListener('input', limpiarValidacionesVerificacion);
+            campo?.addEventListener('change', limpiarValidacionesVerificacion);
+        });
+        selectorResultado.addEventListener('change', limpiarValidacionesVerificacion);
+        formulario.querySelector('[name="canal"]')?.addEventListener('change', limpiarValidacionesVerificacion);
+        formulario.addEventListener('reset', limpiarValidacionesVerificacion);
 
         const marcarCampoInvalido = function (campo, mensaje) {
             if (!campo) {
@@ -439,8 +458,16 @@
             campo.classList.add('is-invalid');
             campo.focus({ preventScroll: true });
             campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            campo.reportValidity();
+            // El toast institucional ya informa del campo; evitar el globo nativo duplicado.
         };
+
+        formulario.addEventListener('invalid',event=>{
+            event.preventDefault();const input=event.target;
+            if(Array.from(formulario.elements).find(el=>el.willValidate&&!el.validity.valid)!==input)return;
+            const label=(input.labels?.[0]?.textContent||input.name||'el campo indicado').replace(/\s+/g,' ').trim();
+            const detalle=input.validity.typeMismatch?'Introduce un correo electrónico válido.':(input.validity.valueMissing?'Completa este dato antes de guardar.':(input.validationMessage||'Revisa el formato de este dato.'));
+            mostrarToastLocal('Revisa «'+label+'»: '+detalle,true);
+        },true);
 
         const validarRequisitosInteraccion = function () {
             limpiarValidacionesVerificacion();
@@ -453,6 +480,8 @@
             if (canal !== 'LLAMADA') {
                 return true;
             }
+
+            actualizarEvidenciaVerificacion();
 
             if (resultado === 'CONTACTO_REFERIDO') {
                 const telefonoNuevo = String(campoTelefonoReferido?.value || '').trim();
@@ -479,6 +508,8 @@
             if (!resultadosConConversacion.includes(resultado)) {
                 return true;
             }
+
+            if (formulario.dataset.verificacionAplicable === 'false') return true;
 
             const tieneEvidencia =
                 Boolean(checkTelefono?.checked) ||
@@ -519,6 +550,9 @@
             campoCorreoReferido.setCustomValidity('');
             campoCorreoReferido.classList.remove('is-invalid');
         });
+        [campoTelefonoReferido, campoCorreoReferido, campoNombreReferido, campoCargoReferido].forEach(function (campo) {
+            campo?.addEventListener('input', actualizarEvidenciaVerificacion);
+        });
 
         const pasoRutaActual = function () {
             return Number(offcanvas?.dataset.flowStep || 0);
@@ -551,22 +585,11 @@
         };
 
         const actualizarFechaSegunAccion = function () {
-            if (esRutaAvanzada()) {
-                selectorProximaAccion.value = '';
-                selectorProximaAccion.disabled = true;
-                campoFechaProximaAccion.value = '';
-                campoFechaProximaAccion.disabled = true;
-                campoFechaProximaAccion.required = false;
-                actualizarEtiquetaFecha(false);
-                return;
-            }
 
             const accion = String(selectorProximaAccion.value || '');
-            const resultado = String(selectorResultado.value || '');
             const sinAccion = accion === '';
-            const resultadoManual = resultado === 'OTRO';
-            const fechaObligatoria = accionesConHorarioObligatorio.includes(accion);
             const cierraRecordatorio = accionesQueCierranRecordatorio.includes(accion);
+            const fechaObligatoria = !sinAccion && !cierraRecordatorio;
 
             if (cierraRecordatorio) {
                 campoFechaProximaAccion.value = '';
@@ -576,11 +599,11 @@
                 return;
             }
 
-            campoFechaProximaAccion.disabled = sinAccion && !resultadoManual;
+            campoFechaProximaAccion.disabled = sinAccion;
             campoFechaProximaAccion.required = fechaObligatoria;
             actualizarEtiquetaFecha(fechaObligatoria);
 
-            if (sinAccion && !resultadoManual) {
+            if (sinAccion) {
                 campoFechaProximaAccion.value = '';
             }
         };
@@ -588,19 +611,16 @@
         const aplicarModoRuta = function () {
             const avanzada = esRutaAvanzada();
             avisoInformativo.classList.toggle('d-none', !avanzada);
-            contenedorProximaAccion?.classList.toggle('d-none', avanzada);
-            contenedorFechaProximaAccion?.classList.toggle('d-none', avanzada);
-
-            if (avanzada) {
-                selectorProximaAccion.value = '';
-                selectorProximaAccion.disabled = true;
-                campoFechaProximaAccion.value = '';
-                campoFechaProximaAccion.disabled = true;
-                campoFechaProximaAccion.required = false;
-                actualizarEtiquetaFecha(false);
-            } else {
-                selectorProximaAccion.disabled = false;
-            }
+            contenedorProximaAccion?.classList.remove('d-none');
+            contenedorFechaProximaAccion?.classList.remove('d-none');
+            selectorProximaAccion.disabled = false;
+            Array.from(selectorProximaAccion.options).forEach(opcion => {
+                if (accionesQueCierranRecordatorio.includes(opcion.value)) {
+                    opcion.disabled = avanzada;
+                    opcion.hidden = avanzada;
+                    if (avanzada && opcion.selected) selectorProximaAccion.value = '';
+                }
+            });
         };
 
         const aplicarResultadoInteraccion = function () {
@@ -611,9 +631,11 @@
             switch (resultado) {
                 case 'SIN_RESPUESTA':
                 case 'OCUPADO':
+                case 'BUZON_VOZ':
                     accionSugerida = 'Volver a llamar';
                     break;
                 case 'NUMERO_INCORRECTO':
+                case 'FUERA_SERVICIO':
                     accionSugerida = 'Investigar nuevo contacto';
                     break;
                 case 'CONTACTO_INCORRECTO':
@@ -628,7 +650,7 @@
                      * acción de verificación: primero pueden faltar persona,
                      * cargo o correo.
                      */
-                    accionSugerida = contactoEstaVerificado()
+                    accionSugerida = contactoEstaVerificado() && !esRutaAvanzada()
                         ? 'Generar oficio'
                         : '';
                     break;
@@ -648,13 +670,13 @@
 
             if (
                 !conservarSeleccionManual &&
-                !esRutaAvanzada() &&
                 !proximaAccionEditadaManualmente
             ) {
                 selectorProximaAccion.value = accionSugerida;
             }
 
             const noInteresado = resultado === 'NO_INTERESADO';
+            selectorProximaAccion.required = resultado === 'SOLICITO_LLAMAR_DESPUES';
             contenedorMotivo.classList.toggle('d-none', !noInteresado);
 
             if (campoMotivoNoInteres) {
@@ -663,16 +685,6 @@
                 if (!noInteresado) {
                     campoMotivoNoInteres.value = '';
                 }
-            }
-
-            if (esRutaAvanzada()) {
-                selectorProximaAccion.value = '';
-                selectorProximaAccion.disabled = true;
-                campoFechaProximaAccion.value = '';
-                campoFechaProximaAccion.disabled = true;
-                campoFechaProximaAccion.required = false;
-                actualizarEtiquetaFecha(false);
-                return;
             }
 
             selectorProximaAccion.disabled = noInteresado;
@@ -741,8 +753,6 @@
             const formData = new FormData(formulario);
             const resultado = String(selectorResultado.value || '');
 
-            formData.delete('proxima_accion');
-            formData.delete('proxima_accion_at');
 
             if (resultado === 'NO_INTERESADO') {
                 const motivo = String(campoMotivoNoInteres?.value || '').trim();
@@ -783,6 +793,7 @@
                     );
                 }
 
+                window.IMPE_CALL_DRAFTS?.actualizarFicha(formData);
                 agregarActividadInformativa(datos.interaccion);
                 formulario.classList.add('d-none');
                 formulario.reset();
@@ -820,7 +831,10 @@
         };
 
         selectorResultado.addEventListener('change', function () {
-            proximaAccionEditadaManualmente = false;
+            const resultadoActual = String(selectorResultado.value || '');
+            // Recuperar el mismo resultado no debe borrar la decisión del usuario.
+            if (resultadoActual !== ultimoResultado) proximaAccionEditadaManualmente = false;
+            ultimoResultado = resultadoActual;
             actualizarContactoReferido();
             actualizarEvidenciaVerificacion();
             aplicarResultadoInteraccion();
@@ -839,6 +853,7 @@
         formulario.addEventListener('reset', function () {
             proximaAccionEditadaManualmente = false;
             window.setTimeout(function () {
+                ultimoResultado = String(selectorResultado.value || '');
                 aplicarModoRuta();
                 actualizarContactoReferido();
                 actualizarEvidenciaVerificacion();
@@ -874,10 +889,8 @@
                 return;
             }
 
-            const accion = String(selectorProximaAccion.value || '');
-
             if (
-                accionesConHorarioObligatorio.includes(accion) &&
+                campoFechaProximaAccion.required &&
                 String(campoFechaProximaAccion.value || '').trim() === ''
             ) {
                 event.preventDefault();
@@ -963,6 +976,7 @@
         });
 
         aplicarModoRuta();
+        actualizarContactoReferido();
         actualizarEvidenciaVerificacion();
         aplicarResultadoInteraccion();
         cargarResumenVerificacion();

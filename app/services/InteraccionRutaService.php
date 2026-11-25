@@ -1,8 +1,10 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/VerificacionInstitucionalService.php';
 require_once __DIR__ . '/TelefoniaVerificacionEvidenciaService.php';
+require_once __DIR__ . '/InteraccionProximaAccion.php';
 
 class InteraccionRutaService
 {
@@ -70,6 +72,19 @@ class InteraccionRutaService
             return $this->error('Selecciona un resultado válido.', 422);
         }
 
+        try {
+            require_once __DIR__.'/TelefoniaResultadoAnalistaService.php';
+            TelefoniaResultadoAnalistaService::validarLlamada($usuarioId, $seguimientoId, $datos, $this->connection);
+        } catch (DomainException $e) {
+            return $this->error($e->getMessage(),409);
+        } catch (Throwable $e) {
+            error_log('[analista_validar_informativa] '.get_class($e));
+            return $this->error('No se pudo confirmar la llamada. No se guardó la interacción. Intenta nuevamente.',503);
+        }
+
+        require_once __DIR__.'/DatosContactoLlamadaService.php';
+        try { $contactoLlamada=DatosContactoLlamadaService::extraer($datos,$canalFormulario,$resultadoFormulario); }
+        catch (InvalidArgumentException $e) { return $this->error($e->getMessage(),422); }
         $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($datos['persona_atendio'] ?? ''));
         $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion'] ?? ''));
         $origenLlamada = strtoupper(trim((string)($datos['origen_llamada'] ?? 'MANUAL')));
@@ -123,26 +138,21 @@ class InteraccionRutaService
                 'CONTACTO_CORRECTO',
                 'CONTACTO_REFERIDO',
                 'SOLICITO_INFORMACION',
-                'SOLICITO_LLAMAR_DESPUES',
-                'NO_INTERESADO'
+                'SOLICITO_LLAMAR_DESPUES'
             ],
             true
         );
 
-        $telefonoActual = trim((string)(
-            !empty($seguimiento['telefono_verificado'])
-                ? $seguimiento['telefono_verificado']
-                : ($seguimiento['telefono_fuente'] ?? '')
-        ));
-        $correoActual = trim((string)(
-            !empty($seguimiento['correo_verificado'])
-                ? $seguimiento['correo_verificado']
-                : ($seguimiento['correo_fuente'] ?? '')
-        ));
-        $contactoActual = trim((string)($seguimiento['contacto_nombre'] ?? ''));
+        try {
+            $telefonoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'telefono');
+            $correoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'correo');
+            $contactoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'contacto');
+        } catch (InvalidArgumentException $e) { return $this->error($e->getMessage(),422); }
+
         $evidenciasVerificacion = [];
 
-        if ($canalFormulario === 'LLAMADA' && $resultadoAdmiteVerificacion) {
+        if ($canalFormulario === 'LLAMADA' && $resultadoAdmiteVerificacion &&
+            (int)($seguimiento['datos_verificados'] ?? 0) !== 1) {
             if ((int)($datos['verificacion_telefono_confirmado'] ?? 0) === 1) {
                 if ($telefonoActual === '') {
                     return $this->error(
@@ -195,6 +205,7 @@ class InteraccionRutaService
             !empty($evidenciasVerificacion);
         $esVerificacionEfectiva =
             $esCandidataVerificacion &&
+            VerificacionInstitucionalService::tienePar($detallesVerificacion) &&
             $origenLlamada === 'ZADARMA';
 
         if ($esCandidataVerificacion && $personaAtendio === '') {
@@ -216,6 +227,14 @@ class InteraccionRutaService
         $fechaInicioTs = strtotime((string)$fechaInicio);
         if ($fechaInicioTs === false || $fechaInicioTs > (time() + 60)) {
             return $this->error('La fecha de interacción no puede estar en el futuro.', 422);
+        }
+        try {
+            $programacion = InteraccionProximaAccion::validar($datos);
+            if ($programacion['accion'] !== '' && $programacion['fecha'] === null) {
+                throw new DomainException('Selecciona una acción de seguimiento con fecha y hora.');
+            }
+        } catch (DomainException $error) {
+            return $this->error($error->getMessage(), 422);
         }
 
         $notas = trim(implode("\n", array_filter([
@@ -246,9 +265,12 @@ class InteraccionRutaService
                         : 'Verificación registrada sin contabilizar: '
                   ) . implode(' · ', $evidenciasVerificacion)
                 : '',
-            $observacion
+            $observacion,
+            $programacion['accion'] !== '' ? 'Próxima acción: ' . $programacion['accion'] : '',
+            $programacion['fecha'] !== null ? 'Fecha próxima acción: ' . $programacion['fecha'] : ''
         ])));
 
+        $notas=trim($notas."\n".DatosContactoLlamadaService::nota($contactoLlamada));
         if ($notas === '') {
             $notas = 'Interacción informativa registrada durante la ruta de vinculación.';
         }
@@ -297,14 +319,14 @@ class InteraccionRutaService
                     ? $nuevoContactoCargo
                     : trim((string)($seguimiento['contacto_cargo'] ?? ''));
 
-                $sqlContacto = "UPDATE seguimientos_vinculacion
+                $sqlContacto = 'UPDATE seguimientos_vinculacion
                         SET telefono_verificado = ?,
                             correo_verificado = ?,
                             contacto_nombre = ?,
                             contacto_cargo = ?
                         WHERE id = ?
-                          AND analista_id = ?
-                          AND activo = 1";
+                          AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
+                          AND activo = 1';
                 $stmtContacto = $this->connection->prepare($sqlContacto);
                 $stmtContacto->bind_param(
                     'ssssii',
@@ -320,19 +342,23 @@ class InteraccionRutaService
 
             $etapaPersistencia = 'actualizar la fecha de última interacción';
             $sqlSeguimiento = "UPDATE seguimientos_vinculacion
-                    SET ultima_interaccion_at = ?
+                    SET ultima_interaccion_at = ?";
+            // Omitir la programación conserva cualquier acción o reunión ya pendiente.
+            // El estado de ruta y reuniones_vinculacion nunca se modifican aquí.
+            if ($programacion['fecha'] !== null) $sqlSeguimiento .= ", proxima_accion_at = ?";
+            $sqlSeguimiento .= "
                     WHERE id = ?
-                        AND analista_id = ?
+                        AND " . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . "
                         AND activo = 1";
             $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
-            $stmtSeguimiento->bind_param(
-                'sii',
-                $fechaInicio,
-                $seguimientoId,
-                $usuarioId
-            );
+            if ($programacion['fecha'] !== null) {
+                $stmtSeguimiento->bind_param('ssii', $fechaInicio, $programacion['fecha'], $seguimientoId, $usuarioId);
+            } else {
+                $stmtSeguimiento->bind_param('sii', $fechaInicio, $seguimientoId, $usuarioId);
+            }
             $stmtSeguimiento->execute();
 
+            DatosContactoLlamadaService::guardar($this->connection,$seguimientoId,$usuarioId,$contactoLlamada);
             $this->connection->commit();
 
             return [
@@ -368,9 +394,10 @@ class InteraccionRutaService
 
     private function obtenerSeguimientoAvanzado($seguimientoId, $usuarioId)
     {
-        $sql = "SELECT
+        $sql = 'SELECT
                     seguimientos.id,
                     seguimientos.estado_seguimiento,
+                    seguimientos.datos_verificados,
                     seguimientos.telefono_fuente,
                     seguimientos.correo_fuente,
                     seguimientos.telefono_verificado,
@@ -389,9 +416,9 @@ class InteraccionRutaService
                         LIMIT 1
                     )
                 WHERE seguimientos.id = ?
-                    AND seguimientos.analista_id = ?
+                    AND ' . SeguimientoTerritorialScope::analista('seguimientos') . '
                     AND seguimientos.activo = 1
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('ii', $seguimientoId, $usuarioId);
         $stmt->execute();

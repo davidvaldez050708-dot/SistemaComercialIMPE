@@ -31,27 +31,81 @@ final class VerificacionInstitucionalService
         return $out;
     }
 
+    public static function datoConfirmable(array $datos,array $actual,string $campo): string
+    {
+        $actuales=[
+            'telefono'=>($actual['telefono_verificado']??'')?:($actual['telefono_fuente']??''),
+            'correo'=>($actual['correo_verificado']??'')?:($actual['correo_fuente']??''),
+            'contacto'=>$actual['contacto_nombre']??'', 'cargo'=>$actual['contacto_cargo']??''
+        ];
+        $inputs=['telefono'=>'nuevo_telefono_contacto','correo'=>'nuevo_correo_contacto','contacto'=>'nuevo_contacto_nombre','cargo'=>'nuevo_contacto_cargo'];
+        $nuevo=$datos[$inputs[$campo]]??'';
+        if (!is_string($nuevo)) throw new InvalidArgumentException('El dato de contacto no es válido.');
+        return trim($nuevo)!=='' ? trim($nuevo) : trim((string)$actuales[$campo]);
+    }
+
+    public static function resultadoVerificable(string $resultado): bool
+    {
+        return in_array(strtoupper(trim($resultado)),['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES'],true);
+    }
+
+    /** La acreditación exige el par de datos de la misma interacción; guardar no lo exige. */
+    public static function tienePar(array $detalles): bool
+    {
+        $campos=[];foreach($detalles as $dato)if(($dato['accion']??'')==='CONFIRMADO' && trim((string)($dato['valor']??''))!=='')$campos[(string)($dato['campo']??'')]=true;
+        return isset($campos['telefono'],$campos['correo']);
+    }
+
+    /** Un referido reabre la captura sólo si cambia algún dato del contacto. */
+    public static function aplicable(array $datos, array $actual): bool
+    {
+        if ((int)($actual['datos_verificados'] ?? 0) !== 1) return true;
+        if (strtoupper(trim((string)($datos['resultado'] ?? ''))) !== 'CONTACTO_REFERIDO') return false;
+        $inputs = ['telefono'=>'nuevo_telefono_contacto', 'correo'=>'nuevo_correo_contacto',
+            'contacto'=>'nuevo_contacto_nombre', 'cargo'=>'nuevo_contacto_cargo'];
+        foreach ($inputs as $campo=>$input) {
+            $nuevo = $datos[$input] ?? '';
+            if (!is_string($nuevo)) throw new InvalidArgumentException('El dato de contacto no es válido.');
+            if (trim($nuevo) !== '' && !self::mismoDato($campo, self::datoConfirmable([], $actual, $campo), $nuevo)) return true;
+        }
+        return false;
+    }
+
     public static function detalles(array $datos,array $actual): array
     {
-        $mapa=[
-            'telefono'=>['verificacion_telefono_confirmado','nuevo_telefono_contacto',
-                ($actual['telefono_verificado'] ?? '') ?: ($actual['telefono_fuente'] ?? ''),'Teléfono'],
-            'correo'=>['verificacion_correo_confirmado','nuevo_correo_contacto',
-                ($actual['correo_verificado'] ?? '') ?: ($actual['correo_fuente'] ?? ''),'Correo'],
-            'contacto'=>['verificacion_contacto_confirmado','nuevo_contacto_nombre',$actual['contacto_nombre'] ?? '','Contacto institucional'],
-            'cargo'=>['','nuevo_contacto_cargo',$actual['contacto_cargo'] ?? '','Cargo o área']
-        ];
+        if (!self::aplicable($datos, $actual)) return [];
+        $telefono=(string)($datos['verificacion_telefono_confirmado']??'')==='1';
+        $correo=(string)($datos['verificacion_correo_confirmado']??'')==='1';
+        $contacto=(string)($datos['verificacion_contacto_confirmado']??'')==='1';
+        $resultado=strtoupper(trim((string)($datos['resultado']??'')));
+        if (($telefono || $correo || $contacto) && $resultado!=='' && !self::resultadoVerificable($resultado)) {
+            throw new DomainException('El resultado seleccionado no permite confirmar datos. Guarda la llamada sin verificaciones.');
+        }
         $out=[];
-        foreach ($mapa as $campo=>[$check,$nuevo,$anterior,$etiqueta]) {
-            $valor=($datos['resultado'] ?? '')==='CONTACTO_REFERIDO' ? trim((string)($datos[$nuevo] ?? '')) : '';
-            if ($valor!=='') {
-                $out[]=['campo'=>$campo,'anterior'=>(string)$anterior,'valor'=>$valor,'accion'=>'REFERIDO','etiqueta'=>$etiqueta.' proporcionado'];
-            } elseif ($check!=='' && (int)($datos[$check] ?? 0)===1) {
-                if (trim((string)$anterior)==='') throw new DomainException('No hay '.$etiqueta.' registrado para confirmar.');
-                $out[]=['campo'=>$campo,'anterior'=>(string)$anterior,'valor'=>(string)$anterior,'accion'=>'CONFIRMADO','etiqueta'=>$etiqueta.' confirmado'];
-            }
+        foreach (['telefono'=>'Teléfono','correo'=>'Correo','contacto'=>'Contacto institucional'] as $campo=>$etiqueta) {
+            if ((string)($datos['verificacion_'.$campo.'_confirmado']??'')!=='1') continue;
+            $valor=self::datoConfirmable($datos,$actual,$campo);
+            if ($valor==='') throw new DomainException('Captura '.$etiqueta.' antes de confirmarlo durante la llamada.');
+            if ($campo==='correo' && (strlen($valor)>160 || !filter_var($valor,FILTER_VALIDATE_EMAIL))) throw new DomainException('El correo confirmado no es válido.');
+            if ($campo==='telefono' && !preg_match('/^[+0-9()\- .]{7,40}$/D',$valor)) throw new DomainException('El teléfono confirmado no es válido.');
+            $anterior=self::datoConfirmable([],$actual,$campo);
+            $out[]=['campo'=>$campo,'anterior'=>$anterior,'valor'=>$valor,'accion'=>'CONFIRMADO','etiqueta'=>$etiqueta.' confirmado'];
         }
         return $out;
+    }
+
+    public static function mismoDato(string $campo, string $anterior, string $nuevo): bool
+    {
+        $normalizar = static function (string $valor) use ($campo): string {
+            if ($campo === 'telefono') {
+                $valor = preg_replace('/\D+/', '', $valor);
+                if (strlen($valor) === 12 && str_starts_with($valor, '52')) $valor = substr($valor, 2);
+                elseif (strlen($valor) === 13 && str_starts_with($valor, '521')) $valor = substr($valor, 3);
+                return $valor;
+            }
+            return mb_strtolower(preg_replace('/\s+/u', ' ', trim($valor)), 'UTF-8');
+        };
+        return $normalizar($anterior) === $normalizar($nuevo);
     }
 
     public static function estadoAtencion(string $actual,bool $descartar): string
