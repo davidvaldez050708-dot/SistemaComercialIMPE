@@ -14,8 +14,22 @@
     const outgoingMode=page.dataset.outgoingResult==='1';
     const addressParams=new URLSearchParams(location.search);
     const preparingResult=outgoingMode && addressParams.get('impe_prepare_result')==='1' && window.parent!==window;
-    let outgoingReady=!preparingResult, preparedToken=addressParams.get('impe_prepare_token')||'', readyRef='', readyBusy=false;
-    let readyTimer=null;
+    let outgoingReady=!preparingResult, preparedToken=addressParams.get('impe_prepare_token')||'', readyRef=preparingResult && /^out_[a-fA-F0-9]{32,64}$/.test(addressParams.get('saliente_ref')||'') ? addressParams.get('saliente_ref') : '', readyBusy=false;
+    let readyTimer=null, readyAttempts=0;
+    const fetchBounded = async (url, options={}, format='json', timeout=10000) => {
+        const controller=new AbortController();
+        const timer=setTimeout(()=>controller.abort(),timeout);
+        try {
+            const response=await fetch(url,{...options,signal:controller.signal});
+            return {response,data:await response[format]()};
+        } finally { clearTimeout(timer); }
+    };
+    const acknowledgeReady = () => {
+        if(preparingResult && outgoingReady && readyRef){
+            try{window.parent.IMPE_TELEPHONY_SHELL?.beginCallResult?.(resultModalToken,[...new Set([readyRef,preparedToken,...callRefs].filter(Boolean))]);}catch(_){}
+            window.parent.postMessage({type:'IMPE_ANALYST_RESULT_READY',token:preparedToken,callId:readyRef},location.origin);
+        }
+    };
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     const decision = form.querySelector('[data-incoming-decision]');
     const existing = form.querySelector('[data-incoming-existing]');
@@ -33,6 +47,11 @@
     confirmationStatus.style.cssText='margin:0 0 18px;padding:12px 16px;border:1px solid #dce5f2;border-radius:12px;background:#f4f7fc;color:#526889;font-size:13px;line-height:1.5';
     confirmationStatus.textContent='Puedes capturar el resultado. Estamos confirmando el cierre de esta llamada.';
     if(preparingResult){form.querySelector('.modal-body').prepend(confirmationStatus);submit.disabled=true;}
+    const confirmationRetry=document.createElement('button');
+    confirmationRetry.type='button';confirmationRetry.className='btn btn-outline-primary btn-sm mb-3';
+    confirmationRetry.textContent='Comprobar cierre de nuevo';confirmationRetry.hidden=!preparingResult;
+    confirmationStatus.after(confirmationRetry);
+    confirmationRetry.addEventListener('click',()=>{readyAttempts=0;clearTimeout(readyTimer);readyTimer=null;void confirmOutgoing();});
     const resultInput = form.querySelector('[name="resultado"]');
     const evidence = form.querySelector('[data-incoming-evidence]');
     const sdkNotice = form.querySelector('[data-incoming-sdk-notice]');
@@ -641,12 +660,11 @@
         const original = submit.innerHTML;
         submit.textContent = 'Guardando…';
         try {
-            const res = await fetch(saveUrl, {
+            const {response:res,data} = await fetchBounded(saveUrl, {
                 method: 'POST', credentials: 'same-origin',
                 headers: {'Accept': 'application/json', 'X-Requested-With': 'fetch'},
                 body: requestBody
-            });
-            const data = await res.json();
+            },'json',20000);
             if (!res.ok || !data.ok) {
                 throw new Error(data.mensaje || 'No fue posible registrar la llamada.');
             }
@@ -687,7 +705,7 @@
             modal.hide();
         } catch (error) {
             if(outgoingMode && window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_OUTGOING_SAVE_UNCERTAIN',callId:form.querySelector('[data-incoming-pbx]').value},window.location.origin);
-            showError(error.message || 'No fue posible guardar. Intenta nuevamente.');
+            showError(error.name==='AbortError' ? 'No se recibió la confirmación del guardado. Conservamos tu captura y estamos comprobando si el resultado quedó registrado; no repitas la llamada.' : (error.message || 'No fue posible guardar. Intenta nuevamente.'));
         } finally {
             if (!closingAfterSave) {
                 submit.innerHTML = original;
@@ -732,13 +750,19 @@
     }
     const confirmOutgoing=async()=>{
         if(!preparingResult||outgoingReady||readyBusy||!readyRef||closingAfterSave)return;
-        readyBusy=true;
+        readyBusy=true;confirmationRetry.disabled=true;
+        let retryAfter=0;
         try{
             const requestedRef=readyRef;
             const url=new URL('index.php',document.baseURI);
             url.searchParams.set('controller','seguimientoVinculacion');url.searchParams.set('action','estadoResultadoSaliente');url.searchParams.set('pbx_call_id',requestedRef);
-            const response=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
-            const data=await response.json(),call=data.llamada;
+            const {response,data}=await fetchBounded(url,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+            retryAfter=Math.min(120000,Math.max(0,Number(response.headers.get('Retry-After'))||0)*1000);
+            const call=data.llamada;
+            if(response.status===401 || response.status===403){
+                const error=new Error('La sesión no permite comprobar esta llamada. Vuelve a iniciar sesión; el borrador se conserva.');
+                error.visibleMessage=error.message;throw error;
+            }
             if(!response.ok||!data.ok||requestedRef!==readyRef||call?.pbx_call_id!==requestedRef||!['ended','transferred'].includes(call.estado_pbx))throw new Error('pendiente');
             if(['VINCULADA','SIN_IDENTIFICAR'].includes(call.clasificacion)){
                 window.parent.postMessage({type:'IMPE_ANALYST_RESULT_SAVED',callId:readyRef,message:'El resultado de esta llamada ya está guardado.'},location.origin);return;
@@ -749,8 +773,8 @@
                 // autorizado, sin recargar ni reconstruir la captura.
                 const viewUrl=new URL(location.href);viewUrl.searchParams.delete('impe_prepare_result');
                 viewUrl.searchParams.set('saliente_ref',requestedRef);viewUrl.searchParams.set('pbx_call_id',requestedRef);
-                const viewResponse=await fetch(viewUrl,{credentials:'same-origin',cache:'no-store'});
-                const doc=new DOMParser().parseFromString(await viewResponse.text(),'text/html');
+                const {response:viewResponse,data:markup}=await fetchBounded(viewUrl,{credentials:'same-origin',cache:'no-store'},'text');
+                const doc=new DOMParser().parseFromString(markup,'text/html');
                 const catalog=doc.querySelector('[data-incoming-form] select[name="estado_id"]');
                 if(!viewResponse.ok||!catalog||requestedRef!==readyRef)throw new Error('catalogo');
                 const selected=stateInput.value;
@@ -769,12 +793,21 @@
             modalEl.querySelector('[data-incoming-modal-description]').textContent=hasAnswer
                 ? 'Vincula la conversación a un expediente y registra su resultado.'
                 : 'Llamada sin conversación confirmada: registra el resultado del intento.';
-            outgoingReady=true;confirmationStatus.hidden=true;submit.disabled=false;renderDecision();
+            outgoingReady=true;clearTimeout(readyTimer);confirmationStatus.hidden=true;confirmationRetry.hidden=true;submit.disabled=false;renderDecision();
+            acknowledgeReady();
             drafts?.localSave(userId,callRefs,draftValues());
-        }catch(_){
-            confirmationStatus.textContent='La confirmación sigue pendiente. Tu captura se conserva y el guardado se habilitará automáticamente.';
-            readyTimer=setTimeout(confirmOutgoing,1800);
-        }finally{readyBusy=false;}
+        }catch(error){
+            confirmationStatus.hidden=false;
+            confirmationStatus.textContent=error.visibleMessage || (error.name==='AbortError'
+                ? 'La comprobación no recibió respuesta a tiempo. Se reintentará automáticamente; puedes seguir capturando y tus datos se conservan.'
+                : 'Estamos comprobando el cierre confirmado por telefonía. Puedes seguir capturando; el resultado se habilitará automáticamente y tus datos se conservan.');
+        }finally{
+            readyBusy=false;confirmationRetry.disabled=false;
+            if(!outgoingReady && !closingAfterSave){
+                clearTimeout(readyTimer);
+                readyTimer=setTimeout(()=>{readyTimer=null;void confirmOutgoing();},Math.max(retryAfter,Math.min(30000,1500*2**Math.min(readyAttempts++,5))));
+            }
+        }
     };
     window.addEventListener('message',event=>{
         if(!preparingResult||event.origin!==location.origin||event.source!==window.parent||event.data?.token!==preparedToken)return;
@@ -783,7 +816,13 @@
             const observed=Number(event.data.duration);
             if(Number.isFinite(observed)&&observed>=0){const seconds=Math.floor(observed);form.querySelector('[data-incoming-duration]').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');}
         }else if(event.data.type==='IMPE_ANALYST_OUTGOING_READY'&&/^[a-zA-Z0-9_-]{6,100}$/.test(String(event.data.ref||''))){
-            readyRef=String(event.data.ref);clearTimeout(readyTimer);void confirmOutgoing();
+            const nextRef=String(event.data.ref);
+            if(outgoingReady && readyRef!==nextRef)return;
+            const changed=readyRef!==nextRef;readyRef=nextRef;
+            if(outgoingReady)acknowledgeReady();
+            else if(changed || (!readyBusy && !readyTimer)){
+                clearTimeout(readyTimer);readyTimer=null;void confirmOutgoing();
+            }
         }
     });
     if(preparingResult){
@@ -792,6 +831,8 @@
         provisional.dataset.answer='1';provisional.dataset.source='PBX';provisional.dataset.phone='Llamada saliente';
         openRegistration(provisional);
         submit.disabled=true;
+        window.parent.postMessage({type:'IMPE_ANALYST_RESULT_REPLAY',token:preparedToken},location.origin);
+        if(readyRef)void confirmOutgoing();
     }
     const focusId = preparingResult?'':String(page.dataset.autoCall || '').trim();
     if (focusId) {
