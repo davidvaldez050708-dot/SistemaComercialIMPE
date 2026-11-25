@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/VerificacionInstitucionalService.php';
 /** La captura humana nunca puede convertir una saliente sin respuesta en contacto. */
 final class TelefoniaResultadoAnalistaService
 {
@@ -26,7 +27,7 @@ final class TelefoniaResultadoAnalistaService
         foreach (['telefono','correo','contacto'] as $campo) {
             if ((int)($datos['verificacion_'.$campo.'_confirmado'] ?? 0) === 1) $pideVerificacion = true;
         }
-        if ($pideVerificacion && (!$reglas['permite_verificar'] || $resultado === 'CONTACTO_INCORRECTO' || !in_array($resultado, self::CON_PERSONA, true))) {
+        if ($pideVerificacion && (!$reglas['permite_verificar'] || $resultado === 'CONTACTO_INCORRECTO' || !VerificacionInstitucionalService::resultadoVerificable($resultado))) {
             throw new DomainException('Esta llamada no permite confirmar datos. Registra su resultado sin verificaciones.');
         }
     }

@@ -75,9 +75,11 @@ const child=`<!doctype html><meta charset="utf-8"><style>${css}</style><main dat
   await firstIframe.evaluate(e=>e.contentWindow.location.reload());
   await page.waitForFunction(()=>{const f=document.querySelector('[data-analyst-result-overlay] iframe')?.contentDocument?.querySelector('[data-incoming-form]');return f?.elements.nombre_entidad.value==='Captura que debe conservarse'&&!f.querySelector('[data-incoming-submit]').disabled;});
   assert.equal(await page.locator('[data-analyst-result-overlay]').count(),1,'sin formularios duplicados al recargar');
+  await frame.locator('[name=correo_capturado]').fill('correo-invalido');
   await frame.locator('[data-incoming-submit]').click();
   await frame.locator('[data-incoming-error]').waitFor({state:'visible'});
-  assert.match(await frame.locator('[data-incoming-error]').innerText(),/confirmar teléfono y correo/);
+  assert.match(await frame.locator('[data-incoming-error]').innerText(),/Correo institucional/);
+  await frame.locator('[name=correo_capturado]').fill('contacto@example.test');
   assert.equal(posts,0,'validación no crea registros');
   await frame.locator('[name=verificacion_telefono_confirmado]').check();
   await frame.locator('[name=verificacion_correo_confirmado]').check();

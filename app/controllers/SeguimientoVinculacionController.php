@@ -1,5 +1,7 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../services/VerificacionInstitucionalService.php';
+require_once __DIR__ . '/../services/InteraccionProximaAccion.php';
 
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../models/DataTerritorialModel.php';
@@ -16,6 +18,9 @@ class SeguimientoVinculacionController
     public function index()
     {
         $this->validarPermiso('seguimientos_vinculacion.ver');
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
 
         $modelo = new SeguimientoVinculacionModel();
         $usuarioId = $this->obtenerUsuarioActualId();
@@ -46,6 +51,147 @@ class SeguimientoVinculacionController
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
     }
 
+    /** Entrega una plantilla XLSX oficial restringida a los territorios accesibles. */
+    public function descargarPlantillaSeguimientoExcel()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+        if(!tienePermiso('seguimientos_vinculacion.crear')){
+            http_response_code(403);exit('No tienes permiso para descargar la plantilla.');
+        }
+        try {
+            require_once __DIR__.'/../services/SeguimientoExcelPlantillaService.php';
+            $modelo=new SeguimientoVinculacionModel();
+            $estados=$this->obtenerTerritoriosPorModo($modelo,$this->obtenerUsuarioActualId(),
+                $this->resolverModoSeguimiento());
+            if(!$estados)throw new DomainException('No tienes territorios disponibles.',403);
+            $ids=array_values(array_unique(array_filter(array_map(static fn($e)=>(int)$e['id'],$estados),static fn($id)=>$id>0)));
+            if(!$ids)throw new DomainException('No tienes territorios disponibles.',403);
+            $db=(new Database())->connect(false);
+            $stmt=$db->prepare('SELECT id,estado_id,nombre FROM municipios WHERE estado=1 AND estado_id IN ('.implode(',',array_fill(0,count($ids),'?')).') ORDER BY estado_id,nombre,id');
+            $stmt->bind_param(str_repeat('i',count($ids)),...$ids);$stmt->execute();
+            $municipios=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
+            $bytes=SeguimientoExcelPlantillaService::archivo($estados,$municipios);
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="plantilla_instituciones_seguimiento_v3.xlsx"');
+            header('Content-Length: '.strlen($bytes));
+            header('Cache-Control: no-store, private');
+            header('X-Content-Type-Options: nosniff');
+            echo $bytes;exit;
+        }catch(Throwable $error){
+            error_log('[impe_excel_plantilla] '.$error->getMessage());
+            http_response_code(503);
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'No fue posible preparar la plantilla Excel. Intenta nuevamente.';
+            exit;
+        }
+    }
+
+    /** Analistas elegibles en los territorios accesibles, sin fijar un estado al archivo. */
+    public function analistasImportacionExcel()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.crear');
+        header('Cache-Control: no-store, private');
+        $usuario=$this->obtenerUsuarioActualId();$modo=$this->resolverModoSeguimiento();
+        if($modo==='analista')$this->responderJson(['ok'=>true,'analistas'=>[['id'=>$usuario,'nombre'=>'Mi seguimiento']]]);
+        $modelo=new SeguimientoVinculacionModel();$listado=[];
+        foreach($this->obtenerTerritoriosPorModo($modelo,$usuario,$modo) as $estado){
+            foreach($this->obtenerAnalistasFiltro($modelo,$usuario,(int)$estado['id'],$modo) as $analista){
+                $id=(int)($analista['id']??0);if($id<=0)continue;
+                $listado[$id]=['id'=>$id,'nombre'=>trim((string)($analista['nombre']??'').' '.(string)($analista['apellidos']??''))];
+            }
+        }
+        uasort($listado,static fn($a,$b)=>strcasecmp($a['nombre'],$b['nombre']));
+        $this->responderJson(['ok'=>true,'analistas'=>array_values($listado)]);
+    }
+
+    /** Intersección del alcance del importador y la asignación vigente del responsable. */
+    private function territoriosImportacionExcel($modelo,int $usuario,string $modo,int $analista): array
+    {
+        if($analista<=0||($modo==='analista'&&$analista!==$usuario))return [];
+        return array_values(array_filter($this->obtenerTerritoriosPorModo($modelo,$usuario,$modo),
+            static function($estado)use($modelo,$usuario,$modo,$analista){
+                $id=(int)$estado['id'];
+                if($modo==='administrador')return $modelo->analistaValidoParaAdministradorEstado($id,$analista);
+                if($modo==='supervisor')return $modelo->analistaValidoParaCuentaClaveEstado($usuario,$id,$analista);
+                return true;
+            }));
+    }
+
+    /**
+     * Carga y confirmación de Excel V3. Separa lectura/previsualización de la escritura.
+     */
+    public function importarInstitucionesExcel()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.crear');
+        header('Cache-Control: no-store, private');
+        header('X-Content-Type-Options: nosniff');
+        $expected=(string)($_SESSION['csrf_token']??'');
+        $received=(string)($_POST['csrf_token']??'');
+        if(!$expected||!hash_equals($expected,$received)) {
+            $this->responderJson(['ok'=>false,'mensaje'=>'Tu sesión de seguridad caducó. Recarga el CRM.'],419);
+        }
+        try {
+            require_once __DIR__.'/../services/SeguimientoExcelImportService.php';
+            $usuarioId=$this->obtenerUsuarioActualId();
+            $modo=$this->resolverModoSeguimiento();
+            $modelo=new SeguimientoVinculacionModel();
+            $accion=(string)($_POST['operacion']??'');
+            if(!in_array($accion,['analizar','confirmar'],true)) {
+                throw new DomainException('Operación de importación inválida.',422);
+            }
+            if($accion==='analizar') {
+                unset($_SESSION['impe_excel_seguimiento_preview']);
+                $analista=$modo==='analista'?$usuarioId:(int)($_POST['analista_id']??0);
+                if($analista<=0)throw new DomainException('Selecciona un analista responsable.',422);
+                $scope=$this->territoriosImportacionExcel($modelo,$usuarioId,$modo,$analista);
+                if(!$scope)throw new DomainException('El responsable no tiene territorios autorizados para esta importación.',403);
+                $db=(new Database())->connect(false);
+                $service=new SeguimientoExcelImportService($db);
+                $rows=$service->leerXlsx($_FILES['archivo']??[]);
+                $result=$service->previsualizar($rows,$scope,$analista,$usuarioId);
+                $token=bin2hex(random_bytes(20));
+                $_SESSION['impe_excel_seguimiento_preview']=[
+                    'version'=>2,'token'=>$token,'usuario'=>$usuarioId,
+                    'analista'=>$analista,'expires'=>time()+1200,'filas'=>$result['filas']
+                ];
+                $public=array_map(static function($row){
+                    unset($row['registro'], $row['id']);
+                    return $row;
+                },$result['filas']);
+                $this->responderJson(['ok'=>true,'mensaje'=>'Archivo revisado. Confirma únicamente las filas nuevas.',
+                    'token'=>$token,'resumen'=>$result['resumen'],'filas'=>$public]);
+            }
+            $preview=$_SESSION['impe_excel_seguimiento_preview']??null;
+            if(!is_array($preview) || ($preview['version']??0)!==2 ||
+               !hash_equals((string)($preview['token']??''),(string)($_POST['token']??'')) ||
+               ($preview['expires']??0)<time() ||
+               (int)($preview['usuario']??0)!==$usuarioId) {
+                throw new DomainException('La revisión caducó. Analiza el Excel nuevamente.',409);
+            }
+            $analista=(int)$preview['analista'];
+            $scope=$this->territoriosImportacionExcel($modelo,$usuarioId,$modo,$analista);
+            if(!$scope)throw new DomainException('El acceso territorial del responsable cambió. Analiza el Excel nuevamente.',403);
+            $nuevas=count(array_filter($preview['filas'],static fn($fila)=>$fila['estado']==='nueva'));
+            if($nuevas===0)throw new DomainException('No hay instituciones nuevas para incorporar.',422);
+            // El token se consume antes de escribir: doble clic no puede repetir el lote.
+            unset($_SESSION['impe_excel_seguimiento_preview']);
+            $db=(new Database())->connect(false);
+            $service=new SeguimientoExcelImportService($db);
+            $resultado=$service->confirmar($preview['filas'],$scope,$analista,$usuarioId);
+            $this->responderJson(['ok'=>true,'mensaje'=>'Importación confirmada.',
+                'resultado'=>$resultado]);
+        }catch(DomainException $error) {
+            $code=(int)$error->getCode();
+            $this->responderJson(['ok'=>false,'mensaje'=>$error->getMessage()],
+                $code>=400&&$code<600?$code:422);
+        }catch(Throwable $error) {
+            error_log('[impe_excel_seguimiento] '.$error->getMessage());
+            $this->responderJson(['ok'=>false,
+                'mensaje'=>'No fue posible completar la operación. No se creó ningún registro de esta carga.'],500);
+        }
+    }
+
     /**
      * Bandeja de llamadas entrantes del Analista, sin alterar Seguimiento,
      * Recepción de Marketing ni el registro de llamadas salientes.
@@ -60,7 +206,11 @@ class SeguimientoVinculacionController
         try {
             $servicio = new TelefoniaEntrantesAnalistaService();
             $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-            $bandejaEntrantes = $servicio->listar($usuarioId);
+            $referenciaSaliente = $_GET['saliente_ref'] ?? '';
+            if (!is_string($referenciaSaliente)) throw new InvalidArgumentException('Referencia de llamada inválida.');
+            $bandejaEntrantes = $referenciaSaliente !== ''
+                ? $servicio->listarSaliente($usuarioId, $referenciaSaliente)
+                : $servicio->listar($usuarioId);
             $estadosEntrantes = $servicio->estados($usuarioId);
         } catch (Throwable $e) {
             error_log('[llamadas_entrantes_analista] ' . $e->getMessage());
@@ -75,6 +225,23 @@ class SeguimientoVinculacionController
         require_once __DIR__ . '/../views/layout/topbar.php';
         require_once __DIR__ . '/../views/seguimiento_vinculacion/llamadas_entrantes.php';
         require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function estadoResultadoSaliente()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+        try {
+            $ref = $_GET['pbx_call_id'] ?? '';
+            if (!is_string($ref)) throw new InvalidArgumentException('Referencia inválida.');
+            $bandeja = (new TelefoniaEntrantesAnalistaService())->listarSaliente((int)$_SESSION['usuario_id'], $ref);
+            $this->responderJson(['ok'=>true, 'llamada'=>$bandeja['llamadas'][0]]);
+        } catch (DomainException|InvalidArgumentException $e) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[resultado_saliente_analista] '.get_class($e));
+            $this->responderJson(['ok'=>false, 'mensaje'=>'No fue posible comprobar el resultado. Conserva la captura y reintenta.'], 503);
+        }
     }
 
     /**
@@ -338,6 +505,7 @@ class SeguimientoVinculacionController
         $candidatos = [];
         $advertencias = [];
         $denueFallido = false;
+        $mensajeDenue = '';
         $claveMunicipio = '0';
         $cacheDenue = [];
         $buscarDenuePorNombre = !$busquedaAutomatica &&
@@ -367,6 +535,33 @@ class SeguimientoVinculacionController
             $claveMunicipio = $this->normalizarClaveMunicipalDenue(
                 $municipio['clave_inegi'] ?? ''
             );
+        }
+
+        if ($denueSolicitado && (int)($_GET['denue_paginado'] ?? 0) === 1) {
+            require_once __DIR__ . '/../services/DenueCandidatosConsultaService.php';
+            $propietarioConsulta = (string)$usuarioId . ':' . session_id();
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+            $consulta = new DenueCandidatosConsultaService();
+            $resultado = $consulta->pagina($propietarioConsulta, [
+                'estado' => str_pad((string)$estado['clave_inegi'], 2, '0', STR_PAD_LEFT),
+                'municipio' => $claveMunicipio, 'tipo' => $tipoCandidato, 'termino' => $termino
+            ], $pagina, function ($filas) use ($tipoCandidato, $estado, $municipioId, $claveMunicipio) {
+                $filas = array_values(array_filter($filas, fn($fila) => $this->candidatoDenuePerteneceEstado($fila, $estado)));
+                if ($municipioId > 0) $filas = $this->filtrarDenuePorMunicipio($filas, $municipioId, $claveMunicipio);
+                return $this->filtrarDenuePorTipoCandidato($filas, $tipoCandidato);
+            });
+            if (!$resultado['ok']) {
+                $this->responderJson($resultado, !empty($resultado['reintentable']) ? 503 : 422);
+            }
+            $filas = $this->completarMunicipiosDenue($modelo, $estadoId, $resultado['candidatos']);
+            $filas = $this->agregarOportunidadCandidatos($filas, $this->obtenerPrioridadesMunicipales($estadoId));
+            $resultado['candidatos'] = $this->agregarEstadoSeguimientoCandidatos($modelo, $estadoId, $filas);
+            $resultado['cache_candidatos'] = [];
+            $resultado['advertencias'] = [];
+            $resultado['denue_solicitado'] = true;
+            $resultado['mensaje_vacio'] = 'No se encontraron candidatos con los criterios seleccionados.';
+            $resultado['puede_crear'] = tienePermiso('seguimientos_vinculacion.crear');
+            $this->responderJson($resultado);
         }
 
         if ($buscarDenuePorNombre) {
@@ -401,6 +596,7 @@ class SeguimientoVinculacionController
             }
 
             if ($resultadoDenue['ok']) {
+                $advertencias = array_merge($advertencias, $resultadoDenue['advertencias'] ?? []);
                 $denue = $this->completarMunicipiosDenue(
                     $modelo,
                     $estadoId,
@@ -423,6 +619,7 @@ class SeguimientoVinculacionController
                 $candidatos = array_merge($candidatos, $denue);
             } else {
                 $denueFallido = true;
+                $mensajeDenue = $resultadoDenue['mensaje'] ?? 'No fue posible consultar DENUE. Intenta nuevamente.';
             }
         }
 
@@ -443,7 +640,7 @@ class SeguimientoVinculacionController
         $mensajeVacio = 'No existen resultados de este tipo.';
 
         if ($denueFallido && $totalCandidatos === 0) {
-            $mensajeVacio = 'No pudimos consultar DENUE en este momento.';
+            $mensajeVacio = $mensajeDenue;
         } elseif ($denueSolicitado && !$denueFallido) {
             $mensajeVacio = $busquedaAutomatica
                 ? 'No se encontraron candidatos DENUE recomendados.'
@@ -1105,7 +1302,12 @@ class SeguimientoVinculacionController
         }
 
         $fechaInicio = $this->normalizarFechaFormulario($_POST['fecha_inicio'] ?? '');
-        $proximaAccionAt = $this->normalizarFechaFormulario($_POST['proxima_accion_at'] ?? '', true);
+        try {
+            $programacion = InteraccionProximaAccion::validar($_POST);
+        } catch (DomainException $error) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$error->getMessage()], 422);
+        }
+        $proximaAccionAt = $programacion['fecha'];
 
         if ($fechaInicio === '') {
             $this->responderJson([
@@ -1150,7 +1352,7 @@ class SeguimientoVinculacionController
         try { $contactoLlamada=DatosContactoLlamadaService::extraer($_POST,$canalFormulario,$resultadoFormulario); }
         catch (InvalidArgumentException $e) { $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422); }
         $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['persona_atendio'] ?? ''));
-        $proximaAccion = trim((string)($_POST['proxima_accion'] ?? ''));
+        $proximaAccion = $programacion['accion'];
         $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
         $origenLlamada = strtoupper(trim((string)($_POST['origen_llamada'] ?? 'MANUAL')));
         if (!in_array($origenLlamada, ['ZADARMA', 'PRUEBA', 'MANUAL'], true)) {
@@ -1213,17 +1415,7 @@ class SeguimientoVinculacionController
          * cuando después queda vinculada con la llamada real del proveedor.
          */
         $evidenciasVerificacion = [];
-        $resultadoAdmiteVerificacion = in_array(
-            $resultadoFormulario,
-            [
-                'CONTACTO_CORRECTO',
-                'CONTACTO_REFERIDO',
-                'SOLICITO_INFORMACION',
-                'SOLICITO_LLAMAR_DESPUES',
-                'NO_INTERESADO'
-            ],
-            true
-        );
+        $resultadoAdmiteVerificacion = VerificacionInstitucionalService::resultadoVerificable($resultadoFormulario);
 
         try {
             $telefonoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'telefono');
@@ -1234,7 +1426,8 @@ class SeguimientoVinculacionController
 
         if (
             $canalFormulario === 'LLAMADA' &&
-            $resultadoAdmiteVerificacion
+            $resultadoAdmiteVerificacion &&
+            (int)($seguimiento['datos_verificados'] ?? 0) !== 1
         ) {
             if ((int)($_POST['verificacion_telefono_confirmado'] ?? 0) === 1) {
                 if ($telefonoActual === '') {
@@ -1290,6 +1483,7 @@ class SeguimientoVinculacionController
             !empty($evidenciasVerificacion);
         $esVerificacionEfectiva =
             $esCandidataVerificacion &&
+            VerificacionInstitucionalService::tienePar($detallesVerificacion) &&
             $origenLlamada === 'ZADARMA';
 
         if ($esCandidataVerificacion && $personaAtendio === '') {
@@ -1337,7 +1531,8 @@ class SeguimientoVinculacionController
                   ) . implode(' · ', $evidenciasVerificacion)
                 : '',
             $observacion,
-            $proximaAccion !== '' ? 'Próxima acción: ' . $proximaAccion : '',
+            $proximaAccionAt !== null ? 'Próxima acción: ' . $proximaAccion : '',
+            $proximaAccionAt !== null ? 'Fecha próxima acción: ' . $proximaAccionAt : '',
             $descartar ? 'Motivo de descarte: ' . $motivoDescarte : ''
         ])));
 
@@ -1417,6 +1612,7 @@ class SeguimientoVinculacionController
             'verificacion_telefonica' => [
                 'candidata' => $esCandidataVerificacion,
                 'contabilizable' => $esVerificacionEfectiva,
+                'parcial' => !empty($detallesVerificacion) && !VerificacionInstitucionalService::tienePar($detallesVerificacion),
                 'origen' => $origenLlamada,
                 'evidencias' => $evidenciasVerificacion,
                 'resumen_hoy' => $modelo->obtenerResumenVerificacionTelefonicaDia(
@@ -1490,7 +1686,7 @@ class SeguimientoVinculacionController
             ], 422);
         }
 
-        if (!$modelo->descartarSeguimientoTrabajo($seguimientoId, $motivoDescarte)) {
+        if (!$modelo->descartarSeguimientoTrabajo($seguimientoId, $motivoDescarte, $usuarioId)) {
             $this->responderJson([
                 'ok' => false,
                 'mensaje' => 'No fue posible descartar el seguimiento.'
@@ -2598,7 +2794,7 @@ class SeguimientoVinculacionController
             $this->responderJson([
                 'ok' => false,
                 'duplicado' => true,
-                'mensaje' => 'Ya existe un seguimiento manual con el mismo nombre, tipo y Analista.',
+                'mensaje' => 'Ya existe un seguimiento de esta institución en el territorio. Consulta el expediente existente y su Analista responsable.',
                 'url' => (int)$duplicado['activo'] === 1
                     ? BASE_URL . 'index.php?controller=seguimientoVinculacion&action=detalle&id=' . (int)$duplicado['id']
                     : ''
@@ -2988,7 +3184,7 @@ class SeguimientoVinculacionController
     private function puedeOperarSeguimiento($seguimiento, $usuarioId, $modo)
     {
         $esAnalistaResponsable = $modo === 'analista' &&
-            (int)($seguimiento['analista_id'] ?? 0) === (int)$usuarioId;
+            SeguimientoTerritorialScope::puedeTrabajar($seguimiento, (int)$usuarioId);
 
         return $esAnalistaResponsable &&
             tienePermiso('seguimientos_vinculacion.operar_propios');
@@ -3001,7 +3197,7 @@ class SeguimientoVinculacionController
         }
 
         return $modo === 'analista' &&
-            (int)($seguimiento['analista_id'] ?? 0) === (int)$usuarioId &&
+            SeguimientoTerritorialScope::puedeTrabajar($seguimiento, (int)$usuarioId) &&
             tienePermiso('seguimientos_vinculacion.operar_propios');
     }
 
@@ -3035,7 +3231,7 @@ class SeguimientoVinculacionController
          * envío o confirmación pendiente y debe conservarse aunque existan
          * interacciones más recientes.
          */
-        if ($seguimientoDescartado || $estado === 'DATOS_VERIFICADOS') {
+        if ($seguimientoDescartado || ($estado === 'DATOS_VERIFICADOS' && empty($seguimiento['proxima_accion_programada']))) {
             $proximaAccion = '';
             $proximaAccionTexto = '';
         }
@@ -3332,7 +3528,7 @@ class SeguimientoVinculacionController
          * Las acciones operativas continúan sujetas a sus permisos específicos.
          */
         if (
-            $rolId === 1 ||
+            esRolSupervisionNacional() ||
             strcasecmp($rolNombre, 'Marketing') === 0
         ) {
             return 'administrador';

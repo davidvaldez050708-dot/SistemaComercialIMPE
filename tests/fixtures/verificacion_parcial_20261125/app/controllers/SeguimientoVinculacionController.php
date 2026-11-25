@@ -1,0 +1,3640 @@
+<?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
+require_once __DIR__ . '/../services/VerificacionInstitucionalService.php';
+require_once __DIR__ . '/../services/InteraccionProximaAccion.php';
+
+require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
+require_once __DIR__ . '/../models/DataTerritorialModel.php';
+require_once __DIR__ . '/../helpers/PermissionHelper.php';
+require_once __DIR__ . '/../services/DenueService.php';
+require_once __DIR__ . '/../services/SeguimientoRutaOperativaService.php';
+require_once __DIR__ . '/../services/SeguimientoCorreoContactoService.php';
+require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
+require_once __DIR__ . '/../services/SeguimientoActividadPresentacionService.php';
+require_once __DIR__ . '/../services/SeguimientoCambioDatosService.php';
+
+class SeguimientoVinculacionController
+{
+    public function index()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $territorios = $this->obtenerTerritoriosPorModo(
+            $modelo,
+            $usuarioId,
+            $modoSeguimiento
+        );
+        $mensajeError = $_SESSION['error_seguimiento_vinculacion'] ?? '';
+        $mensajeExito = $_SESSION['mensaje_seguimiento_vinculacion'] ?? '';
+
+        unset(
+            $_SESSION['error_seguimiento_vinculacion'],
+            $_SESSION['mensaje_seguimiento_vinculacion']
+        );
+
+        $tituloPagina = 'Seguimiento de vinculación';
+        $subtituloPagina = $modoSeguimiento === 'administrador'
+            ? 'Consulta el seguimiento institucional general'
+            : 'Selecciona uno de tus territorios asignados';
+        $opcionActiva = 'seguimiento_vinculacion';
+
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/seguimiento_vinculacion/index.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    /** Entrega una plantilla XLSX oficial restringida a los territorios accesibles. */
+    public function descargarPlantillaSeguimientoExcel()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+        if(!tienePermiso('seguimientos_vinculacion.crear')){
+            http_response_code(403);exit('No tienes permiso para descargar la plantilla.');
+        }
+        try {
+            require_once __DIR__.'/../services/SeguimientoExcelPlantillaService.php';
+            $modelo=new SeguimientoVinculacionModel();
+            $estados=$this->obtenerTerritoriosPorModo($modelo,$this->obtenerUsuarioActualId(),
+                $this->resolverModoSeguimiento());
+            if(!$estados)throw new DomainException('No tienes territorios disponibles.',403);
+            $ids=array_values(array_unique(array_filter(array_map(static fn($e)=>(int)$e['id'],$estados),static fn($id)=>$id>0)));
+            if(!$ids)throw new DomainException('No tienes territorios disponibles.',403);
+            $db=(new Database())->connect(false);
+            $stmt=$db->prepare('SELECT id,estado_id,nombre FROM municipios WHERE estado=1 AND estado_id IN ('.implode(',',array_fill(0,count($ids),'?')).') ORDER BY estado_id,nombre,id');
+            $stmt->bind_param(str_repeat('i',count($ids)),...$ids);$stmt->execute();
+            $municipios=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
+            $bytes=SeguimientoExcelPlantillaService::archivo($estados,$municipios);
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="plantilla_instituciones_seguimiento_v3.xlsx"');
+            header('Content-Length: '.strlen($bytes));
+            header('Cache-Control: no-store, private');
+            header('X-Content-Type-Options: nosniff');
+            echo $bytes;exit;
+        }catch(Throwable $error){
+            error_log('[impe_excel_plantilla] '.$error->getMessage());
+            http_response_code(503);
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'No fue posible preparar la plantilla Excel. Intenta nuevamente.';
+            exit;
+        }
+    }
+
+    /** Analistas elegibles en los territorios accesibles, sin fijar un estado al archivo. */
+    public function analistasImportacionExcel()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.crear');
+        header('Cache-Control: no-store, private');
+        $usuario=$this->obtenerUsuarioActualId();$modo=$this->resolverModoSeguimiento();
+        if($modo==='analista')$this->responderJson(['ok'=>true,'analistas'=>[['id'=>$usuario,'nombre'=>'Mi seguimiento']]]);
+        $modelo=new SeguimientoVinculacionModel();$listado=[];
+        foreach($this->obtenerTerritoriosPorModo($modelo,$usuario,$modo) as $estado){
+            foreach($this->obtenerAnalistasFiltro($modelo,$usuario,(int)$estado['id'],$modo) as $analista){
+                $id=(int)($analista['id']??0);if($id<=0)continue;
+                $listado[$id]=['id'=>$id,'nombre'=>trim((string)($analista['nombre']??'').' '.(string)($analista['apellidos']??''))];
+            }
+        }
+        uasort($listado,static fn($a,$b)=>strcasecmp($a['nombre'],$b['nombre']));
+        $this->responderJson(['ok'=>true,'analistas'=>array_values($listado)]);
+    }
+
+    /** Intersección del alcance del importador y la asignación vigente del responsable. */
+    private function territoriosImportacionExcel($modelo,int $usuario,string $modo,int $analista): array
+    {
+        if($analista<=0||($modo==='analista'&&$analista!==$usuario))return [];
+        return array_values(array_filter($this->obtenerTerritoriosPorModo($modelo,$usuario,$modo),
+            static function($estado)use($modelo,$usuario,$modo,$analista){
+                $id=(int)$estado['id'];
+                if($modo==='administrador')return $modelo->analistaValidoParaAdministradorEstado($id,$analista);
+                if($modo==='supervisor')return $modelo->analistaValidoParaCuentaClaveEstado($usuario,$id,$analista);
+                return true;
+            }));
+    }
+
+    /**
+     * Carga y confirmación de Excel V3. Separa lectura/previsualización de la escritura.
+     */
+    public function importarInstitucionesExcel()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.crear');
+        header('Cache-Control: no-store, private');
+        header('X-Content-Type-Options: nosniff');
+        $expected=(string)($_SESSION['csrf_token']??'');
+        $received=(string)($_POST['csrf_token']??'');
+        if(!$expected||!hash_equals($expected,$received)) {
+            $this->responderJson(['ok'=>false,'mensaje'=>'Tu sesión de seguridad caducó. Recarga el CRM.'],419);
+        }
+        try {
+            require_once __DIR__.'/../services/SeguimientoExcelImportService.php';
+            $usuarioId=$this->obtenerUsuarioActualId();
+            $modo=$this->resolverModoSeguimiento();
+            $modelo=new SeguimientoVinculacionModel();
+            $accion=(string)($_POST['operacion']??'');
+            if(!in_array($accion,['analizar','confirmar'],true)) {
+                throw new DomainException('Operación de importación inválida.',422);
+            }
+            if($accion==='analizar') {
+                unset($_SESSION['impe_excel_seguimiento_preview']);
+                $analista=$modo==='analista'?$usuarioId:(int)($_POST['analista_id']??0);
+                if($analista<=0)throw new DomainException('Selecciona un analista responsable.',422);
+                $scope=$this->territoriosImportacionExcel($modelo,$usuarioId,$modo,$analista);
+                if(!$scope)throw new DomainException('El responsable no tiene territorios autorizados para esta importación.',403);
+                $db=(new Database())->connect(false);
+                $service=new SeguimientoExcelImportService($db);
+                $rows=$service->leerXlsx($_FILES['archivo']??[]);
+                $result=$service->previsualizar($rows,$scope,$analista,$usuarioId);
+                $token=bin2hex(random_bytes(20));
+                $_SESSION['impe_excel_seguimiento_preview']=[
+                    'version'=>2,'token'=>$token,'usuario'=>$usuarioId,
+                    'analista'=>$analista,'expires'=>time()+1200,'filas'=>$result['filas']
+                ];
+                $public=array_map(static function($row){
+                    unset($row['registro'], $row['id']);
+                    return $row;
+                },$result['filas']);
+                $this->responderJson(['ok'=>true,'mensaje'=>'Archivo revisado. Confirma únicamente las filas nuevas.',
+                    'token'=>$token,'resumen'=>$result['resumen'],'filas'=>$public]);
+            }
+            $preview=$_SESSION['impe_excel_seguimiento_preview']??null;
+            if(!is_array($preview) || ($preview['version']??0)!==2 ||
+               !hash_equals((string)($preview['token']??''),(string)($_POST['token']??'')) ||
+               ($preview['expires']??0)<time() ||
+               (int)($preview['usuario']??0)!==$usuarioId) {
+                throw new DomainException('La revisión caducó. Analiza el Excel nuevamente.',409);
+            }
+            $analista=(int)$preview['analista'];
+            $scope=$this->territoriosImportacionExcel($modelo,$usuarioId,$modo,$analista);
+            if(!$scope)throw new DomainException('El acceso territorial del responsable cambió. Analiza el Excel nuevamente.',403);
+            $nuevas=count(array_filter($preview['filas'],static fn($fila)=>$fila['estado']==='nueva'));
+            if($nuevas===0)throw new DomainException('No hay instituciones nuevas para incorporar.',422);
+            // El token se consume antes de escribir: doble clic no puede repetir el lote.
+            unset($_SESSION['impe_excel_seguimiento_preview']);
+            $db=(new Database())->connect(false);
+            $service=new SeguimientoExcelImportService($db);
+            $resultado=$service->confirmar($preview['filas'],$scope,$analista,$usuarioId);
+            $this->responderJson(['ok'=>true,'mensaje'=>'Importación confirmada.',
+                'resultado'=>$resultado]);
+        }catch(DomainException $error) {
+            $code=(int)$error->getCode();
+            $this->responderJson(['ok'=>false,'mensaje'=>$error->getMessage()],
+                $code>=400&&$code<600?$code:422);
+        }catch(Throwable $error) {
+            error_log('[impe_excel_seguimiento] '.$error->getMessage());
+            $this->responderJson(['ok'=>false,
+                'mensaje'=>'No fue posible completar la operación. No se creó ningún registro de esta carga.'],500);
+        }
+    }
+
+    /**
+     * Bandeja de llamadas entrantes del Analista, sin alterar Seguimiento,
+     * Recepción de Marketing ni el registro de llamadas salientes.
+     */
+    public function llamadasEntrantes()
+    {
+        $this->validarAccesoEntrantesAnalista(false);
+        require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+        $bandejaEntrantes = ['extension' => '', 'llamadas' => []];
+        $estadosEntrantes = [];
+        $errorEntrantes = '';
+        try {
+            $servicio = new TelefoniaEntrantesAnalistaService();
+            $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
+            $referenciaSaliente = $_GET['saliente_ref'] ?? '';
+            if (!is_string($referenciaSaliente)) throw new InvalidArgumentException('Referencia de llamada inválida.');
+            $bandejaEntrantes = $referenciaSaliente !== ''
+                ? $servicio->listarSaliente($usuarioId, $referenciaSaliente)
+                : $servicio->listar($usuarioId);
+            $estadosEntrantes = $servicio->estados($usuarioId);
+        } catch (Throwable $e) {
+            error_log('[llamadas_entrantes_analista] ' . $e->getMessage());
+            $errorEntrantes = 'No fue posible consultar las llamadas. Comprueba que tu extensión está activa.';
+        }
+
+        $tituloPagina = 'Llamadas recibidas · Seguimiento';
+        $subtituloPagina = 'Historial y resultados de llamadas institucionales';
+        $opcionActiva = 'seguimiento_vinculacion';
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/seguimiento_vinculacion/llamadas_entrantes.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function estadoResultadoSaliente()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+        try {
+            $ref = $_GET['pbx_call_id'] ?? '';
+            if (!is_string($ref)) throw new InvalidArgumentException('Referencia inválida.');
+            $bandeja = (new TelefoniaEntrantesAnalistaService())->listarSaliente((int)$_SESSION['usuario_id'], $ref);
+            $this->responderJson(['ok'=>true, 'llamada'=>$bandeja['llamadas'][0]]);
+        } catch (DomainException|InvalidArgumentException $e) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[resultado_saliente_analista] '.get_class($e));
+            $this->responderJson(['ok'=>false, 'mensaje'=>'No fue posible comprobar el resultado. Conserva la captura y reintenta.'], 503);
+        }
+    }
+
+    /**
+     * Bitácora WebRTC del Analista: eventos de su propia sesión autenticada,
+     * claramente diferenciados de los webhooks firmados de Zadarma.
+     */
+    public function eventoEntranteWebrtc()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        $this->validarMetodoPostJson();
+        $expected = (string)($_SESSION['csrf_token'] ?? '');
+        $received = (string)($_POST['csrf_token'] ?? '');
+        if ($expected === '' || !hash_equals($expected, $received)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Sesión expirada o inválida.'], 403);
+        }
+
+        require_once __DIR__ . '/../services/TelefoniaAnalistaWebrtcService.php';
+        try {
+            $servicioWebrtc = new TelefoniaAnalistaWebrtcService();
+            $servicioWebrtc->registrarEvento((int)$_SESSION['usuario_id'], $_POST);
+            // El navegador recibe sólo el estado calculado por el servidor.
+            $interna = (string)($_POST['evento'] ?? '') === 'ended' &&
+                $servicioWebrtc->esSesionInterna(
+                    (int)$_SESSION['usuario_id'],
+                    trim((string)($_POST['session_id'] ?? ''))
+                );
+            $this->responderJson(['ok' => true, 'interna' => (bool)$interna]);
+        } catch (InvalidArgumentException | DomainException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[evento_entrante_webrtc_analista] ' . $e->getMessage());
+            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible registrar el evento WebRTC.'], 500);
+        }
+    }
+
+    public function buscarEntrantesSeguimientos()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+        try {
+            $busqueda = trim((string)($_GET['q'] ?? ''));
+            $resultados = (new TelefoniaEntrantesAnalistaService())
+                ->buscarSeguimientos((int)$_SESSION['usuario_id'], $busqueda);
+            $this->responderJson(['ok' => true, 'resultados' => $resultados]);
+        } catch (Throwable $e) {
+            error_log('[buscar_entrantes_analista] ' . $e->getMessage());
+            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible buscar los expedientes.'], 500);
+        }
+    }
+
+    /**
+     * El Analista solicita enlazar el audio de su propia llamada interna.
+     * El servidor consulta Zadarma y sólo guarda una coincidencia única.
+     */
+    public function sincronizarGrabacionInterna()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        $this->validarMetodoPostJson();
+        $expected = (string)($_SESSION['csrf_token'] ?? '');
+        $received = (string)($_POST['csrf_token'] ?? '');
+        if ($expected === '' || !hash_equals($expected, $received)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'La sesión expiró. Actualiza el CRM.'], 403);
+        }
+        require_once __DIR__ . '/../services/TelefoniaInternaGrabacionService.php';
+        try {
+            $db = (new Database())->connect();
+            $ok = (new TelefoniaInternaGrabacionService($db))->sincronizar(
+                (int)($_SESSION['usuario_id'] ?? 0),
+                trim((string)($_POST['session_id'] ?? ''))
+            );
+            $this->responderJson([
+                'ok' => (bool)$ok,
+                'mensaje' => 'Grabación vinculada. Ya puedes reproducirla en el historial.'
+            ]);
+        } catch (DomainException | InvalidArgumentException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[sincronizar_grabacion_interna] ' . get_class($e) . ': ' . $e->getCode());
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible consultar la grabación de Zadarma. Inténtalo más tarde.'
+            ], 503);
+        }
+    }
+
+    public function registrarLlamadaEntrante()
+    {
+        $this->validarAccesoEntrantesAnalista(true);
+        $this->validarMetodoPostJson();
+        $esperado = (string)($_SESSION['csrf_token'] ?? '');
+        $recibido = (string)($_POST['csrf_token'] ?? '');
+        if ($esperado === '' || !hash_equals($esperado, $recibido)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'La sesión expiró. Actualiza el CRM.'], 403);
+        }
+
+        require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
+        try {
+            $resultado = (new TelefoniaEntrantesAnalistaService())
+                ->registrar((int)$_SESSION['usuario_id'], $_POST);
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => $resultado['estado'] === 'SIN_IDENTIFICAR'
+                    ? 'Llamada clasificada en el historial telefónico.'
+                    : 'Llamada vinculada al expediente de Seguimiento.',
+                'resultado' => $resultado
+            ]);
+        } catch (InvalidArgumentException | DomainException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            error_log('[registrar_entrante_analista] ' . $e->getMessage());
+            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible guardar. No se alteró el expediente; vuelve a intentarlo.'], 500);
+        }
+    }
+
+    private function validarAccesoEntrantesAnalista(bool $json): void
+    {
+        $permitido = (int)($_SESSION['usuario_id'] ?? 0) > 0 &&
+            strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Analista de Datos') === 0 &&
+            tienePermiso('seguimientos_vinculacion.operar_propios') &&
+            tienePermiso('telefonia.usar') &&
+            tienePermiso('telefonia.recibir');
+        if (!$permitido) {
+            if ($json) {
+                $this->responderJson(['ok' => false, 'mensaje' => 'Sin permiso para las llamadas recibidas.'], 403);
+            }
+            http_response_code(403);
+            echo 'No tienes acceso a esta sección.';
+            exit;
+        }
+    }
+
+    public function estado()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $estadoId = (int)($_GET['estado_id'] ?? 0);
+        $estado = $this->obtenerEstadoPorModo(
+            $modelo,
+            $usuarioId,
+            $estadoId,
+            $modoSeguimiento
+        );
+
+        if (!$estado) {
+            $_SESSION['error_seguimiento_vinculacion'] =
+                'No tienes acceso a este territorio.';
+            $this->redirigirASeguimiento();
+        }
+
+        $filtrosSeguimiento = $this->obtenerFiltrosSeguimiento();
+        $analistasFiltro = $this->obtenerAnalistasFiltro(
+            $modelo,
+            $usuarioId,
+            $estadoId,
+            $modoSeguimiento
+        );
+        $municipiosCandidatos = $modelo->obtenerMunicipiosActivosEstado($estadoId);
+        $puedeCrearSeguimiento = tienePermiso('seguimientos_vinculacion.crear');
+        $resumenTotalSeguimientos = $this->obtenerResumenPorModo(
+            $modelo,
+            $usuarioId,
+            $estadoId,
+            $modoSeguimiento,
+            []
+        );
+        $seguimientos = $this->obtenerSeguimientosPorModo(
+            $modelo,
+            $usuarioId,
+            $estadoId,
+            $modoSeguimiento,
+            $filtrosSeguimiento
+        );
+
+        $rutasIniciales = $this->enriquecerSeguimientosConRutaInicial($seguimientos);
+        $seguimientos = $rutasIniciales['seguimientos'];
+        $seguimientosRutaInicial = $rutasIniciales['rutas'];
+        $resumenRutaInicial = $this->calcularResumenRutaInicial($seguimientos);
+
+        $totalSeguimientosReales = (int)($resumenTotalSeguimientos['en_seguimiento'] ?? 0);
+        $totalResultadosFiltrados = count($seguimientos);
+
+        $tituloPagina = 'Seguimiento de vinculación';
+        $subtituloPagina = (string)$estado['nombre'];
+        $opcionActiva = 'seguimiento_vinculacion';
+
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/seguimiento_vinculacion/estado.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function buscarCandidatos()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $estadoId = (int)($_GET['estado_id'] ?? 0);
+        $estado = $this->obtenerEstadoPorModo(
+            $modelo,
+            $usuarioId,
+            $estadoId,
+            $modoSeguimiento
+        );
+
+        if (!$estado) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este territorio.'
+            ], 403);
+        }
+
+        $termino = trim((string)($_GET['buscar'] ?? ''));
+        $busquedaAutomatica = (int)($_GET['automatico'] ?? 0) === 1;
+        $tipoCandidato = strtoupper(trim((string)($_GET['tipo_candidato'] ?? 'TODOS')));
+        $tiposValidos = ['TODOS', 'EMPRESAS', 'INSTITUCIONES', 'SECRETARIA'];
+
+        if (!in_array($tipoCandidato, $tiposValidos, true)) {
+            $tipoCandidato = 'TODOS';
+        }
+
+        if (
+            !$busquedaAutomatica &&
+            $tipoCandidato !== 'SECRETARIA' &&
+            strlen($termino) < 3
+        ) {
+            $this->responderJson([
+                'ok' => true,
+                'candidatos' => [],
+                'mensaje' => 'Escribe al menos 3 caracteres o usa la búsqueda automática.',
+                'requiere_busqueda' => true,
+                'pagina' => 1,
+                'hay_mas' => false,
+                'total_resultados' => 0,
+                'resultados_por_pagina' => 10
+            ]);
+        }
+
+        $pagina = max(1, (int)($_GET['pagina'] ?? 1));
+        $limite = 10;
+        $offset = ($pagina - 1) * $limite;
+        $municipioId = (int)($_GET['municipio_id'] ?? 0);
+        $municipio = null;
+
+        if ($municipioId > 0) {
+            $municipio = $modelo->obtenerMunicipioActivoPorId($estadoId, $municipioId);
+
+            if (!$municipio) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El municipio seleccionado no es válido.'
+                ], 422);
+            }
+        }
+
+        $candidatos = [];
+        $advertencias = [];
+        $denueFallido = false;
+        $mensajeDenue = '';
+        $claveMunicipio = '0';
+        $cacheDenue = [];
+        $buscarDenuePorNombre = !$busquedaAutomatica &&
+            strlen($termino) >= 3 &&
+            in_array($tipoCandidato, ['TODOS', 'EMPRESAS', 'INSTITUCIONES'], true);
+        $denueSolicitado = $buscarDenuePorNombre ||
+            (
+                $busquedaAutomatica &&
+                in_array($tipoCandidato, ['TODOS', 'EMPRESAS', 'INSTITUCIONES'], true)
+            );
+        $limiteConsultaInterna = 80;
+
+        if (
+            $tipoCandidato === 'SECRETARIA' ||
+            ($tipoCandidato === 'TODOS' && $municipioId === 0)
+        ) {
+            $secretarias = $modelo->buscarCandidatosSecretarias(
+                $estadoId,
+                $termino,
+                $limiteConsultaInterna,
+                0
+            );
+            $candidatos = array_merge($candidatos, $secretarias);
+        }
+
+        if ($municipioId > 0 && $municipio) {
+            $claveMunicipio = $this->normalizarClaveMunicipalDenue(
+                $municipio['clave_inegi'] ?? ''
+            );
+        }
+
+        if ($denueSolicitado && (int)($_GET['denue_paginado'] ?? 0) === 1) {
+            require_once __DIR__ . '/../services/DenueCandidatosConsultaService.php';
+            $propietarioConsulta = (string)$usuarioId . ':' . session_id();
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+            $consulta = new DenueCandidatosConsultaService();
+            $resultado = $consulta->pagina($propietarioConsulta, [
+                'estado' => str_pad((string)$estado['clave_inegi'], 2, '0', STR_PAD_LEFT),
+                'municipio' => $claveMunicipio, 'tipo' => $tipoCandidato, 'termino' => $termino
+            ], $pagina, function ($filas) use ($tipoCandidato, $estado, $municipioId, $claveMunicipio) {
+                $filas = array_values(array_filter($filas, fn($fila) => $this->candidatoDenuePerteneceEstado($fila, $estado)));
+                if ($municipioId > 0) $filas = $this->filtrarDenuePorMunicipio($filas, $municipioId, $claveMunicipio);
+                return $this->filtrarDenuePorTipoCandidato($filas, $tipoCandidato);
+            });
+            if (!$resultado['ok']) {
+                $this->responderJson($resultado, !empty($resultado['reintentable']) ? 503 : 422);
+            }
+            $filas = $this->completarMunicipiosDenue($modelo, $estadoId, $resultado['candidatos']);
+            $filas = $this->agregarOportunidadCandidatos($filas, $this->obtenerPrioridadesMunicipales($estadoId));
+            $resultado['candidatos'] = $this->agregarEstadoSeguimientoCandidatos($modelo, $estadoId, $filas);
+            $resultado['cache_candidatos'] = [];
+            $resultado['advertencias'] = [];
+            $resultado['denue_solicitado'] = true;
+            $resultado['mensaje_vacio'] = 'No se encontraron candidatos con los criterios seleccionados.';
+            $resultado['puede_crear'] = tienePermiso('seguimientos_vinculacion.crear');
+            $this->responderJson($resultado);
+        }
+
+        if ($buscarDenuePorNombre) {
+            $cacheDenue = $this->buscarCandidatosDenueEnCache(
+                $estadoId,
+                $municipioId,
+                $tipoCandidato,
+                $termino
+            );
+
+            if (!empty($cacheDenue)) {
+                $candidatos = array_merge($candidatos, $cacheDenue);
+            }
+        }
+
+        if ($denueSolicitado) {
+            $servicioDenue = new DenueService();
+
+            if ($busquedaAutomatica) {
+                $resultadoDenue = $servicioDenue->buscarCandidatosRecomendados(
+                    str_pad((string)($estado['clave_inegi'] ?? ''), 2, '0', STR_PAD_LEFT),
+                    $claveMunicipio,
+                    250
+                );
+            } else {
+                $resultadoDenue = $servicioDenue->buscarDenuePorNombre(
+                    str_pad((string)($estado['clave_inegi'] ?? ''), 2, '0', STR_PAD_LEFT),
+                    $claveMunicipio,
+                    $termino,
+                    160
+                );
+            }
+
+            if ($resultadoDenue['ok']) {
+                $advertencias = array_merge($advertencias, $resultadoDenue['advertencias'] ?? []);
+                $denue = $this->completarMunicipiosDenue(
+                    $modelo,
+                    $estadoId,
+                    $resultadoDenue['resultados'] ?? []
+                );
+
+                if ($municipioId > 0) {
+                    $denue = $this->filtrarDenuePorMunicipio(
+                        $denue,
+                        $municipioId,
+                        $claveMunicipio
+                    );
+                }
+
+                if ($busquedaAutomatica) {
+                    $this->guardarCacheDenueCandidatos($estadoId, $municipioId, $denue);
+                }
+
+                $denue = $this->filtrarDenuePorTipoCandidato($denue, $tipoCandidato);
+                $candidatos = array_merge($candidatos, $denue);
+            } else {
+                $denueFallido = true;
+                $mensajeDenue = $resultadoDenue['mensaje'] ?? 'No fue posible consultar DENUE. Intenta nuevamente.';
+            }
+        }
+
+        if ($denueFallido) {
+            if (!empty($cacheDenue)) {
+                $advertencias[] = 'No se pudieron obtener resultados adicionales de DENUE.';
+            } elseif (!empty($candidatos)) {
+                $advertencias[] = 'No pudimos consultar DENUE. Se muestran los candidatos disponibles en el sistema.';
+            }
+        }
+
+        $prioridadesMunicipales = $this->obtenerPrioridadesMunicipales($estadoId);
+        $candidatos = $this->agregarOportunidadCandidatos($candidatos, $prioridadesMunicipales);
+        $candidatos = $this->agregarEstadoSeguimientoCandidatos($modelo, $estadoId, $candidatos);
+        $candidatosCompletos = $candidatos;
+        $totalCandidatos = count($candidatos);
+        $candidatos = array_slice($candidatos, $offset, $limite);
+        $mensajeVacio = 'No existen resultados de este tipo.';
+
+        if ($denueFallido && $totalCandidatos === 0) {
+            $mensajeVacio = $mensajeDenue;
+        } elseif ($denueSolicitado && !$denueFallido) {
+            $mensajeVacio = $busquedaAutomatica
+                ? 'No se encontraron candidatos DENUE recomendados.'
+                : 'DENUE no encontró candidatos con ese nombre.';
+        } elseif ($tipoCandidato === 'TODOS') {
+            $mensajeVacio = 'No se encontraron candidatos con los criterios seleccionados.';
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'candidatos' => $candidatos,
+            'pagina' => $pagina,
+            'hay_mas' => $totalCandidatos > ($offset + $limite),
+            'total_resultados' => $totalCandidatos,
+            'resultados_por_pagina' => $limite,
+            'cache_candidatos' => $busquedaAutomatica ? $candidatosCompletos : [],
+            'advertencias' => $advertencias,
+            'denue_solicitado' => $denueSolicitado,
+            'mensaje_vacio' => $mensajeVacio,
+            'puede_crear' => tienePermiso('seguimientos_vinculacion.crear')
+        ]);
+    }
+
+    public function actualizarSecretariasDenue()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.crear');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $estadoId = (int)($_POST['estado_id'] ?? 0);
+        $estado = $this->obtenerEstadoPorModo(
+            $modelo,
+            $usuarioId,
+            $estadoId,
+            $modoSeguimiento
+        );
+
+        if (!$estado) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este territorio.'
+            ], 403);
+        }
+
+        $claveEstado = str_pad((string)($estado['clave_inegi'] ?? ''), 2, '0', STR_PAD_LEFT);
+        $servicioDenue = new DenueService();
+        $resultadoDenue = $servicioDenue->buscarDenuePorNombre(
+            $claveEstado,
+            '0',
+            'secretaria',
+            250
+        );
+
+        if (($resultadoDenue['ok'] ?? false) !== true) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $resultadoDenue['mensaje'] ??
+                    'No fue posible consultar las secretarías en DENUE.'
+            ], 502);
+        }
+
+        $resultadosDenue = is_array($resultadoDenue['resultados'] ?? null)
+            ? $resultadoDenue['resultados']
+            : [];
+        $secretarias = $modelo->obtenerSecretariasParaActualizarDenue($estadoId);
+        $resultadosDenuePorClave = [];
+
+        foreach ($resultadosDenue as $candidatoDenue) {
+            $clave = trim((string)($candidatoDenue['id_origen'] ?? ''));
+
+            if ($clave !== '') {
+                $resultadosDenuePorClave[$clave] = $candidatoDenue;
+            }
+        }
+
+        $clavesUtilizadas = [];
+        $actualizadas = 0;
+        $coincidenciasValidas = 0;
+        $consultasNombreFallidas = 0;
+
+        foreach ($secretarias as $secretaria) {
+            $coincidencia = $this->encontrarSecretariaDenue(
+                $secretaria,
+                array_values($resultadosDenuePorClave),
+                $clavesUtilizadas
+            );
+
+            if ($coincidencia === null) {
+                $resultadoPorNombre = $servicioDenue->buscarDenuePorNombre(
+                    $claveEstado,
+                    '0',
+                    $this->obtenerTerminoBusquedaSecretaria($secretaria['nombre'] ?? ''),
+                    250
+                );
+
+                if (($resultadoPorNombre['ok'] ?? false) !== true) {
+                    $consultasNombreFallidas++;
+                    continue;
+                }
+
+                foreach ($resultadoPorNombre['resultados'] ?? [] as $candidatoDenue) {
+                    $clave = trim((string)($candidatoDenue['id_origen'] ?? ''));
+
+                    if ($clave !== '') {
+                        $resultadosDenuePorClave[$clave] = $candidatoDenue;
+                    }
+                }
+
+                $coincidencia = $this->encontrarSecretariaDenue(
+                    $secretaria,
+                    $resultadoPorNombre['resultados'] ?? [],
+                    $clavesUtilizadas
+                );
+            }
+
+            if ($coincidencia === null) {
+                continue;
+            }
+
+            $coincidenciasValidas++;
+            $claveDenue = (string)($coincidencia['id_origen'] ?? '');
+
+            if ($modelo->enriquecerSecretariaDesdeDenue(
+                $estadoId,
+                (int)$secretaria['id'],
+                $coincidencia
+            )) {
+                $actualizadas++;
+                $clavesUtilizadas[$claveDenue] = true;
+            }
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => $actualizadas > 0
+                ? 'Se actualizó la información disponible de las secretarías.'
+                : 'DENUE no devolvió coincidencias seguras para las secretarías registradas.',
+            'denue_total' => count($resultadosDenuePorClave),
+            'coincidencias_validas' => $coincidenciasValidas,
+            'actualizadas' => $actualizadas,
+            'insertadas' => 0,
+            'ignoradas' => max(0, count($resultadosDenuePorClave) - $coincidenciasValidas),
+            'consultas_nombre_fallidas' => $consultasNombreFallidas,
+            'hay_mas_denue' => (bool)($resultadoDenue['hay_mas'] ?? false)
+        ]);
+    }
+
+    public function crearSeguimientoDesdeCandidato()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.crear');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $estadoId = (int)($_POST['estado_id'] ?? 0);
+        $estado = $this->obtenerEstadoPorModo(
+            $modelo,
+            $usuarioId,
+            $estadoId,
+            $modoSeguimiento
+        );
+
+        if (!$estado) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este territorio.'
+            ], 403);
+        }
+
+        $analistaId = $this->resolverAnalistaResponsable(
+            $modelo,
+            $usuarioId,
+            $estadoId,
+            $modoSeguimiento
+        );
+
+        if ($analistaId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Selecciona un Analista responsable válido.'
+            ], 422);
+        }
+
+        $origen = strtoupper(trim((string)($_POST['origen'] ?? '')));
+        $claveOrigen = trim((string)($_POST['clave_origen'] ?? ''));
+        $candidato = $this->resolverCandidatoParaCrear(
+            $modelo,
+            $estado,
+            $origen,
+            $claveOrigen
+        );
+
+        if (!$candidato) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El candidato seleccionado no es válido.'
+            ], 422);
+        }
+
+        $seguimientoExistente = $modelo->obtenerSeguimientoPorClaveOrigen(
+            $estadoId,
+            $candidato['clave_origen']
+        );
+
+        if ($seguimientoExistente) {
+            $this->responderJson([
+                'ok' => false,
+                'duplicado' => true,
+                'activo' => (int)$seguimientoExistente['activo'] === 1,
+                'mensaje' => 'Este candidato ya tiene un seguimiento registrado.',
+                'url' => (int)$seguimientoExistente['activo'] === 1
+                    ? BASE_URL .
+                        'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
+                        (int)$seguimientoExistente['id']
+                    : ''
+            ], 409);
+        }
+
+        $candidato['estado_id'] = $estadoId;
+        $candidato['analista_id'] = $analistaId;
+        $seguimientoId = $modelo->crearSeguimientoDesdeCandidato($candidato);
+
+        if ($seguimientoId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible iniciar el seguimiento.'
+            ], 500);
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Seguimiento iniciado correctamente.',
+            'seguimiento_id' => $seguimientoId,
+            'url' => BASE_URL .
+                'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
+            $seguimientoId
+        ]);
+    }
+
+    public function obtenerPanelTrabajo()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_GET['id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso al seguimiento solicitado.'
+            ], 403);
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimiento,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'interacciones' => $this->serializarInteraccionesTrabajo(
+                $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
+            ),
+            'observaciones' => $this->serializarObservacionesTrabajo(
+                $modelo->obtenerUltimasObservacionesSeguimiento($seguimientoId, 2)
+            ),
+            'observaciones_nuevas' => $modoSeguimiento === 'analista'
+                ? $modelo->contarObservacionesNoLeidas($seguimientoId, $usuarioId)
+                : 0,
+            'puede_operar' => $this->puedeOperarSeguimiento($seguimiento, $usuarioId, $modoSeguimiento),
+            'expediente_url' => BASE_URL .
+                'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
+                $seguimientoId
+        ]);
+    }
+
+    public function borradorCorreoTrabajo()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_GET['id'] ?? $_GET['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (
+            !$seguimiento ||
+            !$this->puedeOperarSeguimiento(
+                $seguimiento,
+                $usuarioId,
+                $modoSeguimiento
+            )
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Esta acción está disponible para el Analista responsable.'
+            ], 403);
+        }
+
+        if ($this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
+        $service = new SeguimientoCorreoContactoService();
+        $resultado = $service->obtenerBorrador($seguimientoId, $usuarioId);
+        $codigo = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        $this->responderJson($resultado, $codigo);
+    }
+
+    public function enviarCorreoTrabajo()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (
+            !$seguimiento ||
+            !$this->puedeOperarSeguimiento(
+                $seguimiento,
+                $usuarioId,
+                $modoSeguimiento
+            )
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Esta acción está disponible para el Analista responsable.'
+            ], 403);
+        }
+
+        if ($this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
+        $service = new SeguimientoCorreoContactoService();
+        $resultado = $service->enviar(
+            $seguimientoId,
+            $usuarioId,
+            $_POST['asunto'] ?? '',
+            $_POST['cuerpo'] ?? '',
+            $_FILES['adjuntos'] ?? null
+        );
+        $codigo = (int)($resultado['codigo_http'] ?? 200);
+        unset($resultado['codigo_http']);
+
+        if (!($resultado['ok'] ?? false)) {
+            $this->responderJson($resultado, $codigo);
+        }
+
+        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        $resultado['seguimiento'] = $this->serializarSeguimientoTrabajoConPermisos(
+            $seguimientoActualizado,
+            $usuarioId,
+            $modoSeguimiento
+        );
+        $resultado['interacciones'] = $this->serializarInteraccionesTrabajo(
+            $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
+        );
+
+        $this->responderJson($resultado, 200);
+    }
+
+    public function actualizarContactoTrabajo()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento || !$this->puedeOperarSeguimiento($seguimiento, $usuarioId, $modoSeguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para actualizar este seguimiento.'
+            ], 403);
+        }
+
+        if ($this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
+        $datos = [
+            'telefono_verificado' => trim((string)($_POST['telefono_verificado'] ?? '')),
+            'whatsapp_verificado' => trim((string)($_POST['whatsapp_verificado'] ?? '')),
+            'correo_verificado' => trim((string)($_POST['correo_verificado'] ?? '')),
+            'contacto_nombre' => trim((string)($_POST['contacto_nombre'] ?? '')),
+            'contacto_cargo' => trim((string)($_POST['contacto_cargo'] ?? '')),
+            'observaciones' => trim((string)($_POST['observaciones'] ?? ''))
+        ];
+
+        if (
+            $datos['correo_verificado'] !== '' &&
+            !filter_var($datos['correo_verificado'], FILTER_VALIDATE_EMAIL)
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Captura un correo de contacto válido.'
+            ], 422);
+        }
+
+        if (!$modelo->actualizarContactoSeguimiento($seguimientoId, $usuarioId, $datos, false)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible actualizar los datos de contacto.'
+            ], 500);
+        }
+
+        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        $auditoriaCambios = (new SeguimientoCambioDatosService())->registrarCambios(
+            $seguimientoId,
+            $usuarioId,
+            $seguimiento,
+            $seguimientoActualizado
+        );
+        $notificadosCuentaClave = (int)($auditoriaCambios['notificados'] ?? 0);
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => $notificadosCuentaClave > 0
+                ? 'Datos actualizados. Cuenta Clave fue notificada de los cambios relevantes.'
+                : 'Datos de contacto actualizados correctamente.',
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'resumen' => $this->obtenerResumenTrabajoActualizado(
+                $modelo,
+                $usuarioId,
+                $seguimientoActualizado,
+                $modoSeguimiento
+            )
+        ]);
+    }
+
+    public function marcarContactoVerificadoTrabajo()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento || !$this->puedeOperarSeguimiento($seguimiento, $usuarioId, $modoSeguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para verificar este seguimiento.'
+            ], 403);
+        }
+
+        if ($this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
+        $ruta = (new SeguimientoRutaOperativaService())->resolver(
+            $seguimientoId,
+            $usuarioId,
+            $seguimiento
+        );
+        $codigoAccion = strtoupper(trim((string)(
+            $ruta['flujo']['accion_principal']['codigo'] ?? ''
+        )));
+
+        if (!($ruta['ok'] ?? false) || $codigoAccion !== 'VERIFICAR_CONTACTO') {
+            $mensajeRuta = trim((string)($ruta['flujo']['descripcion'] ?? ''));
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $mensajeRuta !== ''
+                    ? $mensajeRuta
+                    : 'El contacto todavía no cumple las condiciones para marcarse como verificado.'
+            ], 422);
+        }
+
+        if (!$modelo->marcarDatosVerificadosSeguimiento($seguimientoId, $usuarioId)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible marcar la información como verificada.'
+            ], 500);
+        }
+
+        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Información marcada como verificada correctamente.',
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'resumen' => $this->obtenerResumenTrabajoActualizado(
+                $modelo,
+                $usuarioId,
+                $seguimientoActualizado,
+                $modoSeguimiento
+            )
+        ]);
+    }
+
+    public function registrarInteraccionTrabajo()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento || !$this->puedeOperarSeguimiento($seguimiento, $usuarioId, $modoSeguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para registrar interacción en este seguimiento.'
+            ], 403);
+        }
+
+        if ($this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El seguimiento está descartado y solo puede consultarse.'
+            ], 422);
+        }
+
+        $canalFormulario = strtoupper(trim((string)($_POST['canal'] ?? '')));
+        $canales = [
+            'LLAMADA' => 'LLAMADA_IP',
+            'WHATSAPP' => 'WHATSAPP',
+            'CORREO' => 'CORREO',
+            'OTRO' => 'NOTA'
+        ];
+        $canal = $canales[$canalFormulario] ?? '';
+        $resultadoFormulario = strtoupper(trim((string)($_POST['resultado'] ?? '')));
+        $mapaResultados = [
+            'SIN_RESPUESTA' => 'SIN_RESPUESTA',
+            'OCUPADO' => 'OCUPADO',
+            'BUZON_VOZ' => 'BUZON_VOZ',
+            'FUERA_SERVICIO' => 'FUERA_SERVICIO',
+            'NUMERO_INCORRECTO' => 'NUMERO_INCORRECTO',
+            'CONTACTO_INCORRECTO' => 'CONTACTO_INCORRECTO',
+            'CONTACTO_CORRECTO' => 'CONTACTADO',
+            'CONTACTO_REFERIDO' => 'CONTACTADO',
+            'SOLICITO_INFORMACION' => 'SOLICITO_INFORMACION',
+            'SOLICITO_LLAMAR_DESPUES' => 'SOLICITO_LLAMAR_DESPUES',
+            'NO_INTERESADO' => 'NO_INTERESADO',
+            'OTRO' => 'OTRO'
+        ];
+        $resultado = $mapaResultados[$resultadoFormulario] ?? '';
+        $resultadosValidos = [
+            'CONTACTADO',
+            'NO_CONTESTO',
+            'OCUPADO',
+            'NUMERO_INCORRECTO',
+            'CONTACTO_INCORRECTO',
+            'SOLICITO_LLAMAR_DESPUES',
+            'SOLICITO_INFORMACION',
+            'MENSAJE_ENVIADO',
+            'CORREO_ENVIADO',
+            'SIN_RESPUESTA',
+            'BUZON_VOZ',
+            'FUERA_SERVICIO',
+            'NO_INTERESADO',
+            'OTRO'
+        ];
+
+        if ($canal === '' || !in_array($resultado, $resultadosValidos, true)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Selecciona canal y resultado válidos.'
+            ], 422);
+        }
+
+        try {
+            require_once __DIR__.'/../services/TelefoniaResultadoAnalistaService.php';
+            TelefoniaResultadoAnalistaService::validarLlamada($usuarioId, $seguimientoId, $_POST);
+        } catch (DomainException $e) {
+            $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);
+        } catch (Throwable $e) {
+            error_log('[analista_validar_resultado] '.get_class($e));
+            $this->responderJson(['ok'=>false,'mensaje'=>'No se pudo confirmar la llamada. No se guardó la interacción. Intenta nuevamente.'],503);
+        }
+
+        $fechaInicio = $this->normalizarFechaFormulario($_POST['fecha_inicio'] ?? '');
+        try {
+            $programacion = InteraccionProximaAccion::validar($_POST);
+        } catch (DomainException $error) {
+            $this->responderJson(['ok'=>false, 'mensaje'=>$error->getMessage()], 422);
+        }
+        $proximaAccionAt = $programacion['fecha'];
+
+        if ($fechaInicio === '') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La fecha de interacción es obligatoria.'
+            ], 422);
+        }
+
+        $fechaInicioTs = strtotime($fechaInicio);
+        if ($fechaInicioTs === false || $fechaInicioTs > (time() + 60)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La fecha de interacción no puede estar en el futuro.'
+            ], 422);
+        }
+
+        if ($proximaAccionAt !== null) {
+            $proximaAccionTs = strtotime((string)$proximaAccionAt);
+            if (
+                $proximaAccionTs === false ||
+                $proximaAccionTs <= time() ||
+                $proximaAccionTs <= $fechaInicioTs
+            ) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'La próxima acción debe programarse en una fecha futura.'
+                ], 422);
+            }
+        }
+
+        if (
+            $resultadoFormulario === 'SOLICITO_LLAMAR_DESPUES' &&
+            $proximaAccionAt === null
+        ) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Indica cuándo debes volver a contactar a la institución.'
+            ], 422);
+        }
+
+        require_once __DIR__.'/../services/DatosContactoLlamadaService.php';
+        try { $contactoLlamada=DatosContactoLlamadaService::extraer($_POST,$canalFormulario,$resultadoFormulario); }
+        catch (InvalidArgumentException $e) { $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422); }
+        $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['persona_atendio'] ?? ''));
+        $proximaAccion = $programacion['accion'];
+        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
+        $origenLlamada = strtoupper(trim((string)($_POST['origen_llamada'] ?? 'MANUAL')));
+        if (!in_array($origenLlamada, ['ZADARMA', 'PRUEBA', 'MANUAL'], true)) {
+            $origenLlamada = 'MANUAL';
+        }
+        $nuevoTelefonoContacto = trim((string)($_POST['nuevo_telefono_contacto'] ?? ''));
+        $nuevoCorreoContacto = trim((string)($_POST['nuevo_correo_contacto'] ?? ''));
+        $nuevoContactoNombre = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['nuevo_contacto_nombre'] ?? ''));
+        $nuevoContactoCargo = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['nuevo_contacto_cargo'] ?? ''));
+
+        if ($resultadoFormulario === 'CONTACTO_REFERIDO') {
+            if ($canalFormulario !== 'LLAMADA') {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El contacto referido solo puede registrarse como resultado de una llamada.'
+                ], 422);
+            }
+
+            if ($nuevoTelefonoContacto === '' && $nuevoCorreoContacto === '' && $nuevoContactoNombre === '' && $nuevoContactoCargo === '') {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'Captura algún dato de la persona o área referida.'
+                ], 422);
+            }
+
+            if (strlen($nuevoTelefonoContacto) > 80) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El nuevo teléfono de contacto es demasiado largo.'
+                ], 422);
+            }
+
+            if (strlen($nuevoCorreoContacto) > 180) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El nuevo correo de contacto es demasiado largo.'
+                ], 422);
+            }
+
+            if (
+                $nuevoCorreoContacto !== '' &&
+                !filter_var($nuevoCorreoContacto, FILTER_VALIDATE_EMAIL)
+            ) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'El nuevo correo proporcionado no tiene un formato válido.'
+                ], 422);
+            }
+        } else {
+            $nuevoTelefonoContacto = '';
+            $nuevoCorreoContacto = '';
+            $nuevoContactoNombre = '';
+            $nuevoContactoCargo = '';
+        }
+
+        /*
+         * Una llamada de verificación no se obtiene por seleccionar un resultado
+         * favorable. El servidor exige evidencia estructurada de datos confirmados
+         * o corregidos. La llamada se contabiliza en la meta diaria únicamente
+         * cuando después queda vinculada con la llamada real del proveedor.
+         */
+        $evidenciasVerificacion = [];
+        $resultadoAdmiteVerificacion = in_array(
+            $resultadoFormulario,
+            [
+                'CONTACTO_CORRECTO',
+                'CONTACTO_REFERIDO',
+                'SOLICITO_INFORMACION',
+                'SOLICITO_LLAMAR_DESPUES',
+                'NO_INTERESADO'
+            ],
+            true
+        );
+
+        try {
+            $telefonoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'telefono');
+            $correoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'correo');
+            $contactoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'contacto');
+        } catch (InvalidArgumentException $e) { $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422); }
+
+
+        if (
+            $canalFormulario === 'LLAMADA' &&
+            $resultadoAdmiteVerificacion &&
+            (int)($seguimiento['datos_verificados'] ?? 0) !== 1
+        ) {
+            if ((int)($_POST['verificacion_telefono_confirmado'] ?? 0) === 1) {
+                if ($telefonoActual === '') {
+                    $this->responderJson([
+                        'ok' => false,
+                        'mensaje' => 'No existe un teléfono registrado que pueda marcarse como confirmado.'
+                    ], 422);
+                }
+                $evidenciasVerificacion[] = 'Teléfono confirmado';
+            }
+
+            if ((int)($_POST['verificacion_correo_confirmado'] ?? 0) === 1) {
+                if ($correoActual === '') {
+                    $this->responderJson([
+                        'ok' => false,
+                        'mensaje' => 'No existe un correo registrado que pueda marcarse como confirmado.'
+                    ], 422);
+                }
+                $evidenciasVerificacion[] = 'Correo confirmado';
+            }
+
+            if ((int)($_POST['verificacion_contacto_confirmado'] ?? 0) === 1) {
+                if ($contactoActual === '') {
+                    $this->responderJson([
+                        'ok' => false,
+                        'mensaje' => 'No existe una persona de contacto registrada que pueda marcarse como confirmada.'
+                    ], 422);
+                }
+                $evidenciasVerificacion[] = 'Contacto institucional confirmado';
+            }
+
+            if ($resultadoFormulario === 'CONTACTO_REFERIDO') {
+                if ($nuevoTelefonoContacto !== '') {
+                    $evidenciasVerificacion[] = 'Nuevo teléfono proporcionado';
+                }
+                if ($nuevoCorreoContacto !== '') {
+                    $evidenciasVerificacion[] = 'Nuevo correo proporcionado';
+                }
+            }
+        }
+
+        try {
+            if ($resultadoFormulario==='CONTACTO_REFERIDO') VerificacionInstitucionalService::referido($_POST);
+            $detallesVerificacion=$canalFormulario==='LLAMADA' && $resultadoAdmiteVerificacion
+                ? VerificacionInstitucionalService::detalles($_POST,$seguimiento) : [];
+        } catch (InvalidArgumentException|DomainException $e) {
+            $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422);
+        }
+        $evidenciasVerificacion=array_column($detallesVerificacion,'etiqueta');
+        $esCandidataVerificacion =
+            $canalFormulario === 'LLAMADA' &&
+            $resultadoAdmiteVerificacion &&
+            !empty($evidenciasVerificacion);
+        $esVerificacionEfectiva =
+            $esCandidataVerificacion &&
+            $origenLlamada === 'ZADARMA';
+
+        if ($esCandidataVerificacion && $personaAtendio === '') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Indica quién atendió la llamada para registrar una verificación efectiva.'
+            ], 422);
+        }
+
+        $descartar = $resultadoFormulario === 'NO_INTERESADO' &&
+            (int)($_POST['descartar'] ?? 0) === 1;
+        $motivoDescarte = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['motivo_descarte'] ?? ''));
+
+        if ($descartar && $motivoDescarte === '') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El motivo de descarte es obligatorio.'
+            ], 422);
+        }
+
+        $notas = trim(implode("\n", array_filter([
+            $personaAtendio !== '' ? 'Persona atendió: ' . $personaAtendio : '',
+            $resultadoFormulario === 'NO_INTERESADO' ? 'Resultado registrado: No interesado' : '',
+            $resultadoFormulario === 'CONTACTO_REFERIDO' && $nuevoTelefonoContacto !== ''
+                ? 'Contacto referido: nuevo teléfono ' . $nuevoTelefonoContacto
+                : '',
+            $resultadoFormulario === 'CONTACTO_REFERIDO' && $nuevoCorreoContacto !== ''
+                ? 'Contacto referido: nuevo correo ' . $nuevoCorreoContacto
+                : '',
+            $nuevoContactoNombre !== '' ? 'Nuevo contacto: ' . $nuevoContactoNombre : '',
+            $nuevoContactoCargo !== '' ? 'Cargo / Área: ' . $nuevoContactoCargo : '',
+            $esVerificacionEfectiva ? '[VERIFICACION_EFECTIVA]' : '',
+            $esVerificacionEfectiva ? '[VERIFICACION_PENDIENTE_TELEFONIA]' : '',
+            $esCandidataVerificacion && $origenLlamada === 'PRUEBA'
+                ? '[REGISTRO_LLAMADA_PRUEBA]'
+                : '',
+            $esCandidataVerificacion && $origenLlamada === 'MANUAL'
+                ? '[REGISTRO_LLAMADA_MANUAL]'
+                : '',
+            $esCandidataVerificacion
+                ? (
+                    $esVerificacionEfectiva
+                        ? 'Verificación obtenida: '
+                        : 'Verificación registrada sin contabilizar: '
+                  ) . implode(' · ', $evidenciasVerificacion)
+                : '',
+            $observacion,
+            $proximaAccionAt !== null ? 'Próxima acción: ' . $proximaAccion : '',
+            $proximaAccionAt !== null ? 'Fecha próxima acción: ' . $proximaAccionAt : '',
+            $descartar ? 'Motivo de descarte: ' . $motivoDescarte : ''
+        ])));
+
+        $notas=trim($notas."\n".DatosContactoLlamadaService::nota($contactoLlamada));
+        $datosInteraccion = [
+            'contacto_llamada'=>$contactoLlamada,
+            'canal' => $canal,
+            'resultado' => $resultado,
+            'fecha_inicio' => $fechaInicio,
+            'notas' => $notas,
+            'telefono_destino' => $seguimiento['telefono_verificado'] ?: $seguimiento['telefono_fuente'] ?: '',
+            'correo_destino' => $seguimiento['correo_verificado'] ?: $seguimiento['correo_fuente'] ?: '',
+            'proxima_accion_at' => $proximaAccionAt,
+            'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0),
+            'descartar' => $descartar ? 1 : 0,
+            'motivo_descarte' => $motivoDescarte,
+            'nuevo_telefono_contacto' => $nuevoTelefonoContacto,
+            'nuevo_correo_contacto' => $nuevoCorreoContacto,
+            'nuevo_contacto_nombre' => $nuevoContactoNombre,
+            'nuevo_contacto_cargo' => $nuevoContactoCargo,
+            'preservar_estado'=>true,
+            'verificacion_detalles'=>$detallesVerificacion,
+            'persona_informante'=>$personaAtendio
+        ];
+
+        if (!$modelo->registrarInteraccionManual($seguimientoId, $usuarioId, $datosInteraccion)) {
+            $etapaError = trim((string)$modelo->obtenerUltimoErrorInteraccion());
+            $mensajeError = 'No fue posible registrar la interacción.';
+
+            if ($etapaError !== '') {
+                $mensajeError = 'No fue posible ' . $etapaError . '.';
+            }
+
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => $mensajeError
+            ], 500);
+        }
+
+        $interaccionCreadaId = $modelo->obtenerUltimaInteraccionCreadaId();
+
+        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        $auditoriaCambios = (new SeguimientoCambioDatosService())->registrarCambios(
+            $seguimientoId,
+            $usuarioId,
+            $seguimiento,
+            $seguimientoActualizado
+        );
+        $notificadosCuentaClave = (int)($auditoriaCambios['notificados'] ?? 0);
+
+        $this->responderJson([
+            'ok' => true,
+            'interaccion_id' => $interaccionCreadaId,
+            'mensaje' => $notificadosCuentaClave > 0
+                ? 'Interacción registrada. Cuenta Clave fue notificada del cambio de contacto.'
+                : 'Interacción registrada correctamente.',
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'interacciones' => $this->serializarInteraccionesTrabajo(
+                $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
+            ),
+            'resumen' => $this->obtenerResumenTrabajoActualizado(
+                $modelo,
+                $usuarioId,
+                $seguimientoActualizado,
+                $modoSeguimiento
+            ),
+            'verificacion_telefonica' => [
+                'candidata' => $esCandidataVerificacion,
+                'contabilizable' => $esVerificacionEfectiva,
+                'origen' => $origenLlamada,
+                'evidencias' => $evidenciasVerificacion,
+                'resumen_hoy' => $modelo->obtenerResumenVerificacionTelefonicaDia(
+                    $usuarioId,
+                    date('Y-m-d')
+                )
+            ]
+        ]);
+    }
+
+    public function resumenVerificacionTelefonicaHoy()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
+
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modelo = new SeguimientoVinculacionModel();
+
+        $this->responderJson([
+            'ok' => true,
+            'fecha' => date('Y-m-d'),
+            'resumen' => $modelo->obtenerResumenVerificacionTelefonicaDia(
+                $usuarioId,
+                date('Y-m-d')
+            )
+        ]);
+    }
+
+    public function descartarSeguimientoTrabajo()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento || !$this->puedeOperarSeguimiento($seguimiento, $usuarioId, $modoSeguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para descartar este seguimiento.'
+            ], 403);
+        }
+
+        if ((string)($seguimiento['estado_seguimiento'] ?? '') === 'DESCARTADO') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Este seguimiento ya está descartado.'
+            ], 422);
+        }
+
+        $motivoDescarte = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['motivo_descarte'] ?? ''));
+
+        if ($motivoDescarte === '') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El motivo de descarte es obligatorio.'
+            ], 422);
+        }
+
+        if (strlen($motivoDescarte) > 255) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'El motivo de descarte no debe superar 255 caracteres.'
+            ], 422);
+        }
+
+        if (!$modelo->descartarSeguimientoTrabajo($seguimientoId, $motivoDescarte, $usuarioId)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible descartar el seguimiento.'
+            ], 500);
+        }
+
+        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Seguimiento descartado correctamente.',
+            'puede_operar' => $this->puedeOperarSeguimiento(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'interacciones' => $this->serializarInteraccionesTrabajo(
+                $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
+            ),
+            'resumen' => $this->obtenerResumenTrabajoActualizado(
+                $modelo,
+                $usuarioId,
+                $seguimientoActualizado,
+                $modoSeguimiento
+            )
+        ]);
+    }
+
+    public function reactivarSeguimientoTrabajo()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento || !$this->puedeReactivarSeguimiento($seguimiento, $usuarioId, $modoSeguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para reactivar este seguimiento.'
+            ], 403);
+        }
+
+        if (!$this->seguimientoEstaDescartado($seguimiento)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Solo se pueden reactivar seguimientos descartados.'
+            ], 422);
+        }
+
+        $motivoReactivacion = trim((string)($_POST['motivo_reactivacion'] ?? ''));
+        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
+        $motivosValidos = [
+            'La institución volvió a contactar',
+            'Ahora muestra interés',
+            'Solicitó retomar la vinculación',
+            'Indicación del Cuenta Clave',
+            'Otro'
+        ];
+
+        if (!in_array($motivoReactivacion, $motivosValidos, true)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Selecciona un motivo de reactivación válido.'
+            ], 422);
+        }
+
+        if (strlen($observacion) > 1000) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La observación no debe superar 1000 caracteres.'
+            ], 422);
+        }
+
+        if (!$modelo->reactivarSeguimientoTrabajo($seguimientoId, $usuarioId, $motivoReactivacion, $observacion)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible reactivar el seguimiento.'
+            ], 500);
+        }
+
+        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Seguimiento reactivado correctamente.',
+            'puede_operar' => $this->puedeOperarSeguimiento(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                $seguimientoActualizado,
+                $usuarioId,
+                $modoSeguimiento
+            ),
+            'interacciones' => $this->serializarInteraccionesTrabajo(
+                $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
+            ),
+            'resumen' => $this->obtenerResumenTrabajoActualizado(
+                $modelo,
+                $usuarioId,
+                $seguimientoActualizado,
+                $modoSeguimiento
+            )
+        ]);
+    }
+
+    public function verCambioDatos()
+    {
+        if (!isset($_SESSION['usuario_id'])) {
+            header('Location: ' . BASE_URL . 'index.php?controller=login&action=index');
+            exit;
+        }
+
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $cambioId = (int)($_GET['cambio_id'] ?? 0);
+        $cambio = (new SeguimientoCambioDatosService())->marcarLeido(
+            $cambioId,
+            $usuarioId
+        );
+
+        if (!$cambio) {
+            $_SESSION['error_seguimiento_vinculacion'] =
+                'La notificación ya no está disponible o no te pertenece.';
+            header('Location: ' . BASE_URL . 'index.php?controller=agendaReunion&action=index');
+            exit;
+        }
+
+        $seguimientoId = (int)($cambio['seguimiento_id'] ?? 0);
+
+        if (
+            $seguimientoId > 0 &&
+            tienePermiso('seguimientos_vinculacion.ver')
+        ) {
+            header(
+                'Location: ' . BASE_URL .
+                'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
+                $seguimientoId
+            );
+            exit;
+        }
+
+        header('Location: ' . BASE_URL . 'index.php?controller=agendaReunion&action=index');
+        exit;
+    }
+
+    public function detalle()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $seguimientoId = (int)($_GET['id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento) {
+            $_SESSION['error_seguimiento_vinculacion'] =
+                'No tienes acceso al seguimiento solicitado.';
+            $this->redirigirASeguimiento();
+        }
+
+        $nuevasObservaciones = 0;
+
+        if ($modoSeguimiento === 'analista') {
+            $nuevasObservaciones = $modelo->contarObservacionesNoLeidas(
+                $seguimientoId,
+                $usuarioId
+            );
+            $modelo->marcarObservacionesLeidas($seguimientoId, $usuarioId);
+        }
+
+        $interacciones = $modelo->obtenerInteraccionesSeguimiento($seguimientoId);
+        require_once __DIR__ . '/../helpers/TelefoniaFechaHoraHelper.php';
+        // Fechas SDK almacenadas en UTC; las otras interacciones ya son locales.
+        $interacciones = array_map(
+            [TelefoniaFechaHoraHelper::class, 'normalizarInteraccion'],
+            $interacciones
+        );
+        $presentadorActividad = new SeguimientoActividadPresentacionService();
+        $interaccionesPresentadas = array_map(
+            function ($interaccion) use ($presentadorActividad) {
+                return array_merge(
+                    $interaccion,
+                    $presentadorActividad->presentar($interaccion)
+                );
+            },
+            $interacciones
+        );
+        $oficios = $modelo->obtenerOficiosSeguimiento($seguimientoId);
+        $adjuntosCorreoSeguimiento = (new SeguimientoCorreoService())
+            ->listarAdjuntosExpediente($seguimientoId);
+        $observaciones = $modelo->obtenerObservacionesSeguimiento($seguimientoId);
+        $puedeComentar = $modoSeguimiento === 'supervisor' &&
+            tienePermiso('seguimientos_vinculacion.comentar');
+        $mensajeError = $_SESSION['error_seguimiento_vinculacion'] ?? '';
+        $mensajeExito = $_SESSION['mensaje_seguimiento_vinculacion'] ?? '';
+
+        unset(
+            $_SESSION['error_seguimiento_vinculacion'],
+            $_SESSION['mensaje_seguimiento_vinculacion']
+        );
+
+        $tituloPagina = 'Expediente completo';
+        $subtituloPagina = (string)$seguimiento['nombre_entidad'];
+        $opcionActiva = 'seguimiento_vinculacion';
+
+        require_once __DIR__ . '/../views/layout/dashboard_head.php';
+        require_once __DIR__ . '/../views/layout/sidebar.php';
+        require_once __DIR__ . '/../views/layout/topbar.php';
+        require_once __DIR__ . '/../views/seguimiento_vinculacion/detalle.php';
+        require_once __DIR__ . '/../views/layout/dashboard_footer.php';
+    }
+
+    public function verCorreoSeguimiento()
+    {
+        $this->validarPermisoJson('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $interaccionId = (int)($_GET['interaccion_id'] ?? 0);
+
+        if ($interaccionId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Selecciona un correo válido.'
+            ], 422);
+        }
+
+        $service = new SeguimientoCorreoService();
+        $correo = $service->obtenerCorreoPorInteraccion($interaccionId);
+
+        if (!$correo) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No fue posible localizar el correo solicitado.'
+            ], 404);
+        }
+
+        $seguimientoId = (int)($correo['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes acceso a este correo.'
+            ], 403);
+        }
+
+        $adjuntos = [];
+        foreach (is_array($correo['adjuntos'] ?? null) ? $correo['adjuntos'] : [] as $adjunto) {
+            $adjuntos[] = [
+                'id' => (int)($adjunto['id'] ?? 0),
+                'nombre' => (string)($adjunto['nombre_original'] ?? 'Archivo adjunto'),
+                'mime' => (string)($adjunto['mime'] ?? ''),
+                'tamano' => (int)($adjunto['tamano'] ?? 0),
+                'url' => BASE_URL .
+                    'index.php?controller=seguimientoVinculacion&action=descargarAdjuntoCorreoSeguimiento&adjunto_id=' .
+                    (int)($adjunto['id'] ?? 0)
+            ];
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'correo' => [
+                'interaccion_id' => (int)($correo['interaccion_id'] ?? 0),
+                'destinatario' => (string)($correo['destinatario'] ?? ''),
+                'asunto' => (string)($correo['asunto'] ?? ''),
+                'cuerpo' => (string)($correo['cuerpo'] ?? ''),
+                'proveedor' => (string)($correo['proveedor'] ?? ''),
+                'enviado_por' => trim(
+                    (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
+                    (string)($seguimiento['analista_apellidos'] ?? '')
+                ),
+                'enviado_at' => (string)($correo['enviado_at'] ?? ''),
+                'adjuntos' => $adjuntos,
+                'legacy' => !empty($correo['legacy'])
+            ]
+        ]);
+    }
+
+    public function descargarAdjuntoCorreoSeguimiento()
+    {
+        $this->validarPermiso('seguimientos_vinculacion.ver');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $adjuntoId = (int)($_GET['adjunto_id'] ?? 0);
+
+        if ($adjuntoId <= 0) {
+            http_response_code(422);
+            echo 'Selecciona un archivo válido.';
+            exit;
+        }
+
+        $service = new SeguimientoCorreoService();
+        $adjunto = $service->obtenerAdjuntoExpediente($adjuntoId);
+
+        if (!$adjunto) {
+            http_response_code(404);
+            echo 'El archivo ya no está disponible.';
+            exit;
+        }
+
+        $seguimientoId = (int)($adjunto['seguimiento_id'] ?? 0);
+        $seguimiento = $this->obtenerSeguimientoPorModo(
+            $modelo,
+            $usuarioId,
+            $seguimientoId,
+            $modoSeguimiento
+        );
+
+        if (!$seguimiento) {
+            http_response_code(403);
+            echo 'No tienes acceso a este archivo.';
+            exit;
+        }
+
+        $ruta = (string)($adjunto['ruta_absoluta'] ?? '');
+        if ($ruta === '' || !is_file($ruta)) {
+            http_response_code(404);
+            echo 'El archivo ya no está disponible.';
+            exit;
+        }
+
+        $nombre = basename(
+            str_replace(
+                ["\r", "\n", '"'],
+                '',
+                (string)($adjunto['nombre_original'] ?? 'archivo')
+            )
+        );
+        $mime = trim((string)($adjunto['mime'] ?? 'application/octet-stream'));
+        if ($mime === '') {
+            $mime = 'application/octet-stream';
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . (string)filesize($ruta));
+        header(
+            'Content-Disposition: attachment; filename="' .
+            addcslashes($nombre, "\\\"") . '"; filename*=UTF-8\'\'' .
+            rawurlencode($nombre)
+        );
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store, max-age=0');
+
+        readfile($ruta);
+        exit;
+    }
+
+    public function guardarObservacion()
+    {
+        $esSolicitudJson =
+            strtolower(
+                trim(
+                    (string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')
+                )
+            ) === 'fetch' ||
+            str_contains(
+                strtolower(
+                    (string)($_SERVER['HTTP_ACCEPT'] ?? '')
+                ),
+                'application/json'
+            );
+
+        if ($esSolicitudJson) {
+            $this->validarPermisoJson('seguimientos_vinculacion.ver');
+            $this->validarPermisoJson('seguimientos_vinculacion.comentar');
+            $this->validarMetodoPostJson();
+        } else {
+            $this->validarPermiso('seguimientos_vinculacion.ver');
+            $this->validarPermiso('seguimientos_vinculacion.comentar');
+            $this->validarMetodoPost();
+        }
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
+        $seguimiento = $modelo->obtenerSeguimientoSupervisor(
+            $usuarioId,
+            $seguimientoId
+        );
+
+        if (!$seguimiento) {
+            if ($esSolicitudJson) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'No tienes acceso al seguimiento solicitado.'
+                ], 403);
+            }
+
+            $_SESSION['error_seguimiento_vinculacion'] =
+                'No tienes acceso al seguimiento solicitado.';
+            $this->redirigirASeguimiento();
+        }
+
+        if ($observacion === '') {
+            if ($esSolicitudJson) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'La observación es obligatoria.'
+                ], 422);
+            }
+
+            $_SESSION['error_seguimiento_vinculacion'] =
+                'La observación es obligatoria.';
+            $this->redirigirADetalle($seguimientoId);
+        }
+
+        if (strlen($observacion) > 2000) {
+            if ($esSolicitudJson) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' =>
+                        'La observación no debe superar 2000 caracteres.'
+                ], 422);
+            }
+
+            $_SESSION['error_seguimiento_vinculacion'] =
+                'La observación no debe superar 2000 caracteres.';
+            $this->redirigirADetalle($seguimientoId);
+        }
+
+        $resultado = $modelo->crearObservacion(
+            $seguimientoId,
+            $usuarioId,
+            (int)$seguimiento['analista_id'],
+            $observacion
+        );
+
+        if ($esSolicitudJson) {
+            if (!$resultado) {
+                $this->responderJson([
+                    'ok' => false,
+                    'mensaje' => 'No fue posible enviar la observación.'
+                ], 500);
+            }
+
+            $this->responderJson([
+                'ok' => true,
+                'mensaje' => 'Observación enviada al Analista.',
+                'observaciones' =>
+                    $this->serializarObservacionesTrabajo(
+                        $modelo->obtenerUltimasObservacionesSeguimiento(
+                            $seguimientoId,
+                            2
+                        )
+                    )
+            ]);
+        }
+
+        if ($resultado) {
+            $_SESSION['mensaje_seguimiento_vinculacion'] =
+                'Observación enviada correctamente.';
+        } else {
+            $_SESSION['error_seguimiento_vinculacion'] =
+                'No fue posible enviar la observación.';
+        }
+
+        $this->redirigirADetalle($seguimientoId);
+    }
+
+    private function obtenerPrioridadesMunicipales($estadoId)
+    {
+        $modeloTerritorial = new DataTerritorialModel();
+        $priorizacion = $modeloTerritorial->obtenerPriorizacionMunicipal($estadoId, 5);
+
+        return is_array($priorizacion['por_municipio'] ?? null)
+            ? $priorizacion['por_municipio']
+            : [];
+    }
+
+    private function agregarOportunidadCandidatos($candidatos, $prioridadesMunicipales)
+    {
+        $candidatos = $this->deduplicarCandidatos($candidatos);
+
+        foreach ($candidatos as $indice => $candidato) {
+            $municipioId = (int)($candidato['municipio_id'] ?? 0);
+            $prioridad = $municipioId > 0
+                ? ($prioridadesMunicipales[$municipioId] ?? null)
+                : null;
+            $accionMunicipal = strtoupper((string)($prioridad['accion'] ?? ''));
+
+            if ($accionMunicipal !== '') {
+                $candidatos[$indice]['prioridad_municipal'] = $accionMunicipal;
+            }
+
+            $candidatos[$indice] = array_merge(
+                $candidatos[$indice],
+                $this->calcularOportunidadCandidato($candidato, $accionMunicipal)
+            );
+        }
+
+        usort($candidatos, function ($candidatoA, $candidatoB) {
+            $comparacionOportunidad =
+                (int)($candidatoB['oportunidad_puntaje'] ?? 0) <=>
+                (int)($candidatoA['oportunidad_puntaje'] ?? 0);
+
+            if ($comparacionOportunidad !== 0) {
+                return $comparacionOportunidad;
+            }
+
+            $comparacionTamano =
+                (int)($candidatoB['estrato_valor'] ?? 0) <=>
+                (int)($candidatoA['estrato_valor'] ?? 0);
+
+            if ($comparacionTamano !== 0) {
+                return $comparacionTamano;
+            }
+
+            return strcasecmp(
+                (string)($candidatoA['nombre'] ?? ''),
+                (string)($candidatoB['nombre'] ?? '')
+            );
+        });
+
+        return $candidatos;
+    }
+
+    private function deduplicarCandidatos($candidatos)
+    {
+        $unicos = [];
+
+        foreach ($candidatos as $candidato) {
+            $clave = trim((string)($candidato['clave_origen'] ?? ''));
+
+            if ($clave === '' || isset($unicos[$clave])) {
+                continue;
+            }
+
+            $unicos[$clave] = $candidato;
+        }
+
+        return array_values($unicos);
+    }
+
+    private function guardarCacheDenueCandidatos($estadoId, $municipioId, $candidatos)
+    {
+        if (!isset($_SESSION['seguimiento_denue_cache']) || !is_array($_SESSION['seguimiento_denue_cache'])) {
+            $_SESSION['seguimiento_denue_cache'] = [];
+        }
+
+        $_SESSION['seguimiento_denue_cache'][$this->obtenerClaveCacheDenue($estadoId, $municipioId)] = [
+            'creado_at' => time(),
+            'candidatos' => array_values($candidatos)
+        ];
+    }
+
+    private function buscarCandidatosDenueEnCache($estadoId, $municipioId, $tipoCandidato, $termino)
+    {
+        $claveCache = $this->obtenerClaveCacheDenue($estadoId, $municipioId);
+        $cache = $_SESSION['seguimiento_denue_cache'][$claveCache] ?? null;
+
+        if (!$cache || !is_array($cache)) {
+            return [];
+        }
+
+        if ((time() - (int)($cache['creado_at'] ?? 0)) > 1800) {
+            unset($_SESSION['seguimiento_denue_cache'][$claveCache]);
+            return [];
+        }
+
+        $terminoNormalizado = $this->normalizarTexto($termino);
+        $candidatos = $this->filtrarDenuePorTipoCandidato(
+            $cache['candidatos'] ?? [],
+            $tipoCandidato
+        );
+
+        return array_values(array_filter(
+            $candidatos,
+            function ($candidato) use ($terminoNormalizado) {
+                $textoBusqueda = $this->normalizarTexto(implode(' ', [
+                    $candidato['nombre'] ?? '',
+                    $candidato['razon_social'] ?? '',
+                    $candidato['actividad'] ?? ''
+                ]));
+
+                return $terminoNormalizado !== '' &&
+                    strpos($textoBusqueda, $terminoNormalizado) !== false;
+            }
+        ));
+    }
+
+    private function obtenerClaveCacheDenue($estadoId, $municipioId)
+    {
+        return (int)$estadoId . ':' . (int)$municipioId;
+    }
+
+    private function filtrarDenuePorTipoCandidato($candidatos, $tipoCandidato)
+    {
+        if ($tipoCandidato === 'TODOS') {
+            return array_values($candidatos);
+        }
+
+        return array_values(array_filter(
+            $candidatos,
+            function ($candidato) use ($tipoCandidato) {
+                $esInstitucion = $this->esCandidatoDenueInstitucional($candidato);
+
+                if ($tipoCandidato === 'INSTITUCIONES') {
+                    return $esInstitucion;
+                }
+
+                if ($tipoCandidato === 'EMPRESAS') {
+                    return !$esInstitucion;
+                }
+
+                return true;
+            }
+        ));
+    }
+
+    private function esCandidatoDenueInstitucional($candidato)
+    {
+        $tipo = strtoupper((string)($candidato['tipo_entidad'] ?? ''));
+        $sector = (string)($candidato['sector'] ?? '');
+        $actividad = $this->normalizarTexto((string)($candidato['actividad'] ?? ''));
+        $nombre = $this->normalizarTexto((string)($candidato['nombre'] ?? ''));
+
+        if ($tipo === 'INSTITUCION' || in_array($sector, ['61', '62', '81', '93'], true)) {
+            return true;
+        }
+
+        $texto = $nombre . ' ' . $actividad;
+        $palabrasInstitucionales = [
+            'institut',
+            'universidad',
+            'colegio',
+            'escuela',
+            'educacion',
+            'hospital',
+            'clinica',
+            'salud',
+            'asistencia',
+            'gobierno',
+            'publica',
+            'secretaria',
+            'asociacion',
+            'camara',
+            'fundacion'
+        ];
+
+        foreach ($palabrasInstitucionales as $palabra) {
+            if (strpos($texto, $palabra) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function calcularOportunidadCandidato($candidato, $accionMunicipal)
+    {
+        $origen = strtoupper((string)($candidato['origen'] ?? ''));
+        $puntosTamano = $this->puntuarTamanoCandidato((int)($candidato['estrato_valor'] ?? 0));
+        $puntosRelevancia = $this->puntuarRelevanciaCandidato($candidato);
+        $puntosContacto = $this->puntuarContactoCandidato($candidato);
+        $puntosMunicipio = $this->puntuarPrioridadMunicipal($accionMunicipal);
+        $puntaje = $puntosTamano + $puntosRelevancia + $puntosContacto + $puntosMunicipio;
+        $nivel = 'REVISAR';
+        $etiqueta = $origen === 'DENUE' ? 'Revisar' : null;
+
+        if ($puntaje >= 75) {
+            $nivel = 'ALTA';
+            $etiqueta = $origen === 'DENUE' ? 'Alta oportunidad' : null;
+        } elseif ($puntaje >= 50) {
+            $nivel = 'MEDIA';
+            $etiqueta = $origen === 'DENUE' ? 'Media oportunidad' : null;
+        }
+
+        return [
+            'oportunidad_puntaje' => $puntaje,
+            'oportunidad_nivel' => $nivel,
+            'oportunidad_etiqueta' => $etiqueta,
+            'oportunidad_componentes' => [
+                'tamano' => $puntosTamano,
+                'relevancia' => $puntosRelevancia,
+                'contacto' => $puntosContacto,
+                'municipio' => $puntosMunicipio
+            ],
+            'recomendacion' => $origen === 'DENUE'
+                ? $this->construirMotivoRecomendacion($candidato, $accionMunicipal, $puntosContacto)
+                : null
+        ];
+    }
+
+    private function puntuarTamanoCandidato($estrato)
+    {
+        $puntosPorEstrato = [
+            1 => 3,
+            2 => 8,
+            3 => 17,
+            4 => 23,
+            5 => 28,
+            6 => 32,
+            7 => 35
+        ];
+
+        if (isset($puntosPorEstrato[$estrato])) {
+            return $puntosPorEstrato[$estrato];
+        }
+
+        return $estrato === 0 ? 0 : 10;
+    }
+
+    private function puntuarRelevanciaCandidato($candidato)
+    {
+        $tipo = strtoupper((string)($candidato['tipo_entidad'] ?? ''));
+        $actividad = $this->normalizarTexto((string)($candidato['actividad'] ?? ''));
+        $sector = (string)($candidato['sector'] ?? '');
+
+        if (in_array($tipo, ['SECRETARIA', 'MUNICIPIO'], true)) {
+            return 30;
+        }
+
+        if (in_array($sector, ['31', '32', '33', '52', '54', '55', '61', '62', '93'], true)) {
+            return 30;
+        }
+
+        if (in_array($sector, ['48', '49'], true)) {
+            return 26;
+        }
+
+        $palabrasClaveAltas = [
+            'administracion publica',
+            'gubernamental',
+            'educacion',
+            'educativo',
+            'salud',
+            'asistencia social',
+            'asociacion',
+            'camara',
+            'manufactur',
+            'profesional',
+            'cientifico',
+            'corporativ',
+            'financier',
+            'seguro'
+        ];
+
+        foreach ($palabrasClaveAltas as $palabraClave) {
+            if ($actividad !== '' && strpos($actividad, $palabraClave) !== false) {
+                return 30;
+            }
+        }
+
+        if (
+            strpos($actividad, 'transporte') !== false ||
+            strpos($actividad, 'almacenamiento') !== false ||
+            strpos($actividad, 'logistica') !== false
+        ) {
+            return 26;
+        }
+
+        return 12;
+    }
+
+    private function puntuarContactoCandidato($candidato)
+    {
+        $telefono = trim((string)($candidato['telefono'] ?? '')) !== '';
+        $correo = trim((string)($candidato['correo'] ?? '')) !== '';
+        $sitioWeb = trim((string)($candidato['sitio_web'] ?? '')) !== '';
+
+        if ($telefono && $correo) {
+            return 20;
+        }
+
+        if ($telefono || $correo) {
+            return 12 + ($sitioWeb ? 3 : 0);
+        }
+
+        return $sitioWeb ? 6 : 0;
+    }
+
+    private function puntuarPrioridadMunicipal($accionMunicipal)
+    {
+        if ($accionMunicipal === 'ATACAR') {
+            return 15;
+        }
+
+        if ($accionMunicipal === 'OFRECER') {
+            return 10;
+        }
+
+        if ($accionMunicipal === 'OBSERVAR') {
+            return 5;
+        }
+
+        return 0;
+    }
+
+    private function construirMotivoRecomendacion($candidato, $accionMunicipal, $puntosContacto)
+    {
+        $motivos = [];
+        $estrato = trim((string)($candidato['estrato_etiqueta'] ?? ''));
+
+        if ($estrato !== '') {
+            $motivos[] = $estrato;
+        }
+
+        if ($puntosContacto >= 20) {
+            $motivos[] = 'Contacto completo';
+        } elseif ($puntosContacto > 0) {
+            $motivos[] = 'Contacto disponible';
+        }
+
+        if (empty($motivos)) {
+            $motivos[] = 'Información disponible para revisión';
+        }
+
+        return implode(' · ', $motivos);
+    }
+
+    private function normalizarClaveMunicipalDenue($claveInegi)
+    {
+        $claveInegi = preg_replace('/\D+/', '', (string)$claveInegi);
+
+        if ($claveInegi === '') {
+            return '0';
+        }
+
+        return str_pad(substr($claveInegi, -3), 3, '0', STR_PAD_LEFT);
+    }
+
+    private function completarMunicipiosDenue($modelo, $estadoId, $candidatos)
+    {
+        foreach ($candidatos as $indice => $candidato) {
+            $claveArea = trim((string)($candidato['clave_area'] ?? ''));
+
+            if (strlen($claveArea) >= 5 && ctype_digit(substr($claveArea, 0, 5))) {
+                $municipio = $modelo->obtenerMunicipioActivoPorClave(
+                    $estadoId,
+                    substr($claveArea, 2, 3)
+                );
+
+                if ($municipio) {
+                    $candidatos[$indice]['municipio_id'] = (int)$municipio['id'];
+                    $candidatos[$indice]['municipio_nombre'] = $municipio['nombre'];
+                }
+            }
+        }
+
+        return $candidatos;
+    }
+
+    private function filtrarDenuePorMunicipio($candidatos, $municipioId, $claveMunicipio)
+    {
+        return array_values(array_filter(
+            $candidatos,
+            function ($candidato) use ($municipioId, $claveMunicipio) {
+                if ((int)($candidato['municipio_id'] ?? 0) === (int)$municipioId) {
+                    return true;
+                }
+
+                $claveArea = trim((string)($candidato['clave_area'] ?? ''));
+
+                return strlen($claveArea) >= 5 &&
+                    substr($claveArea, -3) === str_pad((string)$claveMunicipio, 3, '0', STR_PAD_LEFT);
+            }
+        ));
+    }
+
+    private function agregarEstadoSeguimientoCandidatos($modelo, $estadoId, $candidatos)
+    {
+        foreach ($candidatos as $indice => $candidato) {
+            $seguimiento = $modelo->obtenerSeguimientoPorClaveOrigen(
+                $estadoId,
+                $candidato['clave_origen'] ?? ''
+            );
+
+            $candidatos[$indice]['seguimiento_existente'] = $seguimiento !== null;
+            $candidatos[$indice]['seguimiento_activo'] =
+                $seguimiento && (int)$seguimiento['activo'] === 1;
+            $candidatos[$indice]['seguimiento_id'] = $seguimiento
+                ? (int)$seguimiento['id']
+                : 0;
+            $candidatos[$indice]['seguimiento_url'] =
+                $seguimiento && (int)$seguimiento['activo'] === 1
+                    ? BASE_URL .
+                        'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
+                        (int)$seguimiento['id']
+                    : '';
+        }
+
+        return $candidatos;
+    }
+
+    private function resolverAnalistaResponsable($modelo, $usuarioId, $estadoId, $modo)
+    {
+        if ($modo === 'analista') {
+            return (int)$usuarioId;
+        }
+
+        $analistaId = (int)($_POST['analista_id'] ?? 0);
+
+        if ($analistaId <= 0) {
+            return 0;
+        }
+
+        if (
+            $modo === 'administrador' &&
+            $modelo->analistaValidoParaAdministradorEstado($estadoId, $analistaId)
+        ) {
+            return $analistaId;
+        }
+
+        if (
+            $modo === 'supervisor' &&
+            $modelo->analistaValidoParaCuentaClaveEstado($usuarioId, $estadoId, $analistaId)
+        ) {
+            return $analistaId;
+        }
+
+        return 0;
+    }
+
+    private function resolverCandidatoParaCrear($modelo, $estado, $origen, $claveOrigen)
+    {
+        $estadoId = (int)($estado['id'] ?? 0);
+        $partes = explode(':', $claveOrigen, 2);
+
+        if (count($partes) !== 2 || $partes[0] !== $origen || trim($partes[1]) === '') {
+            return null;
+        }
+
+        if ($origen === 'SECRETARIA') {
+            return ctype_digit($partes[1])
+                ? $modelo->obtenerSecretariaActivaPorId($estadoId, (int)$partes[1])
+                : null;
+        }
+
+        if ($origen === 'MUNICIPIO') {
+            return ctype_digit($partes[1])
+                ? $modelo->obtenerMunicipioActivoPorId($estadoId, (int)$partes[1])
+                : null;
+        }
+
+        if ($origen !== 'DENUE' || !ctype_digit($partes[1])) {
+            return null;
+        }
+
+        $servicioDenue = new DenueService();
+        $resultado = $servicioDenue->obtenerEstablecimientoPorId($partes[1]);
+
+        if (!$resultado['ok']) {
+            return null;
+        }
+
+        $candidato = $resultado['candidato'];
+
+        if (!$this->candidatoDenuePerteneceEstado($candidato, $estado)) {
+            return null;
+        }
+
+        $claveArea = trim((string)($candidato['clave_area'] ?? ''));
+
+        if (strlen($claveArea) >= 5 && ctype_digit(substr($claveArea, 0, 5))) {
+            $municipio = $modelo->obtenerMunicipioActivoPorClave(
+                $estadoId,
+                substr($claveArea, 2, 3)
+            );
+
+            if ($municipio) {
+                $candidato['municipio_id'] = (int)$municipio['id'];
+                $candidato['municipio_nombre'] = $municipio['nombre'];
+            }
+        }
+
+        return $candidato;
+    }
+
+    private function candidatoDenuePerteneceEstado($candidato, $estado)
+    {
+        $claveArea = trim((string)($candidato['clave_area'] ?? ''));
+        $claveEstado = str_pad((string)($estado['clave_inegi'] ?? ''), 2, '0', STR_PAD_LEFT);
+
+        if (strlen($claveArea) >= 2 && substr($claveArea, 0, 2) === $claveEstado) {
+            return true;
+        }
+
+        $ubicacion = $this->normalizarTexto((string)($candidato['ubicacion'] ?? ''));
+        $entidad = $this->normalizarTexto((string)($candidato['entidad_nombre'] ?? ''));
+        $nombreEstado = $this->normalizarTexto((string)($estado['nombre'] ?? ''));
+
+        return (
+                $ubicacion !== '' &&
+                $nombreEstado !== '' &&
+                strpos($ubicacion, $nombreEstado) !== false
+            ) ||
+            (
+                $entidad !== '' &&
+                $nombreEstado !== '' &&
+                strpos($entidad, $nombreEstado) !== false
+            );
+    }
+
+    private function normalizarTexto($valor)
+    {
+        $valor = strtolower(trim((string)$valor));
+        $normalizado = iconv('UTF-8', 'ASCII//TRANSLIT', $valor);
+
+        return $normalizado === false ? $valor : $normalizado;
+    }
+
+    public function crearSeguimientoManual()
+    {
+        $this->validarMetodoPostJson();
+        $this->validarPermisoJson('seguimientos_vinculacion.crear');
+
+        $modelo = new SeguimientoVinculacionModel();
+        $usuarioId = $this->obtenerUsuarioActualId();
+        $modoSeguimiento = $this->resolverModoSeguimiento();
+        $estadoId = (int)($_POST['estado_id'] ?? 0);
+        $estado = $this->obtenerEstadoPorModo($modelo, $usuarioId, $estadoId, $modoSeguimiento);
+
+        if (!$estado) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'No tienes acceso a este territorio.'], 403);
+        }
+
+        $analistaId = $this->resolverAnalistaResponsable(
+            $modelo,
+            $usuarioId,
+            $estadoId,
+            $modoSeguimiento
+        );
+
+        if ($analistaId <= 0) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Selecciona un Analista responsable válido.'
+            ], 422);
+        }
+
+        $nombre = trim((string)($_POST['nombre'] ?? ''));
+        $tipoEntidad = strtoupper(trim((string)($_POST['tipo_entidad'] ?? '')));
+        $tiposValidos = ['EMPRESA', 'ORGANIZACION', 'INSTITUCION', 'SECRETARIA', 'MUNICIPIO', 'OTRO'];
+        $estadoSeguimiento = 'NUEVO';
+
+        if ($nombre === '' || !in_array($tipoEntidad, $tiposValidos, true)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'Captura nombre y tipo de entidad válidos.'], 422);
+        }
+
+        $municipioId = (int)($_POST['municipio_id'] ?? 0);
+
+        if ($municipioId > 0 && !$modelo->obtenerMunicipioActivoPorId($estadoId, $municipioId)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El municipio seleccionado no es válido.'], 422);
+        }
+
+        $correo = trim((string)($_POST['correo'] ?? ''));
+
+        if ($correo !== '' && !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'El correo electrónico no es válido.'], 422);
+        }
+
+        $duplicado = $modelo->obtenerSeguimientoManualExacto(
+            $estadoId,
+            $analistaId,
+            $tipoEntidad,
+            $nombre
+        );
+
+        if ($duplicado) {
+            $this->responderJson([
+                'ok' => false,
+                'duplicado' => true,
+                'mensaje' => 'Ya existe un seguimiento de esta institución en el territorio. Consulta el expediente existente y su Analista responsable.',
+                'url' => (int)$duplicado['activo'] === 1
+                    ? BASE_URL . 'index.php?controller=seguimientoVinculacion&action=detalle&id=' . (int)$duplicado['id']
+                    : ''
+            ], 409);
+        }
+
+        $datos = [
+            'estado_id' => $estadoId,
+            'municipio_id' => $municipioId,
+            'analista_id' => $analistaId,
+            'usuario_id' => $usuarioId,
+            'clave_origen' => 'MANUAL:' . bin2hex(random_bytes(16)),
+            'tipo_entidad' => $tipoEntidad,
+            'nombre' => $nombre,
+            'telefono' => trim((string)($_POST['telefono'] ?? '')),
+            'whatsapp' => trim((string)($_POST['whatsapp'] ?? '')),
+            'correo' => $correo,
+            'contacto_nombre' => trim((string)($_POST['contacto_nombre'] ?? '')),
+            'contacto_cargo' => trim((string)($_POST['contacto_cargo'] ?? '')),
+            'datos_verificados' => 0,
+            'estado_seguimiento' => $estadoSeguimiento,
+            'motivo_descarte' => '',
+            'observaciones' => '',
+            'ultima_actividad_at' => null,
+            'proxima_accion_at' => null
+        ];
+
+        try {
+            $seguimientoId = $modelo->crearSeguimientoManual($datos);
+        } catch (Throwable $error) {
+            $this->responderJson(['ok' => false, 'mensaje' => 'No fue posible guardar el seguimiento manual.'], 500);
+        }
+
+        $this->responderJson([
+            'ok' => true,
+            'mensaje' => 'Seguimiento manual guardado correctamente.',
+            'seguimiento_id' => $seguimientoId,
+            'url' => BASE_URL . 'index.php?controller=seguimientoVinculacion&action=detalle&id=' . $seguimientoId
+        ]);
+    }
+
+    private function encontrarSecretariaDenue($secretaria, $resultadosDenue, $clavesUtilizadas)
+    {
+        $nombreLocal = $this->normalizarNombreSecretaria($secretaria['nombre'] ?? '');
+        $mejorCoincidencia = null;
+        $mejorPuntaje = -1;
+
+        foreach ($resultadosDenue as $candidato) {
+            $claveDenue = trim((string)($candidato['id_origen'] ?? ''));
+            $nombreDenue = $this->normalizarNombreSecretaria($candidato['nombre'] ?? '');
+
+            if (
+                $claveDenue === '' ||
+                isset($clavesUtilizadas[$claveDenue]) ||
+                strpos($nombreDenue, 'secretaria') === false ||
+                preg_match('/\b(municipal|municipio|ayuntamiento|federal)\b/', $nombreDenue)
+            ) {
+                continue;
+            }
+
+            $coincide = $nombreLocal === $nombreDenue;
+
+            if (!$coincide) {
+                continue;
+            }
+
+            $puntaje = 1000;
+            $puntaje += !empty($candidato['telefono']) ? 20 : 0;
+            $puntaje += !empty($candidato['correo']) ? 20 : 0;
+            $puntaje += !empty($candidato['sitio_web']) ? 20 : 0;
+            $puntaje += (int)($candidato['estrato_valor'] ?? 0);
+
+            if ($puntaje > $mejorPuntaje) {
+                $mejorPuntaje = $puntaje;
+                $mejorCoincidencia = $candidato;
+            }
+        }
+
+        return $mejorCoincidencia;
+    }
+
+    private function normalizarNombreSecretaria($valor)
+    {
+        $valor = $this->normalizarTexto($valor);
+        $valor = preg_replace('/[^a-z0-9]+/', ' ', $valor);
+
+        return trim(preg_replace('/\s+/', ' ', (string)$valor));
+    }
+
+    private function obtenerTerminoBusquedaSecretaria($nombre)
+    {
+        $palabrasOmitidas = [
+            'secretaria', 'de', 'del', 'la', 'las', 'los', 'y', 'para',
+            'estado', 'estatal'
+        ];
+        $palabras = explode(' ', $this->normalizarNombreSecretaria($nombre));
+
+        foreach ($palabras as $palabra) {
+            if (
+                strlen($palabra) >= 4 &&
+                strpos($palabra, 'secretar') !== 0 &&
+                !in_array($palabra, $palabrasOmitidas, true)
+            ) {
+                return $palabra;
+            }
+        }
+
+        return 'secretaria';
+    }
+
+    private function obtenerTerritoriosPorModo($modelo, $usuarioId, $modo)
+    {
+        if ($modo === 'administrador') {
+            return $modelo->obtenerEstadosAdministrador();
+        }
+
+        if ($modo === 'supervisor') {
+            return $modelo->obtenerEstadosSupervisadosCuentaClave($usuarioId);
+        }
+
+        return $modelo->obtenerEstadosAsignadosAnalista($usuarioId);
+    }
+
+    private function obtenerEstadoPorModo($modelo, $usuarioId, $estadoId, $modo)
+    {
+        if ($modo === 'administrador') {
+            return $modelo->obtenerEstadoAdministrador($estadoId);
+        }
+
+        if ($modo === 'supervisor') {
+            return $modelo->obtenerEstadoSupervisadoCuentaClave($usuarioId, $estadoId);
+        }
+
+        return $modelo->obtenerEstadoAsignadoAnalista($usuarioId, $estadoId);
+    }
+
+    private function obtenerAnalistasFiltro($modelo, $usuarioId, $estadoId, $modo)
+    {
+        if ($modo === 'administrador') {
+            return $modelo->obtenerAnalistasAdministradorEstado($estadoId);
+        }
+
+        if ($modo === 'supervisor') {
+            return $modelo->obtenerAnalistasCuentaClaveEstado($usuarioId, $estadoId);
+        }
+
+        return [];
+    }
+
+    private function obtenerResumenPorModo($modelo, $usuarioId, $estadoId, $modo, $filtros)
+    {
+        if ($modo === 'administrador') {
+            return $modelo->obtenerResumenSeguimientosAdministradorEstado($estadoId, $filtros);
+        }
+
+        if ($modo === 'supervisor') {
+            return $modelo->obtenerResumenSeguimientosSupervisorEstado(
+                $usuarioId,
+                $estadoId,
+                $filtros
+            );
+        }
+
+        return $modelo->obtenerResumenSeguimientosAnalistaEstado(
+            $usuarioId,
+            $estadoId,
+            $filtros
+        );
+    }
+
+    private function enriquecerSeguimientosConRutaInicial($seguimientos)
+    {
+        if (!is_array($seguimientos) || empty($seguimientos)) {
+            return [
+                'seguimientos' => is_array($seguimientos) ? $seguimientos : [],
+                'rutas' => []
+            ];
+        }
+
+        $servicioRuta = new SeguimientoRutaOperativaService();
+        $rutas = [];
+
+        foreach ($seguimientos as $indice => $seguimiento) {
+            $seguimientoId = (int)($seguimiento['id'] ?? 0);
+            $analistaId = (int)($seguimiento['analista_id'] ?? 0);
+
+            if ($seguimientoId <= 0 || $analistaId <= 0) {
+                continue;
+            }
+
+            $resultado = $servicioRuta->resolver(
+                $seguimientoId,
+                $analistaId,
+                $seguimiento
+            );
+            $flujo = is_array($resultado['flujo'] ?? null)
+                ? $resultado['flujo']
+                : null;
+
+            if (!($resultado['ok'] ?? false) || !$flujo) {
+                continue;
+            }
+
+            $pasoActual = (int)($flujo['paso_actual'] ?? 0);
+            $titulo = trim((string)($flujo['titulo'] ?? ''));
+            $esAliado = !empty($flujo['contexto']['es_aliado']);
+
+            $seguimientos[$indice]['ruta_paso'] = $pasoActual;
+            $seguimientos[$indice]['ruta_titulo'] = $titulo;
+            $claveOrigen = strtoupper(trim((string)(
+                $seguimiento['clave_origen'] ?? ''
+            )));
+            $soloActividadMigrada =
+                strpos($claveOrigen, 'XLSX:') === 0 &&
+                trim((string)($seguimiento['ultima_interaccion_at'] ?? '')) === '';
+
+            $seguimientos[$indice]['ruta_historico_importado'] =
+                !empty($flujo['contexto']['historico_importado']) ||
+                $soloActividadMigrada
+                    ? 1
+                    : 0;
+            $seguimientos[$indice]['es_aliado'] = $esAliado ? 1 : 0;
+            $seguimientos[$indice]['ruta_etapa_label'] =
+                $this->etiquetarEtapaRutaInicial(
+                    $pasoActual,
+                    $titulo,
+                    (string)($seguimiento['estado_seguimiento'] ?? ''),
+                    $esAliado
+                );
+            $seguimientos[$indice]['ruta_lista'] = 1;
+            $rutas[$seguimientoId] = $flujo;
+        }
+
+        return [
+            'seguimientos' => $seguimientos,
+            'rutas' => $rutas
+        ];
+    }
+
+    private function calcularResumenRutaInicial($seguimientos)
+    {
+        $conteos = [
+            'en_seguimiento' => 0,
+            'gestion_previa' => 0,
+            'reuniones_acuerdos' => 0,
+            'convenio' => 0,
+            'aliados' => 0,
+            'completo' => true
+        ];
+
+        foreach (is_array($seguimientos) ? $seguimientos : [] as $seguimiento) {
+            $estado = strtoupper(trim((string)($seguimiento['estado_seguimiento'] ?? '')));
+
+            if ($estado === 'DESCARTADO') {
+                continue;
+            }
+
+            $esAliado = (int)($seguimiento['es_aliado'] ?? 0) === 1;
+            $paso = (int)($seguimiento['ruta_paso'] ?? 0);
+
+            if ($paso < 1 || $paso > 13) {
+                $conteos['completo'] = false;
+                continue;
+            }
+
+            if ($esAliado) {
+                $conteos['aliados']++;
+                continue;
+            }
+
+            $conteos['en_seguimiento']++;
+
+            if ($paso <= 10) {
+                $conteos['gestion_previa']++;
+            } elseif ($paso <= 12) {
+                $conteos['reuniones_acuerdos']++;
+            } else {
+                $conteos['convenio']++;
+            }
+        }
+
+        return $conteos;
+    }
+
+    private function etiquetarEtapaRutaInicial($pasoActual, $tituloFlujo, $estadoInterno, $esAliado = false)
+    {
+        $estadoInterno = strtoupper(trim((string)$estadoInterno));
+        $titulo = function_exists('mb_strtolower')
+            ? mb_strtolower(trim((string)$tituloFlujo), 'UTF-8')
+            : strtolower(trim((string)$tituloFlujo));
+
+        if ($estadoInterno === 'DESCARTADO') {
+            return 'Descartado';
+        }
+
+        if ($esAliado) {
+            return 'Aliado';
+        }
+
+        if ((int)$pasoActual === 11 && strpos($titulo, 'coordina') !== false) {
+            return 'Reunión en coordinación';
+        }
+
+        if (
+            (int)$pasoActual === 10 &&
+            (
+                strpos($titulo, 'colaboracion institucional') !== false ||
+                strpos($titulo, 'difusion activa') !== false
+            )
+        ) {
+            return 'Difusión activa';
+        }
+
+        if ((int)$pasoActual === 12) {
+            if (strpos($titulo, 'programad') !== false) {
+                return 'Reunión programada';
+            }
+
+            if (
+                strpos($titulo, 'seguimiento de acuerdos') !== false ||
+                strpos($titulo, 'dar seguimiento') !== false
+            ) {
+                return 'Seguimiento de acuerdos';
+            }
+
+            return 'Reunión y acuerdos';
+        }
+
+        if (
+            (int)$pasoActual === 13 &&
+            (
+                strpos($titulo, 'seguimiento de convenio') !== false ||
+                strpos($titulo, 'convenio en proceso') !== false
+            )
+        ) {
+            return 'Convenio en proceso';
+        }
+
+        $etiquetas = [
+            1 => 'Seguimiento iniciado',
+            2 => 'Investigación de datos',
+            3 => 'Contacto y validación',
+            4 => 'Datos verificados',
+            5 => 'Oficio preparado',
+            6 => 'Generación de PDF',
+            7 => 'Oficio / correo enviado',
+            8 => 'Esperando respuesta',
+            9 => 'Respuesta recibida',
+            10 => 'Seguimiento por correo',
+            11 => 'Reunión agendada',
+            13 => 'Convenio'
+        ];
+
+        return $etiquetas[(int)$pasoActual] ?? '';
+    }
+
+    private function obtenerSeguimientosPorModo($modelo, $usuarioId, $estadoId, $modo, $filtros)
+    {
+        if ($modo === 'administrador') {
+            return $modelo->obtenerSeguimientosAdministradorEstado($estadoId, $filtros);
+        }
+
+        if ($modo === 'supervisor') {
+            return $modelo->obtenerSeguimientosSupervisorEstado(
+                $usuarioId,
+                $estadoId,
+                $filtros
+            );
+        }
+
+        return $modelo->obtenerSeguimientosAnalistaEstado($usuarioId, $estadoId, $filtros);
+    }
+
+    private function obtenerSeguimientoPorModo($modelo, $usuarioId, $seguimientoId, $modo)
+    {
+        if ($modo === 'administrador') {
+            return $modelo->obtenerSeguimientoAdministrador($seguimientoId);
+        }
+
+        if ($modo === 'supervisor') {
+            return $modelo->obtenerSeguimientoSupervisor($usuarioId, $seguimientoId);
+        }
+
+        return $modelo->obtenerSeguimientoAnalista($usuarioId, $seguimientoId);
+    }
+
+    private function puedeOperarSeguimiento($seguimiento, $usuarioId, $modo)
+    {
+        $esAnalistaResponsable = $modo === 'analista' &&
+            SeguimientoTerritorialScope::puedeTrabajar($seguimiento, (int)$usuarioId);
+
+        return $esAnalistaResponsable &&
+            tienePermiso('seguimientos_vinculacion.operar_propios');
+    }
+
+    private function puedeReactivarSeguimiento($seguimiento, $usuarioId, $modo)
+    {
+        if (!$this->seguimientoEstaDescartado($seguimiento)) {
+            return false;
+        }
+
+        return $modo === 'analista' &&
+            SeguimientoTerritorialScope::puedeTrabajar($seguimiento, (int)$usuarioId) &&
+            tienePermiso('seguimientos_vinculacion.operar_propios');
+    }
+
+    private function seguimientoEstaDescartado($seguimiento)
+    {
+        return (string)($seguimiento['estado_seguimiento'] ?? '') === 'DESCARTADO';
+    }
+
+    private function serializarSeguimientoTrabajoConPermisos($seguimiento, $usuarioId, $modo)
+    {
+        $seguimientoSerializado = $this->serializarSeguimientoTrabajo($seguimiento);
+        $seguimientoSerializado['puede_reactivar'] = $this->puedeReactivarSeguimiento(
+            $seguimiento,
+            $usuarioId,
+            $modo
+        );
+
+        return $seguimientoSerializado;
+    }
+
+    private function serializarSeguimientoTrabajo($seguimiento)
+    {
+        $estado = (string)($seguimiento['estado_seguimiento'] ?? '');
+        $proximaAccion = trim((string)($seguimiento['proxima_accion_at'] ?? ''));
+        $proximaAccionTexto = trim((string)($seguimiento['proxima_accion_texto'] ?? ''));
+        $seguimientoDescartado = $estado === 'DESCARTADO';
+
+        /*
+         * Datos verificados cierra el recordatorio del ciclo de contacto.
+         * En etapas posteriores, la fecha puede pertenecer a una reunión,
+         * envío o confirmación pendiente y debe conservarse aunque existan
+         * interacciones más recientes.
+         */
+        if ($seguimientoDescartado || ($estado === 'DATOS_VERIFICADOS' && empty($seguimiento['proxima_accion_programada']))) {
+            $proximaAccion = '';
+            $proximaAccionTexto = '';
+        }
+
+        return [
+            'id' => (int)($seguimiento['id'] ?? 0),
+            'estado_id' => (int)($seguimiento['estado_id'] ?? 0),
+            'nombre_entidad' => (string)($seguimiento['nombre_entidad'] ?? ''),
+            'tipo_entidad' => (string)($seguimiento['tipo_entidad'] ?? ''),
+            'tipo_entidad_label' => $this->etiquetarTipoEntidad((string)($seguimiento['tipo_entidad'] ?? '')),
+            'municipio' => (string)($seguimiento['municipio'] ?? ''),
+            'estado_seguimiento' => $estado,
+            'estado_label' => $this->etiquetarEstadoSeguimiento($estado),
+            'accion_principal' => $this->resolverAccionPrincipalTrabajo($estado),
+            'proxima_accion_texto' => $proximaAccionTexto,
+            'proxima_accion_at' => $proximaAccion,
+            'proxima_accion_fecha_label' => $this->formatearFechaTrabajo($proximaAccion),
+            'proxima_accion_label' => $seguimientoDescartado
+                ? '—'
+                : ($proximaAccionTexto !== ''
+                ? $proximaAccionTexto
+                : ($proximaAccion !== ''
+                    ? $this->formatearFechaTrabajo($proximaAccion)
+                    : $this->resolverAccionPrincipalTrabajo($estado))),
+            'ultima_interaccion_at' => (string)($seguimiento['ultima_interaccion_at'] ?? ''),
+            'ultima_interaccion_label' => $this->formatearFechaTrabajo($seguimiento['ultima_interaccion_at'] ?? ''),
+            'origen' => (string)($seguimiento['origen'] ?? ''),
+            'folio' => (string)($seguimiento['folio'] ?? ''),
+            'actividad_giro' => (string)($seguimiento['actividad_giro'] ?? ''),
+            'direccion_fuente' => (string)($seguimiento['direccion_fuente'] ?? ''),
+            'telefono_fuente' => (string)($seguimiento['telefono_fuente'] ?? ''),
+            'correo_fuente' => (string)($seguimiento['correo_fuente'] ?? ''),
+            'sitio_web_fuente' => (string)($seguimiento['sitio_web_fuente'] ?? ''),
+            'telefono_verificado' => (string)($seguimiento['telefono_verificado'] ?? ''),
+            'whatsapp_verificado' => (string)($seguimiento['whatsapp_verificado'] ?? ''),
+            'correo_verificado' => (string)($seguimiento['correo_verificado'] ?? ''),
+            'contacto_nombre' => (string)($seguimiento['contacto_nombre'] ?? ''),
+            'contacto_cargo' => (string)($seguimiento['contacto_cargo'] ?? ''),
+            'datos_verificados' => (int)($seguimiento['datos_verificados'] ?? 0),
+            'datos_verificados_label' => (int)($seguimiento['datos_verificados'] ?? 0) === 1
+                ? 'Datos verificados'
+                : 'Datos sin verificar',
+            'motivo_descarte' => (string)($seguimiento['motivo_descarte'] ?? ''),
+            'fecha_descarte_label' => $seguimientoDescartado
+                ? $this->formatearFechaTrabajo($seguimiento['ultima_interaccion_at'] ?? '')
+                : '—',
+            'observaciones' => (string)($seguimiento['observaciones'] ?? ''),
+            'analista_nombre' => trim(
+                (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
+                (string)($seguimiento['analista_apellidos'] ?? '')
+            )
+        ];
+    }
+
+    private function serializarInteraccionesTrabajo($interacciones)
+    {
+        $presentador = new SeguimientoActividadPresentacionService();
+
+        return array_map(function ($interaccion) use ($presentador) {
+            $presentacion = $presentador->presentar($interaccion);
+
+            return [
+                'id' => (int)($interaccion['id'] ?? 0),
+                'canal' => (string)($interaccion['canal'] ?? ''),
+                'canal_label' => $this->etiquetarCanal(
+                    (string)($interaccion['canal'] ?? '')
+                ),
+                'resultado' => (string)($interaccion['resultado'] ?? ''),
+                'resultado_label' => (string)(
+                    $presentacion['resultado_label'] ?? ''
+                ),
+                'fecha_inicio' => (string)(
+                    $interaccion['fecha_inicio'] ?? ''
+                ),
+                'fecha_label' => $this->formatearFechaTrabajo(
+                    $interaccion['fecha_inicio'] ?? ''
+                ),
+                'titulo' => (string)($presentacion['titulo'] ?? 'Actividad'),
+                'resumen' => (string)($presentacion['resumen'] ?? ''),
+                'tipo_visual' => (string)(
+                    $presentacion['tipo_visual'] ?? 'actividad'
+                ),
+                'detalles' => is_array($presentacion['detalles'] ?? null)
+                    ? $presentacion['detalles']
+                    : [],
+                'notas' => (string)($interaccion['notas'] ?? '')
+            ];
+        }, $interacciones);
+    }
+
+    private function serializarObservacionesTrabajo($observaciones)
+    {
+        return array_map(function ($observacion) {
+            return [
+                'id' => (int)($observacion['id'] ?? 0),
+                'autor' => trim(
+                    (string)($observacion['nombre'] ?? '') . ' ' .
+                    (string)($observacion['apellidos'] ?? '')
+                ),
+                'fecha_label' => $this->formatearFechaTrabajo($observacion['created_at'] ?? ''),
+                'observacion' => (string)($observacion['observacion'] ?? '')
+            ];
+        }, $observaciones);
+    }
+
+    private function normalizarFechaFormulario($valor, $permitirVacio = false)
+    {
+        $valor = trim((string)$valor);
+
+        if ($valor === '') {
+            return $permitirVacio ? null : '';
+        }
+
+        $fecha = DateTime::createFromFormat('Y-m-d\TH:i', $valor);
+
+        if (!$fecha) {
+            return $permitirVacio ? null : '';
+        }
+
+        return $fecha->format('Y-m-d H:i:s');
+    }
+
+    private function formatearFechaTrabajo($fecha)
+    {
+        $fecha = trim((string)$fecha);
+
+        if ($fecha === '') {
+            return '—';
+        }
+
+        try {
+            $meses = [
+                'Jan' => 'ene',
+                'Feb' => 'feb',
+                'Mar' => 'mar',
+                'Apr' => 'abr',
+                'May' => 'may',
+                'Jun' => 'jun',
+                'Jul' => 'jul',
+                'Aug' => 'ago',
+                'Sep' => 'sep',
+                'Oct' => 'oct',
+                'Nov' => 'nov',
+                'Dec' => 'dic'
+            ];
+
+            return strtr((new DateTime($fecha))->format('d M Y · H:i'), $meses);
+        } catch (Exception $error) {
+            return '—';
+        }
+    }
+
+    private function etiquetarEstadoSeguimiento($estado)
+    {
+        $etiquetas = [
+            'NUEVO' => 'Nuevo',
+            'CONTACTANDO' => 'Contactando',
+            'DATOS_VERIFICADOS' => 'Datos verificados',
+            'NO_LOCALIZADO' => 'No localizado',
+            'DESCARTADO' => 'Descartado',
+            'OFICIO_PREPARADO' => 'Oficio preparado',
+            'ESPERANDO_RESPUESTA' => 'Esperando respuesta'
+        ];
+
+        return $etiquetas[$estado] ?? 'Sin estado';
+    }
+
+    private function etiquetarTipoEntidad($tipo)
+    {
+        $etiquetas = [
+            'EMPRESA' => 'Empresa',
+            'ORGANIZACION' => 'Organización',
+            'INSTITUCION' => 'Institución',
+            'SECRETARIA' => 'Secretaría',
+            'MUNICIPIO' => 'Municipio',
+            'OTRO' => 'Otro'
+        ];
+
+        return $etiquetas[$tipo] ?? '—';
+    }
+
+    private function etiquetarCanal($canal)
+    {
+        $etiquetas = [
+            'LLAMADA_IP' => 'Llamada',
+            'WHATSAPP' => 'WhatsApp',
+            'CORREO' => 'Correo',
+            'NOTA' => 'Otro',
+            'SISTEMA' => 'Sistema'
+        ];
+
+        return $etiquetas[$canal] ?? '—';
+    }
+
+    private function etiquetarResultado($resultado)
+    {
+        $etiquetas = [
+            'CONTACTADO' => 'Contacto correcto',
+            'NO_CONTESTO' => 'No contestó',
+            'OCUPADO' => 'Ocupado',
+            'NUMERO_INCORRECTO' => 'Número incorrecto',
+            'CONTACTO_INCORRECTO' => 'Contacto incorrecto',
+            'SOLICITO_LLAMAR_DESPUES' => 'Solicitó volver a llamar',
+            'SOLICITO_INFORMACION' => 'Solicitó información',
+            'MENSAJE_ENVIADO' => 'Mensaje enviado',
+            'CORREO_ENVIADO' => 'Correo enviado',
+            'SIN_RESPUESTA' => 'Sin respuesta',
+            'BUZON_VOZ' => 'Buzón de voz',
+            'FUERA_SERVICIO' => 'Fuera del área / fuera de servicio',
+            'NO_INTERESADO' => 'No interesado',
+            'OTRO' => 'Otro'
+        ];
+
+        return $etiquetas[$resultado] ?? '—';
+    }
+
+    private function etiquetarResultadoInteraccion($resultado, $notas)
+    {
+        if ($resultado === 'OTRO') {
+            if (strpos($notas, 'Seguimiento reactivado') !== false) {
+                return 'Seguimiento reactivado';
+            }
+
+            if (
+                strpos($notas, 'Resultado registrado: No interesado') !== false ||
+                strpos($notas, 'Motivo de descarte:') !== false
+            ) {
+                return 'No interesado';
+            }
+        }
+
+        return $this->etiquetarResultado($resultado);
+    }
+
+    private function resolverAccionPrincipalTrabajo($estado)
+    {
+        $acciones = [
+            'NUEVO' => 'Completar investigación',
+            'CONTACTANDO' => 'Continuar contacto / verificar datos',
+            'DATOS_VERIFICADOS' => 'Preparar oficio',
+            'OFICIO_PREPARADO' => 'Enviar correo',
+            'ESPERANDO_RESPUESTA' => 'Registrar respuesta / seguimiento'
+        ];
+
+        return $acciones[$estado] ?? 'Revisar seguimiento';
+    }
+
+    private function obtenerResumenTrabajoActualizado($modelo, $usuarioId, $seguimiento, $modo)
+    {
+        return $this->obtenerResumenPorModo(
+            $modelo,
+            $usuarioId,
+            (int)($seguimiento['estado_id'] ?? 0),
+            $modo,
+            []
+        );
+    }
+
+    private function obtenerFiltrosSeguimiento()
+    {
+        $estadoSeguimiento = trim((string)($_GET['estado_seguimiento'] ?? ''));
+        $estadosValidos = [
+            'NUEVO',
+            'CONTACTANDO',
+            'DATOS_VERIFICADOS',
+            'NO_LOCALIZADO',
+            'DESCARTADO',
+            'OFICIO_PREPARADO',
+            'ESPERANDO_RESPUESTA'
+        ];
+
+        return [
+            'analista_id' => ctype_digit((string)($_GET['analista_id'] ?? ''))
+                ? (int)$_GET['analista_id']
+                : 0,
+            'estado_seguimiento' => in_array($estadoSeguimiento, $estadosValidos, true)
+                ? $estadoSeguimiento
+                : '',
+            'municipio_id' => ctype_digit((string)($_GET['municipio_id'] ?? ''))
+                ? (int)$_GET['municipio_id']
+                : 0,
+            'buscar' => trim((string)($_GET['buscar'] ?? ''))
+        ];
+    }
+
+    private function resolverModoSeguimiento()
+    {
+        $rolId = (int)($_SESSION['rol_id'] ?? 0);
+        $rolNombre = trim((string)($_SESSION['rol'] ?? ''));
+
+        /*
+         * Administrador y Marketing tienen alcance institucional de consulta:
+         * pueden visualizar todos los territorios y los seguimientos asociados.
+         * Las acciones operativas continúan sujetas a sus permisos específicos.
+         */
+        if (
+            esRolSupervisionNacional() ||
+            strcasecmp($rolNombre, 'Marketing') === 0
+        ) {
+            return 'administrador';
+        }
+
+        if (tienePermiso('seguimientos_vinculacion.supervisar')) {
+            return 'supervisor';
+        }
+
+        return 'analista';
+    }
+
+    private function obtenerUsuarioActualId()
+    {
+        return (int)($_SESSION['usuario_id'] ?? 0);
+    }
+
+    private function validarPermiso($codigo)
+    {
+        if (!isset($_SESSION['usuario_id'])) {
+            header(
+                'Location: ' .
+                BASE_URL .
+                'index.php?controller=login&action=mostrarLogin'
+            );
+            exit;
+        }
+
+        if (!tienePermiso($codigo)) {
+            header(
+                'Location: ' .
+                BASE_URL .
+                'index.php?controller=home&action=index'
+            );
+            exit;
+        }
+    }
+
+    private function validarMetodoPost()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirigirASeguimiento();
+        }
+    }
+
+    private function validarMetodoPostJson()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'Método no permitido.'
+            ], 405);
+        }
+    }
+
+    private function validarPermisoJson($codigo)
+    {
+        if (!isset($_SESSION['usuario_id'])) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'La sesión no está activa.'
+            ], 401);
+        }
+
+        if (!tienePermiso($codigo)) {
+            $this->responderJson([
+                'ok' => false,
+                'mensaje' => 'No tienes permiso para realizar esta acción.'
+            ], 403);
+        }
+    }
+
+    private function responderJson($datos, $codigoHttp = 200)
+    {
+        http_response_code($codigoHttp);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        exit;
+    }
+
+    private function redirigirASeguimiento()
+    {
+        header(
+            'Location: ' .
+            BASE_URL .
+            'index.php?controller=seguimientoVinculacion&action=index'
+        );
+        exit;
+    }
+
+    private function redirigirADetalle($seguimientoId)
+    {
+        header(
+            'Location: ' .
+            BASE_URL .
+            'index.php?controller=seguimientoVinculacion&action=detalle&id=' .
+            (int)$seguimientoId
+        );
+        exit;
+    }
+}

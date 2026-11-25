@@ -136,8 +136,9 @@
     });
     window.IMPE_TELEPHONY_NOTIFY=(message,error=false)=>{
         if(!message||!window.bootstrap?.Toast)return;
-        let container=document.querySelector('.toast-container');
-        if(!container){container=document.createElement('div');container.className='toast-container position-fixed top-0 end-0 p-3';document.body.append(container);}
+        const host=Array.from(document.querySelectorAll('.modal.show')).pop()||document.body;
+        let container=Array.from(host.children).find(el=>el.matches?.('[data-telephony-toasts]'));
+        if(!container){container=document.createElement('div');container.dataset.telephonyToasts='';container.className='toast-container position-fixed top-0 end-0 p-3';host.append(container);}
         container.style.zIndex='1095';
         const el=document.createElement('div');el.className='toast system-toast'+(error?' system-toast-error':'');
         el.setAttribute('role',error?'alert':'status');el.setAttribute('aria-live',error?'assertive':'polite');

@@ -166,15 +166,15 @@
 
     // Los errores deben permanecer dentro del formulario, incluso sin el toast del shell.
     const showError = message => {
-        const text = String(message || 'No fue posible guardar la llamada.');
-        errorBox.textContent = text;
-        errorBox.classList.remove('d-none', 'mt-3');
-        errorBox.classList.add('mb-3');
-        errorBox.tabIndex = -1;
-        form.querySelector('.modal-body').prepend(errorBox);
-        errorBox.focus({preventScroll:true});
-        form.querySelector('.modal-body').scrollTop = 0;
-        window.IMPE_TELEPHONY_NOTIFY?.(text,true);
+        let container=modalEl.querySelector('[data-incoming-toast-container]');
+        if(!container){container=document.createElement('div');container.dataset.incomingToastContainer='';container.className='toast-container position-fixed top-0 end-0 p-3';container.style.zIndex='1095';modalEl.append(container);}
+        errorBox.className='toast system-toast system-toast-error show';
+        errorBox.style.maxWidth='calc(100vw - 32px)';errorBox.tabIndex=-1;
+        errorBox.setAttribute('aria-live','assertive');
+        errorBox.innerHTML='<div class="toast-body"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span></span><button type="button" class="btn-close ms-auto" aria-label="Cerrar aviso"></button></div>';
+        errorBox.querySelector('span').textContent=String(message || 'No fue posible guardar la llamada.');
+        errorBox.querySelector('button').onclick=()=>clearError();
+        container.append(errorBox);errorBox.focus({preventScroll:true});
     };
     // La validación nativa puede cancelar el envío antes de disparar submit.
     form.addEventListener('invalid', event => {
@@ -182,7 +182,8 @@
         const input = event.target;
         if (Array.from(form.elements).find(el => el.willValidate && !el.validity.valid) !== input) return;
         const label = (input.labels?.[0]?.textContent || input.name || 'el campo indicado').replace(/\s+/g,' ').trim();
-        showError('Revisa «'+label+'»: '+(input.validationMessage || 'Completa este dato antes de guardar.'));
+        const detalle=input.validity.typeMismatch?'Introduce un correo electrónico válido.':(input.validity.valueMissing?'Completa este dato antes de guardar.':(input.validationMessage||'Revisa el formato de este dato.'));
+        showError('Revisa «'+label+'»: '+detalle);
     },true);
     const clearError = () => {
         errorBox.textContent = '';
@@ -194,16 +195,18 @@
         const result = String(resultInput.value || '');
         const allowEvidence = enabled && [
             'CONTACTO_CORRECTO', 'CONTACTO_REFERIDO', 'SOLICITO_INFORMACION',
-            'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'
+            'SOLICITO_LLAMAR_DESPUES'
         ].includes(result);
+        const allowContactData=enabled && (allowEvidence || result==='NO_INTERESADO');
         evidence.hidden = !allowEvidence;
-        evidence.querySelector('p').textContent='Para Contacto correcto y para acreditar esta llamada debes confirmar teléfono y correo durante la conversación.';
+        evidence.querySelector('p').textContent='Puedes guardar sin confirmar datos o con una confirmación parcial. Para contar como llamada efectiva y avanzar necesitas teléfono y correo confirmados en esta misma llamada, con evidencia de telefonía.';
         referred.hidden=!enabled;
-        referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowEvidence));
+        referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowContactData));
         window.IMPE_CALL_DRAFTS?.unificarContacto(form);
-        sdkConfirm.hidden=!isSdkCall || !allowEvidence;
+        sdkConfirm.hidden=!isSdkCall || !allowContactData;
         sdkCheck.required=!sdkConfirm.hidden;
         if(sdkConfirm.hidden)sdkCheck.checked=false;
+        evidence.querySelectorAll('input[type="checkbox"]').forEach(input=>input.disabled=!allowEvidence);
         if (!allowEvidence) {
             evidence.querySelectorAll('input[type="checkbox"]')
                 .forEach(input => { input.checked = false; });
@@ -640,12 +643,6 @@
         event.preventDefault();
         if (isSubmitting) return;
         if(!outgoingReady){showError('Puedes seguir capturando. El guardado se habilitará al confirmar esta llamada.');return;}
-        const confirmaTelefono=form.elements.verificacion_telefono_confirmado.checked;
-        const confirmaCorreo=form.elements.verificacion_correo_confirmado.checked;
-        const confirmaContacto=form.elements.verificacion_contacto_confirmado.checked;
-        if ((resultInput.value==='CONTACTO_CORRECTO'||confirmaTelefono||confirmaCorreo||confirmaContacto) && !(confirmaTelefono&&confirmaCorreo)) {
-            showError('Debes confirmar teléfono y correo durante esta misma llamada.');return;
-        }
         clearError();
         if (!form.reportValidity()) return;
         if(resultInput.value==='CONTACTO_REFERIDO' && !Array.from(referred.querySelectorAll('input')).some(e=>e.type!=='hidden' && e.name!=='nombre_entidad_actualizado' && e.value.trim())) {showError('Captura algún dato de la persona o área referida.');return;}
@@ -672,7 +669,7 @@
             ++modalCycle;
             const result=data.resultado||{};
             const message=result.verificacion_confirmada ? 'Atención guardada con verificación efectiva. Máximo una institución por día.' :
-                result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : 'Resultado de llamada registrado correctamente.';
+                result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : result.verificacion_parcial ? 'Llamada guardada con confirmación parcial. Para la meta y el avance faltan teléfono y correo confirmados en la misma llamada.' : 'Resultado de llamada registrado correctamente.';
             for(const id of callRefs) {
                 try {
                     for(const prefix of ['call-draft','call-summary','transfer-context']) {

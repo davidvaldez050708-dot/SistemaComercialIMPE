@@ -1,0 +1,185 @@
+{
+  "release": "verificacion-parcial-analista-20261125",
+  "files": [
+    {
+      "path": "app/services/VerificacionInstitucionalService.php",
+      "new_file": false,
+      "before_sha": "ce816217cae6c3cb52000e8baa59992a345bb71c4ecf190f096fcf46bb79bd29",
+      "after_sha": "206c3af939a1e28af8f33614edf1d5db4d8330e2a4433075ce0601c3d6917d65",
+      "hunks": [
+        {
+          "before": "    }\n\n    public static function detalles(array $datos,array $actual): array\n    {\n",
+          "after": "    }\n\n    public static function resultadoVerificable(string $resultado): bool\n    {\n        return in_array(strtoupper(trim($resultado)),['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES'],true);\n    }\n\n    /** La acreditación exige el par de datos de la misma interacción; guardar no lo exige. */\n    public static function tienePar(array $detalles): bool\n    {\n        $campos=[];foreach($detalles as $dato)if(($dato['accion']??'')==='CONFIRMADO' && trim((string)($dato['valor']??''))!=='')$campos[(string)($dato['campo']??'')]=true;\n        return isset($campos['telefono'],$campos['correo']);\n    }\n\n    public static function detalles(array $datos,array $actual): array\n    {\n"
+        },
+        {
+          "before": "        $contacto=(string)($datos['verificacion_contacto_confirmado']??'')==='1';\n        $resultado=strtoupper(trim((string)($datos['resultado']??'')));\n        if (($resultado==='CONTACTO_CORRECTO' || $telefono || $correo || $contacto) && !($telefono && $correo)) {\n            throw new DomainException('Para registrar Contacto correcto o acreditar una verificación debes confirmar teléfono y correo durante esta misma llamada.');\n        }\n        if (!$telefono || !$correo) return [];\n        $out=[];\n        foreach (['telefono'=>'Teléfono','correo'=>'Correo','contacto'=>'Contacto institucional'] as $campo=>$etiqueta) {\n            if ($campo==='contacto' && !$contacto) continue;\n            $valor=self::datoConfirmable($datos,$actual,$campo);\n            if ($valor==='') throw new DomainException('Captura '.$etiqueta.' antes de confirmarlo durante la llamada.');\n",
+          "after": "        $contacto=(string)($datos['verificacion_contacto_confirmado']??'')==='1';\n        $resultado=strtoupper(trim((string)($datos['resultado']??'')));\n        if (($telefono || $correo || $contacto) && $resultado!=='' && !self::resultadoVerificable($resultado)) {\n            throw new DomainException('El resultado seleccionado no permite confirmar datos. Guarda la llamada sin verificaciones.');\n        }\n        $out=[];\n        foreach (['telefono'=>'Teléfono','correo'=>'Correo','contacto'=>'Contacto institucional'] as $campo=>$etiqueta) {\n            if ((string)($datos['verificacion_'.$campo.'_confirmado']??'')!=='1') continue;\n            $valor=self::datoConfirmable($datos,$actual,$campo);\n            if ($valor==='') throw new DomainException('Captura '.$etiqueta.' antes de confirmarlo durante la llamada.');\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaResultadoAnalistaService.php",
+      "new_file": false,
+      "before_sha": "521afd4610946a9092f631786e2bc62d6d9d635e7b5545aed96cf69bdebea2b2",
+      "after_sha": "c38d520b11779139b1168c0a598d7c5b707cabca48cea48483ede253c9daf433",
+      "hunks": [
+        {
+          "before": "<?php\n/** La captura humana nunca puede convertir una saliente sin respuesta en contacto. */\nfinal class TelefoniaResultadoAnalistaService\n",
+          "after": "<?php\nrequire_once __DIR__.'/VerificacionInstitucionalService.php';\n/** La captura humana nunca puede convertir una saliente sin respuesta en contacto. */\nfinal class TelefoniaResultadoAnalistaService\n"
+        },
+        {
+          "before": "            if ((int)($datos['verificacion_'.$campo.'_confirmado'] ?? 0) === 1) $pideVerificacion = true;\n        }\n        if ($pideVerificacion && (!$reglas['permite_verificar'] || $resultado === 'CONTACTO_INCORRECTO' || !in_array($resultado, self::CON_PERSONA, true))) {\n            throw new DomainException('Esta llamada no permite confirmar datos. Registra su resultado sin verificaciones.');\n        }\n",
+          "after": "            if ((int)($datos['verificacion_'.$campo.'_confirmado'] ?? 0) === 1) $pideVerificacion = true;\n        }\n        if ($pideVerificacion && (!$reglas['permite_verificar'] || $resultado === 'CONTACTO_INCORRECTO' || !VerificacionInstitucionalService::resultadoVerificable($resultado))) {\n            throw new DomainException('Esta llamada no permite confirmar datos. Registra su resultado sin verificaciones.');\n        }\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaVerificacionEvidenciaService.php",
+      "new_file": false,
+      "before_sha": "bc045967053764588cd181f76011c4923e8f97651a528d7b6c58ae4378bb46c0",
+      "after_sha": "f94d08b30a64762ddcfd531f4f46e93037f4c4b428a75f3ba60a4dfacd68464d",
+      "hunks": [
+        {
+          "before": "<?php\n/** Evidencia por dato. La telefonía pendiente nunca obtiene crédito por texto libre. */\nfinal class TelefoniaVerificacionEvidenciaService\n",
+          "after": "<?php\nrequire_once __DIR__.'/VerificacionInstitucionalService.php';\n/** Evidencia por dato. La telefonía pendiente nunca obtiene crédito por texto libre. */\nfinal class TelefoniaVerificacionEvidenciaService\n"
+        },
+        {
+          "before": "        $row=$stmt->get_result()->fetch_assoc();$stmt->close();\n        if (!$row) return false;\n        $stmt=$this->db->prepare(\"SELECT id FROM telefonia_verificacion_evidencias\n            WHERE interaccion_id=? AND usuario_id=? AND sdk_session_id=? AND estado='PENDIENTE' FOR UPDATE\");\n        $stmt->bind_param('iis',$interaccion,$usuario,$sdk);$stmt->execute();\n        $hay=(bool)$stmt->get_result()->fetch_assoc();$stmt->close();\n        if (!$hay) return false;\n        $notas=str_replace('[VERIFICACION_PENDIENTE_PBX]','[VERIFICACION_EFECTIVA]',(string)$row['notas']);\n        $inicio=(string)$call['answer_at'];$fin=(string)$call['end_at'];\n        $duracion=max(0,strtotime($fin)-strtotime($inicio));\n",
+          "after": "        $row=$stmt->get_result()->fetch_assoc();$stmt->close();\n        if (!$row) return false;\n        $stmt=$this->db->prepare(\"SELECT campo,accion,valor_confirmado AS valor FROM telefonia_verificacion_evidencias\n            WHERE interaccion_id=? AND usuario_id=? AND sdk_session_id=? AND estado='PENDIENTE' FOR UPDATE\");\n        $stmt->bind_param('iis',$interaccion,$usuario,$sdk);$stmt->execute();\n        $detalles=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();\n        if (!$detalles) return false;\n        $parConfirmado=VerificacionInstitucionalService::tienePar($detalles);\n        $notas=str_replace('[VERIFICACION_PENDIENTE_PBX]',$parConfirmado?'[VERIFICACION_EFECTIVA]':'',(string)$row['notas']);\n        $inicio=(string)$call['answer_at'];$fin=(string)$call['end_at'];\n        $duracion=max(0,strtotime($fin)-strtotime($inicio));\n"
+        },
+        {
+          "before": "            pbx_call_id=?,confirmed_at=NOW() WHERE interaccion_id=? AND usuario_id=? AND estado='PENDIENTE'\");\n        $stmt->bind_param('sii',$pbx,$interaccion,$usuario);$stmt->execute();$stmt->close();\n        return true;\n    }\n\n",
+          "after": "            pbx_call_id=?,confirmed_at=NOW() WHERE interaccion_id=? AND usuario_id=? AND estado='PENDIENTE'\");\n        $stmt->bind_param('sii',$pbx,$interaccion,$usuario);$stmt->execute();$stmt->close();\n        return $parConfirmado;\n    }\n\n"
+        },
+        {
+          "before": "        try {\n            $stmt=$this->db->prepare(\"SELECT DISTINCT interaccion_id FROM telefonia_verificacion_evidencias\n                WHERE usuario_id=? AND estado='PENDIENTE'\");\n            if (!$stmt) {\n                if ((int)$this->db->errno===1146) return [];\n",
+          "after": "        try {\n            $stmt=$this->db->prepare(\"SELECT DISTINCT interaccion_id FROM telefonia_verificacion_evidencias\n                WHERE usuario_id=? AND estado='PENDIENTE' AND accion='CONFIRMADO' AND TRIM(valor_confirmado)<>''\n                GROUP BY interaccion_id HAVING COUNT(DISTINCT CASE WHEN campo IN ('telefono','correo') THEN campo END)=2\");\n            if (!$stmt) {\n                if ((int)$this->db->errno===1146) return [];\n"
+        }
+      ]
+    },
+    {
+      "path": "app/services/TelefoniaEntrantesAnalistaService.php",
+      "new_file": false,
+      "before_sha": "1f4c581a02b6b61389e9867b92e6214f68470e50150f66a55abb7d70764445db",
+      "after_sha": "e6cfb0871c2c73630d844d00c2e50bea2a63e0ebbf355cc48589bf0e364f811d",
+      "hunks": [
+        {
+          "before": "            }\n            $segundosConversacion = self::segundosAtendidos($call);\n            $admiteVerificacion=in_array($resultadoFormulario,['CONTACTO_CORRECTO','CONTACTO_REFERIDO',\n                'SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'],true);\n            $referido=$resultadoFormulario==='CONTACTO_REFERIDO' ? VerificacionInstitucionalService::referido($datos) : [];\n            $detalles=$admiteVerificacion ? VerificacionInstitucionalService::detalles(array_merge($datos,$referido),$seguimiento) : [];\n            $evidencias=array_column($detalles,'etiqueta');\n            $pbxFirmada = !$sdk && empty($call['estadistica_solo']);\n            if ($evidencias && ($personaAtendio==='' || $segundosConversacion<=0)) {\n",
+          "after": "            }\n            $segundosConversacion = self::segundosAtendidos($call);\n            $admiteVerificacion=VerificacionInstitucionalService::resultadoVerificable($resultadoFormulario);\n            $referido=$resultadoFormulario==='CONTACTO_REFERIDO' ? VerificacionInstitucionalService::referido($datos) : [];\n            $detalles=$admiteVerificacion ? VerificacionInstitucionalService::detalles(array_merge($datos,$referido),$seguimiento) : [];\n            $evidencias=array_column($detalles,'etiqueta');\n            $parConfirmado=VerificacionInstitucionalService::tienePar($detalles);\n            $pbxFirmada = !$sdk && empty($call['estadistica_solo']);\n            if ($evidencias && ($personaAtendio==='' || $segundosConversacion<=0)) {\n"
+        },
+        {
+          "before": "                    (!empty($call['estadistica_solo']) ? '[FIN CONFIRMADO POR ESTADISTICA ZADARMA; SIN WEBHOOK DE CIERRE]' : ''),\n                $personaAtendio !== '' ? 'Persona atendida: ' . $personaAtendio : '',\n                $evidencias ? ($pbxFirmada ? '[VERIFICACION_EFECTIVA]' : '[VERIFICACION_PENDIENTE_PBX]') : '',\n                $evidencias ? 'Verificación obtenida: ' . implode(' · ', $evidencias) : '',\n                $resultadoFormulario === 'NO_INTERESADO' ? 'Resultado registrado: No interesado' : '',\n",
+          "after": "                    (!empty($call['estadistica_solo']) ? '[FIN CONFIRMADO POR ESTADISTICA ZADARMA; SIN WEBHOOK DE CIERRE]' : ''),\n                $personaAtendio !== '' ? 'Persona atendida: ' . $personaAtendio : '',\n                $parConfirmado ? ($pbxFirmada ? '[VERIFICACION_EFECTIVA]' : '[VERIFICACION_PENDIENTE_PBX]') : '',\n                $evidencias ? 'Verificación obtenida: ' . implode(' · ', $evidencias) : '',\n                $resultadoFormulario === 'NO_INTERESADO' ? 'Resultado registrado: No interesado' : '',\n"
+        },
+        {
+          "before": "\n        return ['seguimiento_id'=>$seguimientoId,'interaccion_id'=>$interaccionId,\n            'verificacion_confirmada'=>$pbxFirmada && !empty($evidencias),\n            'verificacion_pendiente'=>!$pbxFirmada && !empty($evidencias)];\n    }\n\n",
+          "after": "\n        return ['seguimiento_id'=>$seguimientoId,'interaccion_id'=>$interaccionId,\n            'verificacion_confirmada'=>$pbxFirmada && $parConfirmado,\n            'verificacion_pendiente'=>!$pbxFirmada && $parConfirmado,\n            'verificacion_parcial'=>!empty($evidencias) && !$parConfirmado];\n    }\n\n"
+        }
+      ]
+    },
+    {
+      "path": "app/controllers/SeguimientoVinculacionController.php",
+      "new_file": false,
+      "before_sha": "307a1935b2334f9921e1e13af19fd505711bad75522594f167920fe3fdedb3c7",
+      "after_sha": "ccb79e8d450ae4fa865b15b3600e4011845c3a5ab9de6b081c0df9bb64798921",
+      "hunks": [
+        {
+          "before": "         */\n        $evidenciasVerificacion = [];\n        $resultadoAdmiteVerificacion = in_array(\n            $resultadoFormulario,\n            [\n                'CONTACTO_CORRECTO',\n                'CONTACTO_REFERIDO',\n                'SOLICITO_INFORMACION',\n                'SOLICITO_LLAMAR_DESPUES',\n                'NO_INTERESADO'\n            ],\n            true\n        );\n\n        try {\n",
+          "after": "         */\n        $evidenciasVerificacion = [];\n        $resultadoAdmiteVerificacion = VerificacionInstitucionalService::resultadoVerificable($resultadoFormulario);\n\n        try {\n"
+        },
+        {
+          "before": "        $esVerificacionEfectiva =\n            $esCandidataVerificacion &&\n            $origenLlamada === 'ZADARMA';\n\n",
+          "after": "        $esVerificacionEfectiva =\n            $esCandidataVerificacion &&\n            VerificacionInstitucionalService::tienePar($detallesVerificacion) &&\n            $origenLlamada === 'ZADARMA';\n\n"
+        },
+        {
+          "before": "                'candidata' => $esCandidataVerificacion,\n                'contabilizable' => $esVerificacionEfectiva,\n                'origen' => $origenLlamada,\n                'evidencias' => $evidenciasVerificacion,\n",
+          "after": "                'candidata' => $esCandidataVerificacion,\n                'contabilizable' => $esVerificacionEfectiva,\n                'parcial' => !empty($detallesVerificacion) && !VerificacionInstitucionalService::tienePar($detallesVerificacion),\n                'origen' => $origenLlamada,\n                'evidencias' => $evidenciasVerificacion,\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/telefonia_atencion.js",
+      "new_file": false,
+      "before_sha": "74cb869eb89fb1ba61ac6be5ebc1523fbd250fd960ce48dd0a119817244fb9df",
+      "after_sha": "fc88502d5ae8ec0c36c1be887e484232d6aa882b62f38cb6012e9a1c48459f6c",
+      "hunks": [
+        {
+          "before": "    window.IMPE_TELEPHONY_NOTIFY=(message,error=false)=>{\n        if(!message||!window.bootstrap?.Toast)return;\n        let container=document.querySelector('.toast-container');\n        if(!container){container=document.createElement('div');container.className='toast-container position-fixed top-0 end-0 p-3';document.body.append(container);}\n        container.style.zIndex='1095';\n        const el=document.createElement('div');el.className='toast system-toast'+(error?' system-toast-error':'');\n",
+          "after": "    window.IMPE_TELEPHONY_NOTIFY=(message,error=false)=>{\n        if(!message||!window.bootstrap?.Toast)return;\n        const host=Array.from(document.querySelectorAll('.modal.show')).pop()||document.body;\n        let container=Array.from(host.children).find(el=>el.matches?.('[data-telephony-toasts]'));\n        if(!container){container=document.createElement('div');container.dataset.telephonyToasts='';container.className='toast-container position-fixed top-0 end-0 p-3';host.append(container);}\n        container.style.zIndex='1095';\n        const el=document.createElement('div');el.className='toast system-toast'+(error?' system-toast-error':'');\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_interacciones.js",
+      "new_file": false,
+      "before_sha": "3e78893f75f38c2bdd3f42dbf60ed0d219a3225ac59cafb9c9988e0b6d57c91a",
+      "after_sha": "5cb31956bc4c00aa36daf17061063fcbc4a53c2835e9f49f558cb1ee8ac415dc",
+      "hunks": [
+        {
+          "before": "                'CONTACTO_REFERIDO',\n                'SOLICITO_INFORMACION',\n                'SOLICITO_LLAMAR_DESPUES',\n                'NO_INTERESADO'\n            ];\n            const visible =\n",
+          "after": "                'CONTACTO_REFERIDO',\n                'SOLICITO_INFORMACION',\n                'SOLICITO_LLAMAR_DESPUES'\n            ];\n            const visible =\n"
+        },
+        {
+          "before": "            }\n\n            if (notaEvidenciaVerificacion) notaEvidenciaVerificacion.textContent='Para Contacto correcto y para que la llamada cuente, confirma teléfono y correo durante esta misma conversación. Capturar datos en el borrador no los confirma automáticamente.';\n        };\n\n",
+          "after": "            }\n\n            if (notaEvidenciaVerificacion) notaEvidenciaVerificacion.textContent='Puedes guardar sin confirmaciones o con datos parciales. Para contar como llamada efectiva y avanzar se requieren teléfono y correo confirmados en esta misma llamada, con evidencia de telefonía.';\n        };\n\n"
+        },
+        {
+          "before": "            campo.focus({ preventScroll: true });\n            campo.scrollIntoView({ behavior: 'smooth', block: 'center' });\n            campo.reportValidity();\n        };\n\n        const validarRequisitosInteraccion = function () {\n",
+          "after": "            campo.focus({ preventScroll: true });\n            campo.scrollIntoView({ behavior: 'smooth', block: 'center' });\n            // El toast institucional ya informa del campo; evitar el globo nativo duplicado.\n        };\n\n        formulario.addEventListener('invalid',event=>{\n            event.preventDefault();const input=event.target;\n            if(Array.from(formulario.elements).find(el=>el.willValidate&&!el.validity.valid)!==input)return;\n            const label=(input.labels?.[0]?.textContent||input.name||'el campo indicado').replace(/\\s+/g,' ').trim();\n            const detalle=input.validity.typeMismatch?'Introduce un correo electrónico válido.':(input.validity.valueMissing?'Completa este dato antes de guardar.':(input.validationMessage||'Revisa el formato de este dato.'));\n            mostrarToastLocal('Revisa «'+label+'»: '+detalle,true);\n        },true);\n\n        const validarRequisitosInteraccion = function () {\n"
+        },
+        {
+          "before": "\n            actualizarEvidenciaVerificacion();\n            const algunaConfirmacion=Boolean(checkTelefono?.checked||checkCorreo?.checked||checkContacto?.checked);\n            if ((resultado==='CONTACTO_CORRECTO'||algunaConfirmacion) && !(checkTelefono?.checked&&checkCorreo?.checked)) {\n                const mensaje='Debes confirmar teléfono y correo durante esta misma llamada.';\n                mostrarToastLocal(mensaje,true);marcarCampoInvalido(!checkTelefono?.checked?checkTelefono:checkCorreo,mensaje);return false;\n            }\n\n            if (resultado === 'CONTACTO_REFERIDO') {\n",
+          "after": "\n            actualizarEvidenciaVerificacion();\n\n            if (resultado === 'CONTACTO_REFERIDO') {\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_llamada_zadarma.js",
+      "new_file": false,
+      "before_sha": "3d79ec6e7b0536703845ca99cd07ba53c10aa81e83537ad827cb05f4ef524348",
+      "after_sha": "4b28ea92c69d6a45ae862006bca333ae5beb36daf9ec7ee1b64b2ac38dc2f686",
+      "hunks": [
+        {
+          "before": "        const reglasPorFormulario = new WeakMap();\n        const resultadosVerificables = ['CONTACTO_CORRECTO','CONTACTO_REFERIDO',\n            'SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'];\n        function aplicarReglasResultado(form, captura) {\n            const selector = form.querySelector('[name=\"resultado\"]');\n",
+          "after": "        const reglasPorFormulario = new WeakMap();\n        const resultadosVerificables = ['CONTACTO_CORRECTO','CONTACTO_REFERIDO',\n            'SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES'];\n        function aplicarReglasResultado(form, captura) {\n            const selector = form.querySelector('[name=\"resultado\"]');\n"
+        },
+        {
+          "before": "                                ? 'Verificación válida · esta institución ya fue contabilizada hoy. La llamada quedó guardada en el expediente.'\n                                : 'Llamada registrada y verificada · esta institución cuenta en la meta de hoy.';\n                    } else if (\n                        feedback\n",
+          "after": "                                ? 'Verificación válida · esta institución ya fue contabilizada hoy. La llamada quedó guardada en el expediente.'\n                                : 'Llamada registrada y verificada · esta institución cuenta en la meta de hoy.';\n                    } else if (feedback.confirmacionParcial===true) {\n                        finalMessage='Llamada guardada con confirmación parcial. Para contar como efectiva faltan teléfono y correo confirmados en esta misma llamada.';\n                    } else if (\n                        feedback\n"
+        },
+        {
+          "before": "                        labels[resultado] ||\n                        'Llamada registrada',\n                    tieneEvidencia:\n                        evidence\n",
+          "after": "                        labels[resultado] ||\n                        'Llamada registrada',\n                    confirmacionParcial: ['telefono','correo','contacto'].some(campo=>formulario.querySelector('[name=\"verificacion_'+campo+'_confirmado\"]')?.checked) && !(formulario.querySelector('[name=\"verificacion_telefono_confirmado\"]')?.checked && formulario.querySelector('[name=\"verificacion_correo_confirmado\"]')?.checked),\n                    tieneEvidencia:\n                        evidence\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/seguimiento_entrantes_analista.js",
+      "new_file": false,
+      "before_sha": "91df213f8b1cb60451ce600f6396295595a833d8f7c31896a05f72453ef2e917",
+      "after_sha": "a32fe2355ef4796d2e135fb1aed45105a6de45267845e6282de173483c468fc0",
+      "hunks": [
+        {
+          "before": "    // Los errores deben permanecer dentro del formulario, incluso sin el toast del shell.\n    const showError = message => {\n        const text = String(message || 'No fue posible guardar la llamada.');\n        errorBox.textContent = text;\n        errorBox.classList.remove('d-none', 'mt-3');\n        errorBox.classList.add('mb-3');\n        errorBox.tabIndex = -1;\n        form.querySelector('.modal-body').prepend(errorBox);\n        errorBox.focus({preventScroll:true});\n        form.querySelector('.modal-body').scrollTop = 0;\n        window.IMPE_TELEPHONY_NOTIFY?.(text,true);\n    };\n    // La validación nativa puede cancelar el envío antes de disparar submit.\n",
+          "after": "    // Los errores deben permanecer dentro del formulario, incluso sin el toast del shell.\n    const showError = message => {\n        let container=modalEl.querySelector('[data-incoming-toast-container]');\n        if(!container){container=document.createElement('div');container.dataset.incomingToastContainer='';container.className='toast-container position-fixed top-0 end-0 p-3';container.style.zIndex='1095';modalEl.append(container);}\n        errorBox.className='toast system-toast system-toast-error show';\n        errorBox.style.maxWidth='calc(100vw - 32px)';errorBox.tabIndex=-1;\n        errorBox.setAttribute('aria-live','assertive');\n        errorBox.innerHTML='<div class=\"toast-body\"><i class=\"bi bi-exclamation-circle\" aria-hidden=\"true\"></i><span></span><button type=\"button\" class=\"btn-close ms-auto\" aria-label=\"Cerrar aviso\"></button></div>';\n        errorBox.querySelector('span').textContent=String(message || 'No fue posible guardar la llamada.');\n        errorBox.querySelector('button').onclick=()=>clearError();\n        container.append(errorBox);errorBox.focus({preventScroll:true});\n    };\n    // La validación nativa puede cancelar el envío antes de disparar submit.\n"
+        },
+        {
+          "before": "        if (Array.from(form.elements).find(el => el.willValidate && !el.validity.valid) !== input) return;\n        const label = (input.labels?.[0]?.textContent || input.name || 'el campo indicado').replace(/\\s+/g,' ').trim();\n        showError('Revisa «'+label+'»: '+(input.validationMessage || 'Completa este dato antes de guardar.'));\n    },true);\n    const clearError = () => {\n",
+          "after": "        if (Array.from(form.elements).find(el => el.willValidate && !el.validity.valid) !== input) return;\n        const label = (input.labels?.[0]?.textContent || input.name || 'el campo indicado').replace(/\\s+/g,' ').trim();\n        const detalle=input.validity.typeMismatch?'Introduce un correo electrónico válido.':(input.validity.valueMissing?'Completa este dato antes de guardar.':(input.validationMessage||'Revisa el formato de este dato.'));\n        showError('Revisa «'+label+'»: '+detalle);\n    },true);\n    const clearError = () => {\n"
+        },
+        {
+          "before": "        const allowEvidence = enabled && [\n            'CONTACTO_CORRECTO', 'CONTACTO_REFERIDO', 'SOLICITO_INFORMACION',\n            'SOLICITO_LLAMAR_DESPUES', 'NO_INTERESADO'\n        ].includes(result);\n        evidence.hidden = !allowEvidence;\n        evidence.querySelector('p').textContent='Para Contacto correcto y para acreditar esta llamada debes confirmar teléfono y correo durante la conversación.';\n        referred.hidden=!enabled;\n        referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowEvidence));\n        window.IMPE_CALL_DRAFTS?.unificarContacto(form);\n        sdkConfirm.hidden=!isSdkCall || !allowEvidence;\n        sdkCheck.required=!sdkConfirm.hidden;\n        if(sdkConfirm.hidden)sdkCheck.checked=false;\n        if (!allowEvidence) {\n            evidence.querySelectorAll('input[type=\"checkbox\"]')\n",
+          "after": "        const allowEvidence = enabled && [\n            'CONTACTO_CORRECTO', 'CONTACTO_REFERIDO', 'SOLICITO_INFORMACION',\n            'SOLICITO_LLAMAR_DESPUES'\n        ].includes(result);\n        const allowContactData=enabled && (allowEvidence || result==='NO_INTERESADO');\n        evidence.hidden = !allowEvidence;\n        evidence.querySelector('p').textContent='Puedes guardar sin confirmar datos o con una confirmación parcial. Para contar como llamada efectiva y avanzar necesitas teléfono y correo confirmados en esta misma llamada, con evidencia de telefonía.';\n        referred.hidden=!enabled;\n        referred.querySelectorAll('input').forEach(el=>el.disabled=!enabled || (result!=='' && !allowContactData));\n        window.IMPE_CALL_DRAFTS?.unificarContacto(form);\n        sdkConfirm.hidden=!isSdkCall || !allowContactData;\n        sdkCheck.required=!sdkConfirm.hidden;\n        if(sdkConfirm.hidden)sdkCheck.checked=false;\n        evidence.querySelectorAll('input[type=\"checkbox\"]').forEach(input=>input.disabled=!allowEvidence);\n        if (!allowEvidence) {\n            evidence.querySelectorAll('input[type=\"checkbox\"]')\n"
+        },
+        {
+          "before": "        if (isSubmitting) return;\n        if(!outgoingReady){showError('Puedes seguir capturando. El guardado se habilitará al confirmar esta llamada.');return;}\n        const confirmaTelefono=form.elements.verificacion_telefono_confirmado.checked;\n        const confirmaCorreo=form.elements.verificacion_correo_confirmado.checked;\n        const confirmaContacto=form.elements.verificacion_contacto_confirmado.checked;\n        if ((resultInput.value==='CONTACTO_CORRECTO'||confirmaTelefono||confirmaCorreo||confirmaContacto) && !(confirmaTelefono&&confirmaCorreo)) {\n            showError('Debes confirmar teléfono y correo durante esta misma llamada.');return;\n        }\n        clearError();\n        if (!form.reportValidity()) return;\n",
+          "after": "        if (isSubmitting) return;\n        if(!outgoingReady){showError('Puedes seguir capturando. El guardado se habilitará al confirmar esta llamada.');return;}\n        clearError();\n        if (!form.reportValidity()) return;\n"
+        },
+        {
+          "before": "            const result=data.resultado||{};\n            const message=result.verificacion_confirmada ? 'Atención guardada con verificación efectiva. Máximo una institución por día.' :\n                result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : 'Resultado de llamada registrado correctamente.';\n            for(const id of callRefs) {\n                try {\n",
+          "after": "            const result=data.resultado||{};\n            const message=result.verificacion_confirmada ? 'Atención guardada con verificación efectiva. Máximo una institución por día.' :\n                result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : result.verificacion_parcial ? 'Llamada guardada con confirmación parcial. Para la meta y el avance faltan teléfono y correo confirmados en la misma llamada.' : 'Resultado de llamada registrado correctamente.';\n            for(const id of callRefs) {\n                try {\n"
+        }
+      ]
+    }
+  ]
+}
