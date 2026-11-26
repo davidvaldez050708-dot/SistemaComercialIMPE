@@ -490,6 +490,18 @@ class DenueService
             }
         }
 
+        if ($consultasCorrectas < count($solicitudes)) {
+            $respaldo = $this->leerCacheNombre($claveEstado, $claveMunicipio, $termino, 7 * 86400);
+            if (!empty($respaldo)) {
+                return [
+                    'ok' => true,
+                    'resultados' => array_slice($respaldo, 0, $limite),
+                    'hay_mas' => count($respaldo) > $limite,
+                    'cache' => true,
+                    'cache_respaldo' => true
+                ];
+            }
+        }
         if ($consultasCorrectas === 0 && empty($resultadosPorClave)) {
             return [
                 'ok' => false,
@@ -511,13 +523,16 @@ class DenueService
             return strcasecmp((string)$a['nombre'], (string)$b['nombre']);
         });
 
-        $this->guardarCacheNombre($claveEstado, $claveMunicipio, $termino, $resultados);
+        if ($consultasCorrectas === count($solicitudes)) {
+            $this->guardarCacheNombre($claveEstado, $claveMunicipio, $termino, $resultados);
+        }
 
         return [
             'ok' => true,
             'resultados' => array_slice($resultados, 0, $limite),
             'hay_mas' => count($resultados) > $limite,
-            'cache' => false
+            'cache' => false,
+            'consulta_parcial' => $consultasCorrectas < count($solicitudes)
         ];
     }
 
@@ -656,6 +671,18 @@ class DenueService
             }
         }
 
+        if ($consultasCorrectas < count($solicitudes)) {
+            $respaldo = $this->leerCacheRecomendados($claveEstado, $claveMunicipio, $sectoresCache, 7 * 86400);
+            if (!empty($respaldo)) {
+                return [
+                    'ok' => true,
+                    'resultados' => array_slice($respaldo, 0, $limite),
+                    'hay_mas' => count($respaldo) > $limite,
+                    'cache' => true,
+                    'cache_respaldo' => true
+                ];
+            }
+        }
         if ($consultasCorrectas === 0 && empty($resultadosPorClave)) {
             return [
                 'ok' => false,
@@ -677,13 +704,16 @@ class DenueService
             return strcasecmp((string)$a['nombre'], (string)$b['nombre']);
         });
 
-        $this->guardarCacheRecomendados($claveEstado, $claveMunicipio, $sectoresCache, $resultados);
+        if ($consultasCorrectas === count($solicitudes)) {
+            $this->guardarCacheRecomendados($claveEstado, $claveMunicipio, $sectoresCache, $resultados);
+        }
 
         return [
             'ok' => true,
             'resultados' => array_slice($resultados, 0, $limite),
             'hay_mas' => count($resultados) > $limite,
-            'cache' => false
+            'cache' => false,
+            'consulta_parcial' => $consultasCorrectas < count($solicitudes)
         ];
     }
 
@@ -1188,11 +1218,12 @@ class DenueService
     private function leerCacheRecomendados(
         string $claveEstado,
         string $claveMunicipio,
-        array $sectores
+        array $sectores,
+        int $maxEdad = 1800
     ): ?array {
         $archivo = $this->obtenerArchivoCacheRecomendados($claveEstado, $claveMunicipio, $sectores);
 
-        if (!is_file($archivo) || (time() - filemtime($archivo)) > 1800) {
+        if (!is_file($archivo) || (time() - filemtime($archivo)) > $maxEdad) {
             return null;
         }
 
@@ -1204,7 +1235,7 @@ class DenueService
 
         $datos = json_decode($contenido, true);
 
-        return is_array($datos) ? $datos : null;
+        return is_array($datos) && array_is_list($datos) ? $datos : null;
     }
 
     private function guardarCacheRecomendados(
@@ -1245,11 +1276,12 @@ class DenueService
     private function leerCacheNombre(
         string $claveEstado,
         string $claveMunicipio,
-        string $termino
+        string $termino,
+        int $maxEdad = 900
     ): ?array {
         $archivo = $this->obtenerArchivoCacheNombre($claveEstado, $claveMunicipio, $termino);
 
-        if (!is_file($archivo) || (time() - filemtime($archivo)) > 900) {
+        if (!is_file($archivo) || (time() - filemtime($archivo)) > $maxEdad) {
             return null;
         }
 
@@ -1261,7 +1293,7 @@ class DenueService
 
         $datos = json_decode($contenido, true);
 
-        return is_array($datos) ? $datos : null;
+        return is_array($datos) && array_is_list($datos) ? $datos : null;
     }
 
     private function guardarCacheNombre(
