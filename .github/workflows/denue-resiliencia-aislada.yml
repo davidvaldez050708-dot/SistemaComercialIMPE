@@ -1,0 +1,23 @@
+name: DENUE - resiliencia aislada
+on:
+  push:
+    branches: [fix/denue-resiliencia-20261126]
+permissions:
+  contents: read
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl
+      - name: Sintaxis y regresiones sin acceso a producción
+        run: |
+          php -l app/services/DenueCircuitBreaker.php
+          php -l app/services/DenueService.php
+          php -l app/controllers/SeguimientoVinculacionController.php
+          php tests/denue_circuit_breaker_smoke.php
+          php tests/denue_respaldo_smoke.php
