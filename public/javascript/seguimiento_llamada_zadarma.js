@@ -143,7 +143,7 @@
                         }
                         const params = new URLSearchParams({destination:metadata.to || '',since:String(metadata.requested_at || 0),
                             after_id:String(metadata.after_id || 0),final:'1'});
-                        const res = await fetch('prueba_telefonia/api/zadarma_estado_llamada.php?'+params,
+                        const res = await window.IMPE_PHONE_HTTP.request('prueba_telefonia/api/zadarma_estado_llamada.php?'+params,
                             {credentials:'same-origin',cache:'no-store',signal:controller.signal});
                         const data = await res.json();
                         const start = Date.parse(data?.call?.start_time || '')/1000;
@@ -157,7 +157,7 @@
                         metadata.pbx_call_id = ref;
                     }
                     const params = new URLSearchParams({seguimiento_id:String(metadata.seguimiento_id),pbx_call_id:ref});
-                    const response = await fetch('prueba_telefonia/api/resultado_saliente_analista.php?'+params,
+                    const response = await window.IMPE_PHONE_HTTP.request('prueba_telefonia/api/resultado_saliente_analista.php?'+params,
                         {credentials:'same-origin',cache:'no-store',signal:controller.signal});
                     const data = await response.json();
                     if (!vigente()) return;
@@ -220,7 +220,7 @@
         const fetchTechnical = async (url, options) => {
             const abort = new AbortController();
             const timeout = window.setTimeout(() => abort.abort(), 12000);
-            try { return await fetch(url, {...options, signal:abort.signal}); }
+            try { return await window.IMPE_PHONE_HTTP.request(url, {...options, signal:abort.signal}); }
             finally { window.clearTimeout(timeout); }
         };
         const usuarioId =

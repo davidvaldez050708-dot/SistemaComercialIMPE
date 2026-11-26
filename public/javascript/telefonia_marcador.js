@@ -504,7 +504,7 @@
                 body.set(entry[0], String(entry[1]));
             });
 
-            const response = await fetch(url, {
+            const response = await window.IMPE_PHONE_HTTP.request(url, {
                 method: 'POST',
                 credentials: 'same-origin',
                 cache: 'no-store',

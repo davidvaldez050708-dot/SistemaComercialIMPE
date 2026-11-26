@@ -1,6 +1,9 @@
 <?php
 require_once dirname(__DIR__,2).'/app/services/TelefoniaVerificacionEvidenciaService.php';
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 
 require_once dirname(__DIR__, 2) . '/app/services/ZadarmaCallLookupService.php';
 require_once dirname(__DIR__, 2) .

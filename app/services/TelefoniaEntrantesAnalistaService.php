@@ -373,44 +373,28 @@ class TelefoniaEntrantesAnalistaService
 
     public static function conciliarHistorialPbxWebrtc(array $llamadas,array $sesiones): array
     {
-        $normalizarNumero = static function ($valor): string {
-            $digitos = preg_replace('/\D+/', '', (string)$valor) ?: '';
-            return strlen($digitos) >= 10 ? substr($digitos, -10) : '';
-        };
-        $timestamp = static function ($valor): int {
-            $time = strtotime((string)$valor);
-            return $time === false ? 0 : $time;
-        };
         $candidatos = [];
         $inversos = [];
         foreach ($sesiones as $si => $sdk) {
             if (($sdk['tipo_llamada'] ?? '') !== 'ENTRANTE') continue;
-            $numeroSdk = $normalizarNumero($sdk['numero'] ?? '');
-            $tiempoSdk = $timestamp($sdk['fecha'] ?? '');
-            if ($numeroSdk === '' || !$tiempoSdk) continue;
+            $reference=trim((string)($sdk['pbx_reference']??''));
+            $interaction=(int)($sdk['interaccion_id']??0);
             foreach ($llamadas as $pi => $pbx) {
                 if (($pbx['tipo_llamada'] ?? '') !== 'ENTRANTE') continue;
-                $numeroPbx = $normalizarNumero($pbx['numero'] ?? '');
-                $tiempoPbx = $timestamp($pbx['fecha'] ?? '');
-                if ($numeroPbx !== $numeroSdk || !$tiempoPbx ||
-                    ((string)($sdk['pbx_reference']??'')!==(string)$pbx['pbx_call_id'] && abs($tiempoSdk - $tiempoPbx) > 60)) continue;
+                // Teléfono y cercanía temporal sólo corroboran; no crean una
+                // identidad compartida ni trasladan un expediente entre filas.
+                $sameReference=$reference!==''&&hash_equals($reference,(string)($pbx['pbx_call_id']??''));
+                $sameInteraction=$reference===''&&$interaction>0&&$interaction===(int)($pbx['interaccion_id']??0);
+                if(!$sameReference&&!$sameInteraction)continue;
                 $candidatos[$si][] = $pi;
                 $inversos[$pi][] = $si;
             }
         }
         $ocultarSdk = [];
-        $masCercano=static function(array $indices,int $instante,array $lista) use ($timestamp): ?int {
-            $mejor=null;$distancia=PHP_INT_MAX;$empate=false;
-            foreach ($indices as $indice) {
-                $d=abs($timestamp($lista[$indice]['fecha'] ?? '')-$instante);
-                if ($d<$distancia) {$mejor=$indice;$distancia=$d;$empate=false;}
-                elseif ($d===$distancia) {$empate=true;}
-            }
-            return $empate?null:$mejor;
-        };
         foreach ($candidatos as $si => $indicesPbx) {
-            $pi=$masCercano($indicesPbx,$timestamp($sesiones[$si]['fecha'] ?? ''),$llamadas);
-            if ($pi===null || $masCercano($inversos[$pi] ?? [],$timestamp($llamadas[$pi]['fecha'] ?? ''),$sesiones)!==$si) continue;
+            if(count($indicesPbx)!==1)continue;
+            $pi=$indicesPbx[0];
+            if(count($inversos[$pi]??[])!==1)continue;
             $sdk = $sesiones[$si];
             $pbx = &$llamadas[$pi];
             // Dos atenciones ya vinculadas a expedientes distintos no se consolidan.

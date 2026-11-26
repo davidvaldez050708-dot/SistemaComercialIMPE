@@ -310,6 +310,7 @@ if (in_array($controllerDashboard, array('aliado', 'convocatoria', 'crearconvoca
 $cssOpcionalDashboard = array_values(array_unique($cssOpcionalDashboard));
 
 $jsOpcionalHead = [
+    'telefonia_http.js',
     'firma_correo_perfil.js'
 ];
 

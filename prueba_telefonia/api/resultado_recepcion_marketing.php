@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store');
 $root = dirname(__DIR__, 2);
@@ -18,9 +21,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 }
 $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
 if ($usuarioId < 1) responderResultadoRecepcion(['ok'=>false,'mensaje'=>'Sesión no activa.'],401);
-$rol = new RolModel();
-$rol->inicializarPermisosSistema();
-$_SESSION['permisos'] = $rol->obtenerCodigosPermisosPorRol((int)($_SESSION['rol_id'] ?? 0));
+
 if (!TelefoniaRecepcionMarketingService::tienePermisos()) {
     responderResultadoRecepcion(['ok'=>false,'mensaje'=>'No tienes acceso a recepción.'],403);
 }

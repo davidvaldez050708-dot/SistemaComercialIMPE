@@ -41,7 +41,8 @@ class ZadarmaRecordingService
             throw new RuntimeException('La configuración privada de Zadarma está incompleta.');
         }
 
-        $this->api = new \Zadarma_API\Api($this->apiKey, $this->apiSecret, false);
+        require_once __DIR__.'/TelefoniaZadarmaApi.php';
+        $this->api = new TelefoniaZadarmaApi($this->apiKey, $this->apiSecret, false);
 
         if($cargarEventos)try {
             $this->eventStore = new ZadarmaWebhookEventStoreService();

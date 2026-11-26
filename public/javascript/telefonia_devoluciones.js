@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  const node=(tag,cls,text)=>{const e=document.createElement(tag);e.className=cls||'';if(text!==undefined)e.textContent=String(text);return e;};
  const api=async(data=null,id=0)=>{const url=new URL(root.dataset.endpoint,location.href),opts={credentials:'same-origin',cache:'no-store'};
   if(data){opts.method='POST';opts.body=new URLSearchParams({...data,csrf_token:root.dataset.csrf});}else if(id)url.searchParams.set('intento_id',id);
-  const r=await fetch(url,opts),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo actualizar la devolución.');return j;};
+  const r=await window.IMPE_PHONE_HTTP.request(url,opts),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo actualizar la devolución.');return j;};
  const taskFor=id=>tasks.find(t=>Number(t.id)===Number(id));
  const action=(text,icon,fn)=>{const b=node('button','linkage-incoming-open');b.type='button';const i=node('i','bi '+icon);i.setAttribute('aria-hidden','true');b.append(i,document.createTextNode(text));b.addEventListener('click',fn);return b;};
  const render=()=>{

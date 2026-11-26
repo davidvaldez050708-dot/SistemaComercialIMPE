@@ -15,7 +15,7 @@
     const persist=()=>{try{localStorage.setItem(key,JSON.stringify(saved));}catch(_){}};
     saved.forms ||= {};
     let calls=[], current=null, busy=false, saving=false, initial=true, openId='', transition=null;
-    let scanSince=Date.now(), statusBefore=null;
+    let scanSince=Date.now(), statusBefore=null,draftTimer=null;
     transition=saved.waiting||null;
     const completed=new Set(), observed=new Set();
     const matches=(call,id)=>call.id===id||call.aliases.includes(id);
@@ -37,23 +37,27 @@
         try{if(document.getElementById('impeCrmFrame')?.contentDocument?.querySelector('[data-marketing-result-dialog].show'))return;}catch(_){}
         if(openId!==call.id){
             form.reset();feedback.textContent='';openId=call.id;number.textContent=call.tipo+' · '+call.numero;
-            const draft=saved.forms[openId];
+            const draft=window.IMPE_CALL_DRAFTS?.localRead(Number(cfg.userId),openId)?.valores||saved.forms[openId];
             if(draft){form.elements.resultado.value=String(draft.resultado||'');form.elements.nota.value=String(draft.nota||'').slice(0,500);}
         }
-        if(!dialog.open){dialog.showModal();form.elements.resultado.focus({preventScroll:true});}
+        if(!dialog.open){
+            dialog.showModal();form.elements.resultado.focus({preventScroll:true});
+            document.dispatchEvent(new CustomEvent('impe:call-result-form-opened',{detail:{form,ids:[openId],adaptador:'RECEPCION'}}));
+        }
     };
     const load=async()=>{
         if(busy)return;busy=true;
         try{
-            const response=await fetch(cfg.callNoticesUrl,{credentials:'same-origin',cache:'no-store'});
+            const response=await window.IMPE_PHONE_HTTP.request(cfg.callNoticesUrl,{credentials:'same-origin',cache:'no-store'});
             const data=await response.json();
             if(!response.ok||!data.ok)return;
             if(String(data.extension)!==String(cfg.extension))return;
             calls=data.llamadas||[];
             if(transition){
                 const exact=calls.filter(c=>matches(c,transition.id));
-                const candidates=exact.length?exact:calls.filter(c=>c.fin_ts>=transition.at-3000 &&
-                    transition.number.length===10 && String(c.numero).replace(/\D/g,'').slice(-10)===transition.number);
+                // El número y la cercanía temporal no identifican una llamada.
+                // Sin una referencia o alias acreditado, conservar el pendiente.
+                const candidates=exact;
                 // Una transferencia puede aparecer inicialmente como saliente atendida:
                 // esperar la conciliación PBX antes de abrir resultado obligatorio.
                 const transferGrace=transition.transfer && Date.now()-transition.at<12000;
@@ -67,8 +71,7 @@
             }
             for(const call of calls){
                 if(!call.finalizada){observed.add(call.id);continue;}
-                const isTransition=transition && (matches(call,transition.id) ||
-                    (call.fin_ts>=transition.at-3000 && String(call.numero).replace(/\D/g,'').slice(-10)===transition.number));
+                const isTransition=transition && matches(call,transition.id);
                 // La llamada puede haberse observado viva antes del cierre:
                 // tampoco encolar por observed ni por !initial mientras
                 // la transferencia espera su confirmación PBX.
@@ -85,7 +88,7 @@
                 // Un registro que tarda en llegar sigue pendiente. Una
                 // respuesta definitiva del servidor sí retira la obligación.
                 return c?c.requiere_resultado:true;
-            }).slice(-50);
+            });
             saved.seen=saved.seen.slice(-200);persist();initial=false;refreshView();
         }catch(_){/* El pendiente se conserva para reintentar. */}
         finally{busy=false;}
@@ -101,23 +104,35 @@
     };
     dialog?.addEventListener('cancel',e=>e.preventDefault());
     form?.addEventListener('input',()=>{
-        if(openId){saved.forms[openId]={resultado:form.elements.resultado.value,nota:form.elements.nota.value};persist();}
+        if(openId){
+            const id=openId,values={resultado:form.elements.resultado.value,nota:form.elements.nota.value};
+            try{window.IMPE_CALL_DRAFTS.localSave(Number(cfg.userId),[id],values,{adaptador:'RECEPCION'});}
+            catch(_){feedback.textContent='Mantén abierto el formulario: no se pudo conservar la captura.';return;}
+            clearTimeout(draftTimer);draftTimer=setTimeout(()=>{
+                void window.IMPE_CALL_DRAFTS.save(Number(cfg.userId),[id],values,cfg.routingCsrf,{adaptador:'RECEPCION'}).catch(()=>{});
+            },700);
+        }
     });
     form?.addEventListener('submit',async event=>{
         event.preventDefault();if(saving||!openId||!form.reportValidity())return;
-        const id=openId, values=new FormData(form);saving=true;
+        const id=openId;let capture;
+        try{capture=window.IMPE_CALL_DRAFTS.beginSave(Number(cfg.userId),[id],form,{adaptador:'RECEPCION'});}
+        catch(_){feedback.textContent='No se pudo conservar la captura. Mantén abierto el formulario.';return;}
+        const values=new URLSearchParams(capture.values);saving=true;
         values.set('csrf_token',cfg.routingCsrf);values.set('pbx_call_id',id);
         form.querySelectorAll('button,input,select,textarea').forEach(e=>e.disabled=true);
         feedback.textContent='Guardando resultado…';
         try{
-            const r=await fetch(cfg.receptionResultUrl,{method:'POST',credentials:'same-origin',cache:'no-store',body:values});
+            const r=await window.IMPE_PHONE_HTTP.request(cfg.receptionResultUrl,{method:'POST',credentials:'same-origin',cache:'no-store',body:values});
             const data=await r.json();if(!r.ok||!data.ok)throw new Error(data.mensaje||'No se pudo guardar. Inténtalo nuevamente.');
+            clearTimeout(draftTimer);
+            void window.IMPE_CALL_DRAFTS.remove(Number(cfg.userId),[id],cfg.routingCsrf,capture.revision).catch(()=>{});
             saved.pending=saved.pending.filter(ref=>ref!==id);delete saved.forms[id];persist();dialog.close();openId='';
             const call=calls.find(c=>c.id===id);if(call)call.requiere_resultado=false;
             notify('Resultado guardado.');
             document.getElementById('impeCrmFrame')?.contentWindow?.postMessage({type:'IMPE_RECEPTION_RESULT_SAVED',id},window.location.origin);
         }catch(e){feedback.textContent=e.message;notify(e.message,true);}
-        finally{saving=false;form.querySelectorAll('button,input,select,textarea').forEach(e=>e.disabled=false);refreshView();void load();}
+        finally{saving=false;capture.release();refreshView();void load();}
     });
     notices?.addEventListener('click',()=>{
         const frame=document.getElementById('impeCrmFrame');
@@ -143,7 +158,7 @@
             }
             refreshView();
         },
-        hasPending(){return cfg.receptionResults && (saved.pending.length>0||Boolean(transition));},
+        hasPending(){return cfg.receptionResults && saved.pending.length>0;},
         showPending(){refreshView();void load();}
     };
     void load();window.setInterval(()=>void load(),6000);

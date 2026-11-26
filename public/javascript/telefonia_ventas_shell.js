@@ -229,7 +229,7 @@
    else if(candidate){url.searchParams.set('solicitud_id',candidate.id);url.searchParams.set('sdk',candidate.token);}
    else url.searchParams.set('sdk',sdk);
    if(cfg.extension)url.searchParams.set('extension',cfg.extension);
-   const r=await fetch(url,{credentials:'same-origin',cache:'no-store',...(controller?{signal:controller.signal}:{})}),j=await r.json();
+   const r=await window.IMPE_PHONE_HTTP.request(url,{credentials:'same-origin',cache:'no-store',...(controller?{signal:controller.signal}:{})}),j=await r.json();
    if(r.status>=500||r.status===429){const error=Error('PHONE_DETAIL_UNAVAILABLE');
     error.retryAfterMs=Math.min(300000,Math.max(Number(r.headers?.get?.('Retry-After'))||0,Number(j.reintentar_en)||0)*1000);throw error;}
    if(r.status===401||r.status===403){lookupRetryAt=Date.now()+60000;return;}
@@ -266,7 +266,7 @@
   let serverWait=0;
   const pendingAbort=new AbortController(),pendingTimeout=setTimeout(()=>pendingAbort.abort(),12000);
   try{const url=new URL(cfg.salesDetailUrl,location.href);url.searchParams.set('pendientes','1');
-   const response=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:pendingAbort.signal});
+   const response=await window.IMPE_PHONE_HTTP.request(url,{credentials:'same-origin',cache:'no-store',signal:pendingAbort.signal});
    const retry=Number(response.headers?.get?.('Retry-After'));
    if(Number.isFinite(retry)&&retry>0)serverWait=Math.min(300000,retry*1000);
    if(!response.ok)throw Error('PENDING_READ_UNAVAILABLE');

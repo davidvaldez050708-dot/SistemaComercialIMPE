@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(!url)return;
   markAll.disabled=true;
   try{
-   const res=await fetch(url,{method:'POST',credentials:'same-origin',
+   const res=await window.IMPE_PHONE_HTTP.request(url,{method:'POST',credentials:'same-origin',
     body:new URLSearchParams({csrf_token:root.dataset.phoneNotificationCsrf})});
    const data=await res.json();
    if(!res.ok||!data.ok)throw Error('No fue posible marcar los avisos telefónicos como leídos.');
@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const destination=new URL(item.getAttribute('href'),window.location.href);
   if(destination.origin!==window.location.origin)return;
   try{
-   const response=await fetch(root.dataset.phoneNotificationRead,{method:'POST',credentials:'same-origin',body:new URLSearchParams({id:item.dataset.telefoniaId,csrf_token:root.dataset.phoneNotificationCsrf})});
+   const response=await window.IMPE_PHONE_HTTP.request(root.dataset.phoneNotificationRead,{method:'POST',credentials:'same-origin',body:new URLSearchParams({id:item.dataset.telefoniaId,csrf_token:root.dataset.phoneNotificationCsrf})});
    const data=await response.json();if(!response.ok||!data.ok)throw Error('No se pudo marcar la notificación. Intenta nuevamente.');
    window.location.href=destination.href;
   }catch(e){window.IMPE_TELEPHONY_NOTIFY?.(e.message,true);}

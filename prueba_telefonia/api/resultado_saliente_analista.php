@@ -1,5 +1,8 @@
 <?php
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 require_once dirname(__DIR__,2).'/app/helpers/PermissionHelper.php';
 require_once dirname(__DIR__,2).'/app/services/TelefoniaResultadoAnalistaService.php';
 header('Content-Type: application/json; charset=utf-8');
@@ -11,7 +14,7 @@ if (!$usuario || (int)($_SESSION['rol_id'] ?? 0) !== 4 || !tienePermiso('seguimi
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     http_response_code(405); echo json_encode(['ok'=>false,'mensaje'=>'Método no permitido.']); exit;
 }
-session_write_close();
+TelefoniaPeticionContexto::liberarSesion();
 try {
     $reglas = TelefoniaResultadoAnalistaService::consultar($usuario, (int)($_GET['seguimiento_id'] ?? 0), trim((string)($_GET['pbx_call_id'] ?? '')));
     echo json_encode(['ok'=>true,'reglas'=>$reglas], JSON_UNESCAPED_UNICODE|JSON_INVALID_UTF8_SUBSTITUTE);

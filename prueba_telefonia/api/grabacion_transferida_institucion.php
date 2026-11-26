@@ -6,6 +6,9 @@
  */
 declare(strict_types=1);
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 $root=dirname(__DIR__,2);
 require_once $root.'/config/db_connection.php';
 require_once $root.'/app/helpers/PermissionHelper.php';
@@ -17,8 +20,7 @@ header('X-Content-Type-Options: nosniff');
 if(($_SERVER['REQUEST_METHOD']??'')!=='GET'){http_response_code(405);exit;}
 $uid=(int)($_SESSION['usuario_id']??0);
 if($uid<=0){http_response_code(401);exit;}
-$roles=new RolModel();$roles->inicializarPermisosSistema();
-$_SESSION['permisos']=$roles->obtenerCodigosPermisosPorRol((int)($_SESSION['rol_id']??0));
+
 if(strcasecmp(trim((string)($_SESSION['rol']??'')),'Analista de Datos')!==0||
    !tienePermiso('telefonia.usar')||!tienePermiso('telefonia.recibir')||
    !tienePermiso('seguimientos_vinculacion.operar_propios')){

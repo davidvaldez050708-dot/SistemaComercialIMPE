@@ -1,5 +1,8 @@
 <?php
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 
 $root = dirname(__DIR__, 2);
 require_once $root . '/app/helpers/PermissionHelper.php';
@@ -11,14 +14,6 @@ require_once $root . '/config/db_connection.php';
 if (!isset($_SESSION['usuario_id'])) {
     http_response_code(401);
     exit('Sesión no activa.');
-}
-
-if (!isset($_SESSION['permisos'])) {
-    $modeloRol = new RolModel();
-    $modeloRol->inicializarPermisosSistema();
-    $_SESSION['permisos'] = $modeloRol->obtenerCodigosPermisosPorRol(
-        (int)($_SESSION['rol_id'] ?? 0)
-    );
 }
 
 if (!tienePermiso('seguimientos_vinculacion.ver')) {

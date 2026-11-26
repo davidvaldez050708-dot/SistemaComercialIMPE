@@ -696,6 +696,7 @@ class TelefoniaExtensionService
                     te.proveedor,
                     te.extension,
                     te.caller_id,
+                    GREATEST(te.created_at,te.updated_at) AS asignacion_desde,
                     te.permite_salientes,
                     te.permite_entrantes,
                     EXISTS (
@@ -770,6 +771,7 @@ class TelefoniaExtensionService
             'permite_transferir' =>
                 (int)($fila['puede_transferir'] ?? 0) === 1,
             'origen' => 'USUARIO',
+            'asignacion_desde' => (string)$fila['asignacion_desde'],
         ];
     }
 

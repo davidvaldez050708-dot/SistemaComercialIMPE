@@ -2,6 +2,9 @@
 declare(strict_types=1);
 require_once dirname(__DIR__,2).'/app/helpers/PausaConsultasAutomaticas.php';
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 date_default_timezone_set('America/Mexico_City');
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store');
@@ -17,14 +20,13 @@ function responderAvisos(array $data, int $status=200): void {
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') responderAvisos(['ok'=>false],405);
 $id=(int)($_SESSION['usuario_id'] ?? 0);
 if (!$id) responderAvisos(['ok'=>false],401);
-$roles=new RolModel();$roles->inicializarPermisosSistema();
-$_SESSION['permisos']=$roles->obtenerCodigosPermisosPorRol((int)($_SESSION['rol_id'] ?? 0));
+
 $recepcion=TelefoniaRecepcionMarketingService::tienePermisos();
 $analista=strcasecmp(trim((string)($_SESSION['rol'] ?? '')),'Analista de Datos')===0 &&
     tienePermiso('telefonia.usar') && tienePermiso('telefonia.recibir') &&
     tienePermiso('seguimientos_vinculacion.operar_propios');
 if (!$recepcion && !$analista) responderAvisos(['ok'=>false],403);
-session_write_close();
+TelefoniaPeticionContexto::liberarSesion();
 try {
     $data=$recepcion?(new TelefoniaRecepcionMarketingService())->resumen($id):
         (new TelefoniaEntrantesAnalistaService())->listar($id);

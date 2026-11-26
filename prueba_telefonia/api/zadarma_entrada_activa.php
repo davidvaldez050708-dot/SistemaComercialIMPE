@@ -1,5 +1,8 @@
 <?php
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -29,15 +32,6 @@ if ($usuarioId <= 0) {
         'ok' => false,
         'mensaje' => 'Sesión no activa.'
     ], 401);
-}
-
-if (!isset($_SESSION['permisos'])) {
-    $modeloRol = new RolModel();
-    $modeloRol->inicializarPermisosSistema();
-    $_SESSION['permisos'] =
-        $modeloRol->obtenerCodigosPermisosPorRol(
-            (int)($_SESSION['rol_id'] ?? 0)
-        );
 }
 
 if (

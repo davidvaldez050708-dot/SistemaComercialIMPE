@@ -404,7 +404,7 @@
             refresh.disabled = true;
             refresh.querySelector('i')?.classList.add('marketing-reception-spinning');
             try {
-                const response = await fetch(root.dataset.historyUrl, {
+                const response = await window.IMPE_PHONE_HTTP.request(root.dataset.historyUrl, {
                     method: 'GET',
                     credentials: 'same-origin',
                     cache: 'no-store',
@@ -487,7 +487,7 @@
             const controller = new AbortController();
             const timeout = window.setTimeout(() => controller.abort(), 12000);
             try {
-                const response = await fetch(endpoint.toString(), {
+                const response = await window.IMPE_PHONE_HTTP.request(endpoint.toString(), {
                     credentials: 'same-origin', cache: 'no-store', signal: controller.signal
                 });
                 if (!response.ok) throw new Error('No se pudo verificar la grabación.');
@@ -540,7 +540,7 @@
             try {
                 const url = new URL(button.dataset.recordingUrl, window.location.href);
                 url.searchParams.set('verificar', '1');
-                const response = await fetch(url.toString(), {
+                const response = await window.IMPE_PHONE_HTTP.request(url.toString(), {
                     credentials: 'same-origin', cache: 'no-store',
                     headers: {Accept: 'application/json'}, signal: controller.signal
                 });
@@ -626,7 +626,7 @@
                     csrf_token:root.dataset.resultCsrf || '', pbx_call_id:resultCallId,
                     resultado:resultSelect.value, nota:resultNote.value.trim()
                 });
-                const response = await fetch(root.dataset.resultUrl, {
+                const response = await window.IMPE_PHONE_HTTP.request(root.dataset.resultUrl, {
                     method:'POST', credentials:'same-origin', cache:'no-store', body,
                     headers:{Accept:'application/json'}
                 });

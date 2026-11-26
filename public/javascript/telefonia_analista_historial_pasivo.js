@@ -187,7 +187,7 @@
                 root.location.href);
             uri.searchParams.set('numero', phone);
             uri.searchParams.set('referencia_llamada', reference);
-            const response = await root.fetch(uri.toString(), {
+            const response = await root.IMPE_PHONE_HTTP.request(uri.toString(), {
                 credentials:'same-origin', cache:'no-store',
                 headers:{Accept:'application/json'}
             });
@@ -249,7 +249,7 @@
         chain = chain.catch(() => false).then(async () => {
             for (let n = 0; n < 2; n++) {
                 try {
-                    const response = await root.fetch(String(cfg.endpoint), {
+                    const response = await root.IMPE_PHONE_HTTP.request(String(cfg.endpoint), {
                         method: 'POST',
                         credentials: 'same-origin',
                         cache: 'no-store',
@@ -533,6 +533,7 @@
     root.addEventListener('storage', function (e) {
         if (e.key === stateKey) consume();
     });
+    root.addEventListener('impe:phone-state-change',consume);
     root.setInterval(consume, 500);
     // El shell histórico puede redibujar el botón Cerrar al refrescar la
     // llamada finalizada; aplicar sólo el estado de acciones pendiente,
@@ -642,7 +643,7 @@
     const fetchJson = async (url,options) => {
         const controller=new AbortController();const timer=root.setTimeout(()=>controller.abort(),10000);
         try {
-            const response=await root.fetch(url,{...options,signal:controller.signal});const data=await response.json();
+            const response=await root.IMPE_PHONE_HTTP.request(url,{...options,signal:controller.signal});const data=await response.json();
             if(!response.ok || !data.ok){
                 const error=new Error(data.mensaje||'Comprobación no disponible.');
                 error.retryAfter=Math.min(120000,Math.max(0,Number(response.headers.get('Retry-After'))||0)*1000);throw error;

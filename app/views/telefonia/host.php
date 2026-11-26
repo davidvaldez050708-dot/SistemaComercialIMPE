@@ -24,7 +24,10 @@ $asesorHostSdk = $motorTelefonicoEmbebido && $extensionHost !== '' &&
     in_array(strtoupper(trim((string)($_SESSION['rol'] ?? ''))), ['ASESOR','ASESOR DE VENTAS'], true) &&
     !empty($asignacionTelefonica['permite_entrantes']) &&
     tienePermiso('telefonia.usar') && tienePermiso('telefonia.recibir');
-$receptorHostSdk = $analistaHostSdk || $asesorHostSdk;
+// La observación del transporte depende de capacidades, no del rol comercial.
+$receptorHostSdk = $motorTelefonicoEmbebido && $extensionHost !== '' &&
+    !empty($asignacionTelefonica['permite_entrantes']) &&
+    tienePermiso('telefonia.usar') && tienePermiso('telefonia.recibir');
 require_once __DIR__ . '/../../helpers/TelefoniaAudioDispositivosPilot.php';
 $audioDispositivosPilot = tienePermiso('telefonia.usar') &&
     (!empty($asignacionTelefonica['permite_salientes']) || !empty($asignacionTelefonica['permite_entrantes'])) &&
@@ -100,9 +103,8 @@ $audioDispositivosPilot = tienePermiso('telefonia.usar') &&
             'operacionUrl' => BASE_URL . 'prueba_telefonia/api/transferencia_operacion.php',
             'permiteSalientes' => !empty($asignacionTelefonica['permite_salientes']),
             'permiteEntrantes' => !empty($asignacionTelefonica['permite_entrantes']),
-            // Analista y Ventas autorizados comparten el observador embebido.
-            // Marketing continúa usando exclusivamente eventos PBX.
-            'analystSdkIncoming' => $receptorHostSdk,
+            // Compatibilidad para vistas anteriores; el motor observa por capacidades.
+            'analystSdkIncoming' => $analistaHostSdk || $asesorHostSdk,
             // Identificar únicamente el flujo de Ventas, sin cambiar Analista.
             'salesSdkIncoming' => $asesorHostSdk,
             'permiteTransferir' =>
@@ -110,6 +112,7 @@ $audioDispositivosPilot = tienePermiso('telefonia.usar') &&
                 tienePermiso('telefonia.transferir')
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     </script>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_http.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/telefonia_http.js') ?>"></script>
     <script
         src="<?= BASE_URL ?>public/javascript/telefonia_entrantes_bridge.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_entrantes_bridge.js') ?>">
     </script>

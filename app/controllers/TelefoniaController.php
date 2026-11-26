@@ -16,30 +16,15 @@ class TelefoniaController
 
     public function __construct()
     {
-        // El catálogo se instala en las rutas normales. POLL mantiene la
-        // autorización vigente sin reescribir permisos en cada tick.
-        $esSondeo = (($_GET['action'] ?? '') === 'disponibilidad'
-            && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
-            && ($_POST['accion'] ?? '') === 'POLL')
-            || (($_GET['action'] ?? '') === 'detalleVenta'
-                && ($_SERVER['REQUEST_METHOD'] ?? '') === 'GET');
-        $modeloRol = $esSondeo ? new RolModel(Database::compartida()) : new RolModel();
-        if (!$esSondeo) {
-            $modeloRol->inicializarPermisosSistema();
-        }
+        // index.php ya refresca cuenta, rol y permisos en cada petición.
+        // El acceso telefónico no instala el catálogo ni abre conexiones extra.
+        require_once __DIR__.'/../helpers/TelefoniaPeticionContexto.php';
+        TelefoniaPeticionContexto::actualizar();
+    }
 
-        if (isset($_SESSION['rol_id']) && !defined('IMPE_PERMISOS_REFRESCADOS')) {
-            $_SESSION['permisos'] =
-                $modeloRol->obtenerCodigosPermisosPorRol(
-                    (int)$_SESSION['rol_id']
-                );
-        }
-
-        // POLL no usa este servicio. Las otras rutas conservan su
-        // construcción y conexión independiente en el mismo lugar de siempre.
-        if (!$esSondeo) {
-            $this->service = new TelefoniaExtensionService();
-        }
+    private function servicioExtensiones(): TelefoniaExtensionService
+    {
+        return $this->service ?? ($this->service=new TelefoniaExtensionService(Database::compartida()));
     }
 
     /**
@@ -239,8 +224,8 @@ class TelefoniaController
         unset($_SESSION['mensaje_telefonia'], $_SESSION['error_telefonia'], $_SESSION['datos_telefonia']);
 
         try {
-            $usuariosTelefonia = $this->service->listarUsuariosConfigurables();
-            $resumenTelefonia = $this->service->resumenConfiguracion($usuariosTelefonia);
+            $usuariosTelefonia = $this->servicioExtensiones()->listarUsuariosConfigurables();
+            $resumenTelefonia = $this->servicioExtensiones()->resumenConfiguracion($usuariosTelefonia);
         } catch (Throwable $e) {
             error_log('[telefonia_extensiones_admin] ' . $e->getMessage());
             $mensajeError = $mensajeError !== '' ? $mensajeError
@@ -522,6 +507,7 @@ class TelefoniaController
         $valid=$general!==''&&$sent!==''&&hash_equals($general,$sent);
         if($post&&!$valid&&!TelefoniaContactosService::validarToken($sent))
             $this->responderJson(['ok'=>false,'mensaje'=>'El formulario caducó. Recarga la página.'],403);
+        TelefoniaPeticionContexto::liberarSesion();
     }
 
     private function validarMarcadorPersonalJson()
@@ -563,7 +549,7 @@ class TelefoniaController
         if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 
         try {
-            $asignacion = $this->service->resolverParaUsuario(
+            $asignacion = $this->servicioExtensiones()->resolverParaUsuario(
                 (int)($_SESSION['usuario_id'] ?? 0)
             );
 
@@ -622,7 +608,7 @@ class TelefoniaController
         }
 
         try {
-            $asignacionTelefonica = $this->service->resolverParaUsuario(
+            $asignacionTelefonica = $this->servicioExtensiones()->resolverParaUsuario(
                 (int)($_SESSION['usuario_id'] ?? 0)
             );
         } catch (Throwable $error) {
@@ -665,7 +651,7 @@ class TelefoniaController
 
         try {
             $asignacionTelefonica =
-                $this->service->resolverParaUsuario(
+                $this->servicioExtensiones()->resolverParaUsuario(
                     (int)($_SESSION['usuario_id'] ?? 0)
                 );
 
@@ -754,7 +740,7 @@ class TelefoniaController
         try {
             require_once __DIR__ . '/../services/TelefoniaTransferenciaContextoService.php';
             $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
-            $asignacion = $this->service->resolverParaUsuario($usuarioId);
+            $asignacion = $this->servicioExtensiones()->resolverParaUsuario($usuarioId);
             if (!$asignacion || empty($asignacion['permite_entrantes'])) {
                 $this->responderJson(['ok'=>false,'mensaje'=>'Extensión no habilitada.'],403);
             }
@@ -797,6 +783,7 @@ class TelefoniaController
     public function autorizarTransferencia()
     {
         $this->validarTransferenciaPost();
+        TelefoniaPeticionContexto::liberarSesion();
         try {
             require_once __DIR__.'/../services/TelefoniaEnrutamientoService.php';
             require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
@@ -822,10 +809,12 @@ class TelefoniaController
                 $this->responderJson(['ok'=>true,'solicitud'=>$disponibilidad->solicitar($usuarioId,$route)]);
             }
             $token=bin2hex(random_bytes(24));
-            $_SESSION['telefonia_transferencia_autorizada']=$route+[
+            TelefoniaPeticionContexto::escribirSesion(static function() use ($route,$usuarioId,$id,$version,$token){
+                $_SESSION['telefonia_transferencia_autorizada']=$route+[
                 'usuario_id'=>$usuarioId,'disponibilidad_id'=>$id,'version'=>$version,
                 'token_hash'=>hash('sha256',$token),'expires'=>time()+20
-            ];
+                ];
+            });
             $this->responderJson(['ok'=>true,'token'=>$token,'destino'=>$destino,
                 'mensaje'=>'Responsable confirmado. La transferencia aún no se ha enviado.']);
         }catch(InvalidArgumentException|DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
@@ -844,7 +833,7 @@ class TelefoniaController
             $this->responderJson(['ok'=>false],403);
         }
         // El sondeo no modifica datos de la sesión; guardar permisos y liberar navegación.
-        if (($metodo === 'GET' || in_array(($_POST['accion'] ?? ''), ['PRESENCIA','POLL'], true)) && session_status() === PHP_SESSION_ACTIVE) session_write_close();
+        TelefoniaPeticionContexto::liberarSesion();
         try{
             $user=(int)$_SESSION['usuario_id'];
             $sondeo = $metodo === 'POST' && ($_POST['accion'] ?? '') === 'POLL';
@@ -950,6 +939,7 @@ class TelefoniaController
         $this->validarTransferenciaPost();
         $data = $_SESSION['telefonia_transferencia_autorizada'] ?? null;
         unset($_SESSION['telefonia_transferencia_autorizada']);
+        TelefoniaPeticionContexto::liberarSesion();
         $token = trim((string)($_POST['token'] ?? ''));
         if (!is_array($data) || strlen($token) !== 48 ||
             time() > (int)($data['expires'] ?? 0) ||
@@ -969,7 +959,7 @@ class TelefoniaController
                 (int)($data['seguimiento_id'] ?? 0) > 0) {
                 try {
                     require_once __DIR__ . '/../services/TelefoniaTransferenciaContextoService.php';
-                    $origen = $this->service->resolverParaUsuario((int)$_SESSION['usuario_id']);
+                    $origen = $this->servicioExtensiones()->resolverParaUsuario((int)$_SESSION['usuario_id']);
                     $contextoGuardado = (new TelefoniaTransferenciaContextoService())->registrar(
                         (int)$_SESSION['usuario_id'], (string)($_SESSION['rol'] ?? ''),
                         (string)($origen['extension'] ?? ''),
@@ -1002,7 +992,8 @@ class TelefoniaController
             require_once __DIR__.'/../services/TelefoniaTransferenciaOperacionService.php';
             $operacion=(new TelefoniaTransferenciaOperacionService())->iniciar(
                 (int)$_SESSION['usuario_id'],(string)$data['referencia_llamada'],
-                (int)$destino['usuario_id'],(string)$destino['extension'],(string)$data['modo']
+                (int)$destino['usuario_id'],(string)$destino['extension'],(string)$data['modo'],
+                ($_SERVER['HTTP_X_IMPE_PHONE_PROTOCOL']??'')==='2'?2:1
             );
             $this->responderJson([
                 'ok'=>true,
@@ -1041,7 +1032,7 @@ class TelefoniaController
         ];
 
         try {
-            $this->service->guardarAsignacion(
+            $this->servicioExtensiones()->guardarAsignacion(
                 $datos['usuario_id'],
                 $datos['extension'],
                 $datos['caller_id'],
@@ -1077,7 +1068,7 @@ class TelefoniaController
         $usuarioId = (int)($_POST['usuario_id'] ?? 0);
 
         try {
-            $this->service->liberarAsignacion(
+            $this->servicioExtensiones()->liberarAsignacion(
                 $usuarioId,
                 (int)($_SESSION['usuario_id'] ?? 0)
             );

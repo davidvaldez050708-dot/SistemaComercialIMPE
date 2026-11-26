@@ -431,13 +431,13 @@
             // La agrupación por programa sólo cambia cómo se presenta el directorio.
             const directoryQuery = '';
             const [directory, matches] = await Promise.all([
-                fetch(endpoint('routingListUrl', {
+                window.IMPE_PHONE_HTTP.request(endpoint('routingListUrl', {
                     tipo:type, estado_id:'',
                     buscar:directoryQuery,
                     telefono_origen:checkPhone ? phone : ''
                 }), {credentials:'same-origin',cache:'no-store'}).then(readJson),
                 type === 'INSTITUCION' && text.length >= 2
-                    ? fetch(endpoint('routingListUrl', {
+                    ? window.IMPE_PHONE_HTTP.request(endpoint('routingListUrl', {
                         tipo:type, estado_id:stateId, buscar:text
                     }), {credentials:'same-origin',cache:'no-store'}).then(readJson)
                     : Promise.resolve(null)
@@ -623,7 +623,7 @@
                 numero_origen:String(active.phone || ''),
                 referencia_llamada:identity
             });
-            const data = await fetch(cfg.routingAuthorizeUrl, {
+            const data = await window.IMPE_PHONE_HTTP.request(cfg.routingAuthorizeUrl, {
                 method:'POST', credentials:'same-origin', cache:'no-store',
                 headers:{
                     Accept:'application/json',

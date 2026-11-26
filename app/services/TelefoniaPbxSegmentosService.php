@@ -4,6 +4,110 @@ require_once __DIR__.'/../helpers/ZadarmaPbxIdentifierHelper.php';
 /** Evidencia por segmento de la estadística oficial. No depende de roles o números. */
 final class TelefoniaPbxSegmentosService
 {
+    /** Hechos del tramo: comunes a todos los roles, separados del resultado comercial.
+     * El marcador pertenece a una operación persistida, no al reloj del navegador.
+     * Conservamos START reales anteriores sólo como contexto; un END anterior
+     * al marcador nunca puede finalizar la operación nueva.
+     */
+    public static function hechos(array $events, string $ext, string $source = '', int $afterEventId = 0): array
+    {
+        $allEvents = $events;
+        if ($afterEventId > 0) {
+            $events = array_values(array_filter($events, static function ($event) use ($afterEventId, $source) {
+                return (int)($event['id'] ?? 0) > $afterEventId ||
+                    ($source !== '' && (string)($event['internal'] ?? '') === $source &&
+                        in_array($event['evento'] ?? '', ['NOTIFY_INTERNAL', 'NOTIFY_OUT_START'], true));
+            }));
+        }
+        $answer = false;
+        $end = false;
+        $duration = null;
+        $disposition = '';
+        $answerAt = '';
+        $endAt = '';
+        $endId = 0;
+        $sourceSeen = false;
+        $ownAnswerSeen = false;
+        $offered = false;
+        $attemptEnded = false;
+        $attemptEndAt = '';
+        foreach ($events as $event) {
+            $type = (string)($event['evento'] ?? '');
+            $internal = trim((string)($event['internal'] ?? ''));
+            if ($source !== '' && $source !== $ext && $internal === $source &&
+                in_array($type, ['NOTIFY_INTERNAL', 'NOTIFY_OUT_START'], true)) $sourceSeen = true;
+            if ($type === 'NOTIFY_ANSWER' && $internal === $ext) $ownAnswerSeen = true;
+            $payload = json_decode((string)($event['payload_json'] ?? ''), true) ?: [];
+            if ($afterEventId > 0 && (int)($event['id'] ?? 0) > $afterEventId &&
+                $type === 'NOTIFY_INTERNAL' && $internal === $ext &&
+                (string)($event['transfer_from'] ?? $payload['transfer_from'] ?? '') === $source) $offered = true;
+        }
+        $started = false;
+        $answeredAfterSource = false;
+        foreach ($events as $event) {
+            $type = (string)($event['evento'] ?? '');
+            $internal = trim((string)($event['internal'] ?? ''));
+            $payload = json_decode((string)($event['payload_json'] ?? ''), true) ?: [];
+            $date = self::fechaEvento((string)($event['received_at'] ?? ''));
+            if ($source !== '' && $source !== $ext && $internal === $source &&
+                in_array($type, ['NOTIFY_INTERNAL', 'NOTIFY_OUT_START'], true)) $started = true;
+            $own = $internal === $ext;
+            if ($own && $type === 'NOTIFY_ANSWER') {
+                $answer = true;
+                if ($started) $answeredAfterSource = true;
+                if ($date !== '' && ($answerAt === '' || $date < $answerAt)) $answerAt = $date;
+            }
+            $last = trim((string)($event['last_internal'] ?? $payload['last_internal'] ?? ''));
+            if ($last === '') $last = trim((string)($payload['last_internal'] ?? ''));
+            // En una operación persistida, ANSWER puede llegar después del END.
+            // Los dos deben pertenecer al mismo tramo posterior al marcador.
+            $boundAnswer = $afterEventId > 0 && $sourceSeen && $ownAnswerSeen;
+            $sourceEnd = $source !== '' && $source !== $ext && $internal === $source &&
+                $type === 'NOTIFY_OUT_END' && in_array($last, ['', $source], true) &&
+                (($started && $answeredAfterSource) || $boundAnswer);
+            // Un intento ofrecido puede terminar en el origen sin ANSWER del destino.
+            // Esto libera la operación; no acredita conversación, duración ni entrega.
+            if ($afterEventId > 0 && $sourceSeen && $offered && $internal === $source &&
+                in_array($type, ['NOTIFY_END', 'NOTIFY_OUT_END'], true) &&
+                in_array($last, ['', $source, $ext], true)) {
+                $attemptEnded = true;
+                if ($date !== '' && ($attemptEndAt === '' || $date > $attemptEndAt)) $attemptEndAt = $date;
+            }
+            if (!in_array($type, ['NOTIFY_END', 'NOTIFY_OUT_END'], true) ||
+                !($own || $last === $ext || $sourceEnd)) continue;
+            $end = true;
+            $disposition = strtolower(trim((string)($event['disposition'] ?? '')));
+            if ($date !== '' && ($endAt === '' || $date > $endAt)) $endAt = $date;
+            $endId = max($endId, (int)($event['id'] ?? 0));
+            if ($own) {
+                $known = array_key_exists('has_duration', $event) ? (bool)$event['has_duration'] :
+                    ($payload ? array_key_exists('duration', $payload) : array_key_exists('duration', $event));
+                if ($known) $duration = max($duration ?? 0, max(0, (int)($event['duration'] ?? 0)));
+                if (in_array($disposition, ['answered', 'completed'], true)) $answer = true;
+            }
+        }
+        $transfer = self::transferencia($events, $ext, $source);
+        $allowed = $transfer['atendida'] && $transfer['finalizada'] && $transfer['origen'] !== '' ? [$transfer['origen']] : [];
+        $audio = self::deEventos($allEvents, $ext, $allowed);
+        return [
+            'finalizada' => $end, 'conectada' => $answer, 'segundos' => $end ? $duration : null,
+            'answer_at' => $answerAt, 'end_at' => $endAt, 'evento_fin_id' => $endId,
+            'intento_finalizado' => $attemptEnded, 'fin_intento_at' => $attemptEndAt,
+            'estado_pbx' => !$end ? ($attemptEnded ? 'Respuesta del destino sin confirmar' : ($answer ? 'Respuesta confirmada · Cierre pendiente' : 'Cierre pendiente')) :
+                ($answer ? 'Conectada' : (['busy' => 'Ocupada', 'no answer' => 'Sin respuesta',
+                    'no-answer' => 'Sin respuesta', 'no_answer' => 'Sin respuesta', 'cancel' => 'Cancelada',
+                    'canceled' => 'Cancelada', 'cancelled' => 'Cancelada', 'failed' => 'Fallida'][$disposition] ?? 'Sin respuesta')),
+            'audio_extensiones' => $allowed
+        ] + $audio;
+    }
+
+    private static function fechaEvento(string $value): string
+    {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/D', $value)) return '';
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $value, new DateTimeZone('America/Mexico_City'));
+        return $date && $date->format('Y-m-d H:i:s') === $value ? $value : '';
+    }
+
     /** Arista de transferencia del mismo grupo PBX, nunca teléfono/horario.
      * El origen persistido sólo complementa una respuesta propia y su inicio PBX. */
     public static function transferencia(array $events,string $ext,string $persistedSource=''): array {
@@ -26,7 +130,7 @@ final class TelefoniaPbxSegmentosService
             if(++$position<=$answerPosition)continue;
             $p=json_decode((string)($e['payload_json']??''),true)?:[];$type=$e['evento']??'';
             $last=trim((string)($e['last_internal']??''));if($last==='')$last=trim((string)($p['last_internal']??''));
-            if(in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)&&((string)($e['internal']??'')===$ext||$last===$ext||($last===''&&$source!==''&&$type==='NOTIFY_OUT_END'&&(string)($e['internal']??'')===$source)))$end=true;
+            if(in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)&&((string)($e['internal']??'')===$ext||$last===$ext||(in_array($last,['',$source],true)&&$source!==''&&$type==='NOTIFY_OUT_END'&&(string)($e['internal']??'')===$source)))$end=true;
         }
         return ['origen'=>$source,'atendida'=>$answer!==null,'answer_at'=>(string)($answer['received_at']??''),'finalizada'=>$end];
     }

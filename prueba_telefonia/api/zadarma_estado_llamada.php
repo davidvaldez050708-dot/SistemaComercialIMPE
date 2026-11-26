@@ -1,5 +1,8 @@
 <?php
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 
 require_once dirname(__DIR__, 2) . '/app/services/ZadarmaCallLookupService.php';
 require_once dirname(__DIR__, 2) .
@@ -113,14 +116,6 @@ if ($usuarioId <= 0) {
 // El control de seguimiento saliente depende de permisos operativos, no
 // del nombre del rol: Marketing puede llamar desde su propia extensión.
 // Mantener la misma inicialización de permisos que el endpoint WebRTC.
-if (!isset($_SESSION['permisos'])) {
-    $modeloRol = new RolModel();
-    $modeloRol->inicializarPermisosSistema();
-    $_SESSION['permisos'] = $modeloRol->obtenerCodigosPermisosPorRol(
-        (int)($_SESSION['rol_id'] ?? 0)
-    );
-}
-
 if (
     !tienePermiso('telefonia.usar') ||
     !tienePermiso('telefonia.salientes')
@@ -226,6 +221,7 @@ $registros = [];
 $pbxCallId = '';
 $inicioSeleccionado = null;
 $eventStore = null;
+$inicioAmbiguo = false;
 
 try {
     $eventStore = new ZadarmaWebhookEventStoreService(Database::compartida());
@@ -233,7 +229,8 @@ try {
         $extension,
         $destino,
         $desde,
-        $despuesDeId
+        $despuesDeId,
+        $inicioAmbiguo
     );
 
     if ($inicioPersistido) {
@@ -248,6 +245,8 @@ try {
     if ($conMarcaDeAgua && Database::responderFalloTemporal($errorStore)) exit;
     error_log('[zadarma_estado_store] ' . $errorStore->getMessage());
 }
+
+if($inicioAmbiguo)responderJson(['ok'=>true,'call'=>null,'identificacion'=>'AMBIGUA']);
 
 /*
  * Compatibilidad con llamadas registradas antes de habilitar la tabla o
@@ -266,6 +265,7 @@ if ($pbxCallId === '' && !$conMarcaDeAgua && is_file($logPath)) {
         }
     }
 
+    $iniciosCandidatos=[];
     foreach ($registros as $registro) {
         if (($registro['event'] ?? '') !== 'NOTIFY_OUT_START') {
             continue;
@@ -288,9 +288,13 @@ if ($pbxCallId === '' && !$conMarcaDeAgua && is_file($logPath)) {
             continue;
         }
 
-        $pbxCallId = $id;
-        $inicioSeleccionado = $registro;
+        $iniciosCandidatos[$id]=$registro;
     }
+    if(count($iniciosCandidatos)===1){
+        $pbxCallId=(string)array_key_first($iniciosCandidatos);
+        $inicioSeleccionado=$iniciosCandidatos[$pbxCallId];
+    }
+    elseif(count($iniciosCandidatos)>1)responderJson(['ok'=>true,'call'=>null,'identificacion'=>'AMBIGUA']);
 }
 
 if (

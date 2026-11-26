@@ -35,7 +35,7 @@
   let options={credentials:'same-origin',cache:'no-store'};
   if(post)options={...options,method:'POST',body:new URLSearchParams({...identity,...sent.values,version:sent.version,csrf_token:cfg.routingCsrf})};else for(const[k,v]of Object.entries(identity))url.searchParams.set(k,v);
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
-  try{const r=await fetch(url,{...options,signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo recuperar la captura.');return{data:j.captura,sent};}
+  try{const r=await window.IMPE_PHONE_HTTP.request(url,{...options,signal:controller.signal}),j=await r.json();if(!r.ok||!j.ok)throw Error(j.mensaje||'No se pudo recuperar la captura.');return{data:j.captura,sent};}
   catch(error){if(error.name==='AbortError')throw Error('La consulta tardó demasiado. Conserva el borrador y vuelve a intentarlo.');throw error;}finally{clearTimeout(timeout);}
  };
  // El resultado sólo puede recuperar la misma referencia PBX y extensión.

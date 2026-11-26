@@ -155,6 +155,7 @@
             String(value?.context?.type || '').toUpperCase()
         );
     let currentState = null;
+    let loginPending = false;
     let lastHeartbeat = 0;
     let mountFailed = '';
     let hostStartedAt = 0;
@@ -476,8 +477,9 @@
                 Date.now() - Number(value.updatedAt) < 90000);
     };
 
+    const acceptHostSnapshot = window.IMPE_PHONE_HTTP.createSnapshotGate(userId);
     const updateState = function (value) {
-        if (!freshState(value)) return;
+        if (!freshState(value) || !acceptHostSnapshot(value)) return;
         const startsCall = value.active && !currentState?.active;
         if(value.context?.type==='DEVOLUCION'&&!value.active&&['finished','incoming-finished'].includes(value.phase)&&Number(value.context.callbackAttempt)>0&&!callbackSaved.has(Number(value.context.callbackAttempt))){
             callbackPending={id:Number(value.context.callbackAttempt),at:Date.now(),callToken:value.callToken};rememberCallback();
@@ -563,6 +565,12 @@
         // La interfaz de resultado reacciona en este mismo cambio de estado,
         // sin esperar al intervalo del observador ni modificar el host WebRTC.
         window.dispatchEvent(new Event('impe:phone-state-change'));
+        // Notificar y conservar primero el cierre local. Una expiración del
+        // CRM no desmonta un diálogo vivo ni omite la transición de captura.
+        if (loginPending && !value.active) {
+            loginPending = false;
+            window.location.replace(String(cfg.loginUrl));
+        }
     };
     document.addEventListener('pointerdown',function(){
         try {hostFrame?.contentWindow.IMPE_CALL_AUDIO?.unlock();}catch(_){}
@@ -1150,8 +1158,7 @@
     });
     analystResultDismiss?.addEventListener('click', dismissAnalystResult);
 
-    // Si una petición expira, el login no debe quedar atrapado dentro del
-    // iframe: salir del shell desmonta también el contexto WebRTC.
+    // Salir del shell desmonta WebRTC: diferir la navegación mientras viva.
     crm?.addEventListener('load', function () {
         try {
             if(resultFormOwner && !crm.contentDocument?.querySelector('#modalLlamadaEntranteAnalista.show,#modalResultadoVenta')){
@@ -1161,12 +1168,21 @@
             const location = crm.contentWindow.location;
             const url = new URL(location.href);
             if (url.origin !== window.location.origin) return;
+            const frameUser = Number(crm.contentWindow.IMPE_CURRENT_USER_ID || 0);
+            if (frameUser > 0 && frameUser !== userId) {
+                loginPending = true;
+                if (!currentState?.active) window.location.replace(String(cfg.loginUrl));
+                return;
+            }
             const controller = url.searchParams.get('controller') || '';
             const action = url.searchParams.get('action') || '';
             if (controller === 'login' && action === 'mostrarLogin') {
+                loginPending = true;
+                if (currentState?.active) return;
                 window.location.replace(String(cfg.loginUrl));
                 return;
             }
+            loginPending = false;
             const heading = crm.contentDocument?.title;
             if (heading) document.title = heading + ' · Sistema Comercial';
         } catch (e) {

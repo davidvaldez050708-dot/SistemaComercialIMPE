@@ -157,7 +157,8 @@ final class TelefoniaInternaGrabacionService
             throw new RuntimeException('Faltan credenciales de Zadarma.');
         }
         require_once $root . '/vendor/autoload.php';
-        $api = new \Zadarma_API\Api($key, $secret, false);
+        require_once __DIR__.'/TelefoniaZadarmaApi.php';
+        $api = new TelefoniaZadarmaApi($key, $secret, false);
         // Incluir ambos formatos horarios posibles del proveedor, pero
         // comparar siempre cada candidata como instante real.
         $from = $start->setTimezone($mexico)->modify('-5 minutes')->format('Y-m-d H:i:s');

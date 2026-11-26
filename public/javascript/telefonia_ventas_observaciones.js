@@ -12,7 +12,7 @@
  const endpoint=base=>{const url=new URL(base,location.href);if(url.origin!==location.origin)throw Error('La ruta no es válida.');return url;};
  async function json(url,options={}){
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
-  try{const response=await fetch(url,{credentials:'same-origin',cache:'no-store',...options,headers:{Accept:'application/json','X-Requested-With':'fetch'},signal:controller.signal});
+  try{const response=await window.IMPE_PHONE_HTTP.request(url,{credentials:'same-origin',cache:'no-store',...options,headers:{Accept:'application/json','X-Requested-With':'fetch'},signal:controller.signal});
    const data=await response.json();if(!response.ok||!data.ok)throw Error(data.mensaje||'No se pudo completar la consulta.');return data;
   }finally{clearTimeout(timeout);}
  }

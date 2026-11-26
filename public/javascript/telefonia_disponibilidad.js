@@ -105,7 +105,7 @@
   else if(id)url.searchParams.set('id',id);
   const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),12000);
   try{
-   const r=await fetch(url,{...options,signal:abort.signal}),json=await r.json();
+   const r=await window.IMPE_PHONE_HTTP.request(url,{...options,signal:abort.signal}),json=await r.json();
    if(!r.ok||!json.ok){const error=Error(json.mensaje||'No se pudo actualizar la solicitud. Intenta de nuevo.');
     error.retryAfterMs=Math.min(300000,Math.max(Number(r.headers.get('Retry-After'))||0,Number(json.reintentar_en)||0)*1000);throw error;}
    return json;
@@ -232,7 +232,7 @@
   if(transferring||!watched||watched.estado!=='ACEPTADA')return;transferring=true;render();const op={...watched};
   try{
    if(!matchesCall(op))throw Error('La llamada ya cambió.');
-   const r=await fetch(cfg.routingAuthorizeUrl,{method:'POST',credentials:'same-origin',body:new URLSearchParams({disponibilidad_id:op.id,version:op.version,csrf_token:cfg.routingCsrf})});
+   const r=await window.IMPE_PHONE_HTTP.request(cfg.routingAuthorizeUrl,{method:'POST',credentials:'same-origin',body:new URLSearchParams({disponibilidad_id:op.id,version:op.version,csrf_token:cfg.routingCsrf})});
    const data=await r.json();if(!r.ok||!data.ok)throw Error(data.mensaje||'No se pudo preparar la transferencia.');
    if(!matchesCall(op)||!phone.requestAuthorizedTransfer(data.token))throw Error('La llamada cambió; no se envió la transferencia.');
    store({...watched,estado:'ENVIANDO'});

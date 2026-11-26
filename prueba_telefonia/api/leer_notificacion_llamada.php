@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
-session_start();header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');
+session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');
 require_once dirname(__DIR__,2).'/app/helpers/PermissionHelper.php';
 require_once dirname(__DIR__,2).'/app/services/TelefoniaNotificacionService.php';
 $id=(int)($_SESSION['usuario_id']??0);

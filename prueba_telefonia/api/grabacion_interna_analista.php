@@ -5,6 +5,9 @@
  */
 declare(strict_types=1);
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 $root = dirname(__DIR__, 2);
 require_once $root . '/config/db_connection.php';
 require_once $root . '/app/helpers/PermissionHelper.php';
@@ -23,13 +26,6 @@ $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
 if ($usuarioId <= 0) {
     http_response_code(401);
     exit('Sesión no activa.');
-}
-if (!isset($_SESSION['permisos'])) {
-    $rol = new RolModel();
-    $rol->inicializarPermisosSistema();
-    $_SESSION['permisos'] = $rol->obtenerCodigosPermisosPorRol(
-        (int)($_SESSION['rol_id'] ?? 0)
-    );
 }
 if (strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Analista de Datos') !== 0 ||
     !tienePermiso('telefonia.usar') || !tienePermiso('telefonia.recibir') ||

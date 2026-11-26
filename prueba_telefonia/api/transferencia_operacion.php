@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');
 $root=dirname(__DIR__,2);
 require_once $root.'/app/helpers/PermissionHelper.php';
@@ -18,9 +21,9 @@ try{
     if($metodo==='GET'){
         $id=(int)($_GET['id']??0);
         $request=(int)($_GET['solicitud_id']??0);
-        $op=$id?$svc->obtener($user,$id):($request?$svc->paraDestinoConfirmado($user,$request,trim((string)($_GET['sdk']??''))):$svc->paraDestino($user,trim((string)($_GET['origen']??'')),trim((string)($_GET['sdk']??''))));
+        $op=$id?$svc->obtener($user,$id,(int)($_GET['intento']??0)):($request?$svc->paraDestinoConfirmado($user,$request,trim((string)($_GET['sdk']??''))):$svc->paraDestino($user,trim((string)($_GET['origen']??'')),trim((string)($_GET['sdk']??''))));
         trResponder(['ok'=>true,'operacion'=>$op]);
     }
-    trResponder(['ok'=>true,'operacion'=>$svc->accion($user,(int)($_POST['id']??0),(string)($_POST['accion']??''))]);
+    trResponder(['ok'=>true,'operacion'=>$svc->accion($user,(int)($_POST['id']??0),(string)($_POST['accion']??''),(int)($_POST['intento']??0),($_SERVER['HTTP_X_IMPE_PHONE_PROTOCOL']??'')==='2'?2:1)]);
 }catch(DomainException $e){trResponder(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
 catch(Throwable $e){if(Database::responderFalloTemporal($e))exit;error_log('[transferencia_operacion] '.get_class($e));trResponder(['ok'=>false,'mensaje'=>'No se pudo actualizar la transferencia.'],500);}

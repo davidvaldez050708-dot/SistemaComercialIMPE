@@ -1,5 +1,8 @@
 <?php
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store');
 
@@ -25,11 +28,7 @@ $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
 if ($usuarioId <= 0) {
     responderHistorialMarketing(['ok' => false, 'mensaje' => 'Sesión no activa.'], 401);
 }
-$modeloRol = new RolModel();
-$modeloRol->inicializarPermisosSistema();
-$_SESSION['permisos'] = $modeloRol->obtenerCodigosPermisosPorRol(
-    (int)($_SESSION['rol_id'] ?? 0)
-);
+
 if (!TelefoniaRecepcionMarketingService::tienePermisos()) {
     responderHistorialMarketing(['ok' => false, 'mensaje' => 'No tienes acceso al historial de recepción.'], 403);
 }

@@ -235,7 +235,9 @@
         );
     };
 
+    const acceptHostSnapshot = window.IMPE_PHONE_HTTP.createSnapshotGate(userId);
     const updateState = function (nextState) {
+        if (!acceptHostSnapshot(nextState)) return;
         if (
             !nextState ||
             Number(nextState.userId || 0) !== userId
@@ -406,7 +408,7 @@
             return availabilityPromise;
         }
 
-        availabilityPromise = fetch(
+        availabilityPromise = window.IMPE_PHONE_HTTP.request(
             statusUrl,
             {
                 method: 'GET',
@@ -736,16 +738,6 @@
 
     const persistClientState = function () {
         state.updatedAt = Date.now();
-
-        try {
-            localStorage.setItem(
-                stateKey,
-                JSON.stringify(state)
-            );
-        } catch (error) {
-            // BroadcastChannel y el estado en memoria siguen disponibles.
-        }
-
         renderPanel();
         emit();
     };
@@ -1044,7 +1036,7 @@
             }
 
             transferDestinationsPromise =
-                fetch(
+                window.IMPE_PHONE_HTTP.request(
                     transferDestinationsUrl,
                     {
                         method: 'GET',
@@ -1116,7 +1108,7 @@
             responsable_id:String(chosen.usuario_id || 0),
             tipo:'', modo:attended ? 'CONSULTADA' : 'DIRECTA'
         });
-        const response = await fetch(
+        const response = await window.IMPE_PHONE_HTTP.request(
             new URL('index.php?controller=telefonia&action=autorizarTransferencia',
                 window.location.href).toString(),
             {method:'POST',credentials:'same-origin',cache:'no-store',
@@ -1175,14 +1167,8 @@
             }
         );
 
-        try {
-            localStorage.setItem(
-                stateKey,
-                JSON.stringify(state)
-            );
-        } catch (error) {
-            // La tarjeta ya se ocultó en memoria; el host se sincroniza aparte.
-        }
+        // Previsualización local: sólo el host escribe el estado operativo.
+        // CLEAR_FINISHED lleva el token y no puede limpiar otra llamada.
 
         renderPanel();
         emit();

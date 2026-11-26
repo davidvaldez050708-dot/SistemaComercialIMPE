@@ -215,45 +215,10 @@ final class TelefoniaVentasLlamadasService
         );
     }
 
+    /** Compatibilidad con consumidores existentes; una sola reducción PBX para todos los roles. */
     public static function hechos(array $events,string $ext,string $source=''): array {
-        $answer=false;$end=false;$duration=null;$disposition='';
-        // La consulta se ordena por id ASC. Un cierre OUT_END del origen
-        // sólo puede cerrar al destinatario después de START de Recepción
-        // y ANSWER de Ventas del mismo PBX (con origen persistido).
-        $sourceStarted=false;$answeredAfterSource=false;
-        foreach($events as $e) {
-            $type=(string)($e['evento']??'');
-            $internal=trim((string)($e['internal']??''));
-            if($source!==''&&$source!==$ext&&$type==='NOTIFY_OUT_START'&&$internal===$source)$sourceStarted=true;
-            if($type==='NOTIFY_ANSWER'&&$internal===$ext){
-                $answer=true;
-                if($sourceStarted)$answeredAfterSource=true;
-            }
-            $p=json_decode((string)($e['payload_json']??''),true)?:[];
-            $own=$internal===$ext;
-            // Zadarma conserva internal del iniciador; last_internal puede
-            // ser el destinatario 150, quedar vacío o mantener al origen 100.
-            // Nunca aceptar aquí last_internal de una tercera extensión.
-            $last=trim((string)($e['last_internal']??''));if($last==='')$last=trim((string)($p['last_internal']??''));
-            $explicitEnd=$last===$ext;
-            $sourceEnd=$sourceStarted&&$answeredAfterSource&&($last===''||$last===$source)&&
-                $type==='NOTIFY_OUT_END'&&$internal===$source;
-            $type=$e['evento']??'';
-            if($own&&$type==='NOTIFY_ANSWER')$answer=true;
-            if(($own||$explicitEnd||$sourceEnd)&&in_array($type,['NOTIFY_END','NOTIFY_OUT_END'],true)) {
-                $end=true;$disposition=strtolower((string)($e['disposition']??''));
-                if($own){$known=array_key_exists('has_duration',$e)?(bool)$e['has_duration']:($p?array_key_exists('duration',$p):array_key_exists('duration',$e));if($known)$duration=max($duration??0,max(0,(int)($e['duration']??0)));
-                    if(in_array($disposition,['answered','completed'],true))$answer=true;}
-            }
-        }
         require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
-        $transfer=TelefoniaPbxSegmentosService::transferencia($events,$ext,$source);
-        $allowed=$transfer['atendida']&&$transfer['finalizada']&&$transfer['origen']!==''?[$transfer['origen']]:[];
-        $audio=TelefoniaPbxSegmentosService::deEventos($events,$ext,$allowed);
-        return ['finalizada'=>$end,'conectada'=>$answer,'segundos'=>$end?$duration:null,
-            'estado_pbx'=>!$end?($answer?'Respuesta confirmada · Cierre pendiente':'Cierre pendiente'):
-                ($answer?'Conectada':(['busy'=>'Ocupada','no answer'=>'Sin respuesta','no_answer'=>'Sin respuesta','cancel'=>'Cancelada','failed'=>'Fallida'][$disposition]??'Sin respuesta')),
-            'audio_extensiones'=>$allowed]+$audio;
+        return TelefoniaPbxSegmentosService::hechos($events,$ext,$source);
     }
     /** Alias reservados en la operación exacta. No deduce identidad por teléfono/fecha. */
     public function conVinculosSdk(int $uid,array $calls): array {

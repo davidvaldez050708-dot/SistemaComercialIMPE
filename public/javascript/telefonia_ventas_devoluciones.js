@@ -5,7 +5,7 @@
  const say=(message,error=false)=>{status.textContent=message;if(error)window.IMPE_TELEPHONY_NOTIFY?.(message,true);};
  async function api(fields){const url=new URL(root.dataset.callbackUrl,location.href);let options={credentials:'same-origin',cache:'no-store'};
   if(fields.accion){options.method='POST';options.body=new URLSearchParams({...fields,csrf_token:root.dataset.csrf});}else for(const[k,v]of Object.entries(fields))url.searchParams.set(k,v);
-  const response=await fetch(url,options),data=await response.json();if(!response.ok||!data.ok)throw Error(data.mensaje||'No se pudo consultar la devolución.');return data;
+  const response=await window.IMPE_PHONE_HTTP.request(url,options),data=await response.json();if(!response.ok||!data.ok)throw Error(data.mensaje||'No se pudo consultar la devolución.');return data;
  }
  function forget(){try{sessionStorage.removeItem(key);}catch(_){}clearTimeout(timer);}
  async function review(id,automatic=false){try{

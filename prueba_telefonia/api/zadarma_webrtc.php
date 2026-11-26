@@ -1,5 +1,8 @@
 <?php
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 
 require_once dirname(__DIR__, 2) .
     '/app/services/TelefoniaExtensionService.php';
@@ -31,15 +34,6 @@ if ($usuarioId <= 0) {
         'ok' => false,
         'mensaje' => 'Sesión no activa.'
     ], 401);
-}
-
-if (!isset($_SESSION['permisos'])) {
-    $modeloRol = new RolModel();
-    $modeloRol->inicializarPermisosSistema();
-    $_SESSION['permisos'] =
-        $modeloRol->obtenerCodigosPermisosPorRol(
-            (int)($_SESSION['rol_id'] ?? 0)
-        );
 }
 
 if (!tienePermiso('telefonia.usar')) {
@@ -123,7 +117,8 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
 }
 
 try {
-    $api = new \Zadarma_API\Api($apiKey, $apiSecret, false);
+    require_once dirname(__DIR__,2).'/app/services/TelefoniaZadarmaApi.php';
+    $api = new TelefoniaZadarmaApi($apiKey, $apiSecret, false);
 
     // Obtener el PBX ID nos permite construir el login completo que utiliza
     // el widget WebRTC (por ejemplo: 1234-100) sin guardar credenciales SIP.

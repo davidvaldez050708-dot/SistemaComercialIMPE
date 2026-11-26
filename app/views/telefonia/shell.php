@@ -411,7 +411,9 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'homeUrl' => BASE_URL . 'index.php?controller=home&action=index'
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_http.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/telefonia_http.js') ?>"></script>
     <?php if ($marketingShell || $analistaEntrantesShell): ?>
+    <script src="<?= BASE_URL ?>public/javascript/telefonia_atencion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_atencion.js') ?>"></script>
     <script src="<?= BASE_URL ?>public/javascript/telefonia_cierre.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_cierre.js') ?>"></script>
     <?php endif; ?>
     <script id="impeDialerRuntime">
@@ -451,7 +453,6 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
     <script src="<?= BASE_URL ?>public/javascript/telefonia_disponibilidad.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_disponibilidad.js') ?>"></script>
     <?php if($esAsesorShell): ?><script src="<?= BASE_URL ?>public/javascript/telefonia_ventas_prospecto.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/telefonia_ventas_prospecto.js') ?>"></script><?php endif; ?>
     <?php if ($puedeTransferirShell || $puedeCapturarShell || $esAsesorShell): ?>
-    <script src="<?= BASE_URL ?>public/javascript/telefonia_atencion.js?v=<?= filemtime(ROOT_PATH . '/public/javascript/telefonia_atencion.js') ?>"></script>
     <style id="impeRoutingStyles">
     <?php
     $routingCss = ROOT_PATH . '/public/css/telefonia_enrutamiento.css';

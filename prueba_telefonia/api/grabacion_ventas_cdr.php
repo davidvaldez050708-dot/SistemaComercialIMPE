@@ -5,6 +5,9 @@
  * que pertenece a la extensión activa del usuario autenticado.
  */
 session_start();
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
+TelefoniaPeticionContexto::liberarSesion();
 
 $root = dirname(__DIR__, 2);
 require_once $root . '/config/db_connection.php';
@@ -28,11 +31,7 @@ if ($usuarioId <= 0) {
 }
 
 // Releer los permisos evita conservar capacidades revocadas en la sesión.
-$modeloRol = new RolModel();
-$modeloRol->inicializarPermisosSistema();
-$_SESSION['permisos'] = $modeloRol->obtenerCodigosPermisosPorRol(
-    (int)($_SESSION['rol_id'] ?? 0)
-);
+
 if (
     (int)($_SESSION['rol_id'] ?? 0) !== 3 ||
     !tienePermiso('telefonia.usar') ||

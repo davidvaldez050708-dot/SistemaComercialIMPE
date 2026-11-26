@@ -31,7 +31,8 @@ class ZadarmaCallLookupService
             throw new RuntimeException('La configuración privada de Zadarma está incompleta.');
         }
 
-        $this->api = new \Zadarma_API\Api($apiKey, $apiSecret, false);
+        require_once __DIR__.'/TelefoniaZadarmaApi.php';
+        $this->api = new TelefoniaZadarmaApi($apiKey, $apiSecret, false);
         $this->timezone = new DateTimeZone('America/Mexico_City');
     }
 
@@ -60,16 +61,9 @@ class ZadarmaCallLookupService
             }
         ));
 
-        if (empty($candidatas)) {
+        if (count($candidatas)!==1) {
             return null;
         }
-
-        usort($candidatas, static function ($a, $b) {
-            return strcmp(
-                (string)($b['callstart'] ?? ''),
-                (string)($a['callstart'] ?? '')
-            );
-        });
 
         return $this->normalizar($candidatas[0]);
     }

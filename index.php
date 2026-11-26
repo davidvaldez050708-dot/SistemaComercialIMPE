@@ -168,6 +168,22 @@ if (!$esRutaPublica && !isset($_SESSION['usuario_id'])) {
 }
 
 
+// Estas rutas no escriben datos de sesión. Trabajan con su instantánea y
+// refrescan la autorización abajo; una consulta MySQL lenta no debe bloquear
+// las otras peticiones del mismo teléfono. Las rutas de tokens/flash conservan
+// el bloqueo hasta consumir o escribir sus datos correspondientes.
+if ($controller === 'telefonia' && isset($_SESSION['usuario_id']) &&
+    is_string($_SESSION['csrf_token'] ?? null) && $_SESSION['csrf_token'] !== '' &&
+    in_array($action, [
+        'estadoUsuario','detalleVenta','guardarResultadoVenta','observacionesVenta',
+        'agregarObservacionVenta','actualizarEvidenciaVenta','datosProspectoVenta',
+        'disponibilidad','contextoTransferencia','destinosTransferencia',
+        'iniciarMarcacionVenta','vincularMarcacionVenta','guardarContacto','eliminarContacto',
+        'completarProgramacionVenta','devolucionVenta'
+    ], true) && session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
 /*
  * La autorización se sincroniza contra la base en cada petición autenticada.
  * De esta manera, cambios de rol, estado de usuario/rol o permisos aplican
@@ -189,7 +205,7 @@ if (isset($_SESSION['usuario_id'])) {
 
     if (!$sesionVigente) {
         $_SESSION = [];
-        session_destroy();
+        if (session_status() === PHP_SESSION_ACTIVE) session_destroy();
 
         if ($esPeticionFetch) {
             $responderSesionJson(

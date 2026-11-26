@@ -194,8 +194,10 @@ class ZadarmaWebhookEventStoreService
         $extension,
         $destino,
         $desdeUnix,
-        $despuesDeId = 0
+        $despuesDeId = 0,
+        ?bool &$ambigua = null
     ) {
+        $ambigua=false;
         $extension = trim((string)$extension);
         $destinoDigits = $this->soloDigitos($destino);
         $despuesDeId = max(0, (int)$despuesDeId);
@@ -213,8 +215,9 @@ class ZadarmaWebhookEventStoreService
             ? substr($destinoDigits, -10)
             : $destinoDigits;
 
-        $sql = "SELECT *
-                FROM telefonia_zadarma_eventos
+        $sql = "SELECT e.* FROM telefonia_zadarma_eventos e
+                INNER JOIN (
+                SELECT MAX(id) AS id FROM telefonia_zadarma_eventos
                 WHERE evento = 'NOTIFY_OUT_START'
                   AND internal = ?
                   AND received_at >= ?
@@ -223,8 +226,9 @@ class ZadarmaWebhookEventStoreService
                     destination_digits = ?
                     OR RIGHT(destination_digits, 10) = ?
                   )
-                ORDER BY id DESC
-                LIMIT 1";
+                GROUP BY BINARY pbx_call_id
+                LIMIT 2
+                ) candidates ON candidates.id=e.id";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param(
             'ssiss',
@@ -235,9 +239,11 @@ class ZadarmaWebhookEventStoreService
             $ultimos10
         );
         $stmt->execute();
-        $fila = $stmt->get_result()->fetch_assoc();
-
-        return $fila ? $this->normalizarFila($fila) : null;
+        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        $ambigua=count($filas)>1;
+        // Dos referencias candidatas no se resuelven eligiendo la última.
+        return count($filas)===1 ? $this->normalizarFila($filas[0]) : null;
     }
 
     public function obtenerPorPbxCallId($pbxCallId)
@@ -249,7 +255,7 @@ class ZadarmaWebhookEventStoreService
 
         $sql = "SELECT *
                 FROM telefonia_zadarma_eventos
-                WHERE pbx_call_id = ?
+                WHERE pbx_call_id = BINARY ?
                 ORDER BY id ASC";
         $stmt = $this->connection->prepare($sql);
         $stmt->bind_param('s', $pbxCallId);
