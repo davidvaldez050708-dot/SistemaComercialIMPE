@@ -10,6 +10,8 @@ jobs:
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -23,3 +25,4 @@ jobs:
           python3 tests/denue_http_local.py
           php tests/denue_candidatos_resiliencia.php
           php tests/denue_consulta_paginada.php
+          python3 tests/publicacion_denue_circuito_test.py
