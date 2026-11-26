@@ -211,6 +211,7 @@ if ($esSeguimientoEstado || $esSeguimientoDetalle || $esAgendaDashboard) {
 
 if (
     $esConvocatoriaDashboard ||
+    ($esAliadosDashboard && $actionDashboard === 'internacionales') ||
     $esConvocatoriaReportePreviewDashboard ||
     $esHomeDashboard
 ) {
@@ -227,6 +228,9 @@ if ($esTerritorialDashboard) {
 
 if ($esAliadosDashboard) {
     $cssOpcionalDashboard[] = 'aliados.css';
+    if ($actionDashboard === 'internacionales') {
+        $cssOpcionalDashboard[] = 'aliados_internacionales.css';
+    }
 }
 
 if ($esWhatsappDashboard) {
@@ -294,12 +298,24 @@ if ($esReportesDashboard) {
     );
 }
 
+// IMPE_ALIADOS_V2_CSS_INICIO
+if (in_array($controllerDashboard, array('aliado', 'convocatoria', 'crearconvocatoria'), true)) {
+    if ($controllerDashboard === 'crearconvocatoria') {
+        $cssOpcionalDashboard[] = 'aliados.css';
+    }
+    $cssOpcionalDashboard[] = 'aliados_v2_extension.css';
+}
+// IMPE_ALIADOS_V2_CSS_FIN
+
 $cssOpcionalDashboard = array_values(array_unique($cssOpcionalDashboard));
 
 $jsOpcionalHead = [
     'firma_correo_perfil.js'
 ];
 
+if ($usarTelefoniaPersistente || $esTelefoniaDashboard || ($esHomeDashboard && (int)($_SESSION['rol_id'] ?? 0) === 3)) {
+    $jsOpcionalHead[] = 'telefonia_numeros.js';
+}
 if ($usarTelefoniaPersistente) {
     $jsOpcionalHead[] = 'telefonia_teclado.js';
     $jsOpcionalHead[] = 'telefonia_persistente.js';
@@ -316,6 +332,7 @@ if (tienePermiso('seguimientos_vinculacion.operar_propios')) {
 if ($esAliadosDashboard) {
     $jsOpcionalHead[] = 'aliados.js';
     $jsOpcionalHead[] = 'aliados_seguimiento.js';
+    $jsOpcionalHead[] = 'aliados_registro.js';
 }
 
 if ($controllerDashboard === 'aliadoreporte') {
@@ -336,6 +353,7 @@ if ($esFormulariosDashboard) {
 
 if ($esCrearConvocatoriaDashboard) {
     $jsOpcionalHead[] = 'crear_convocatoria.js';
+    $jsOpcionalHead[] = 'aliados_registro.js';
 }
 
 if ($esDesempenoDashboard) {
@@ -448,6 +466,23 @@ if ($esReportesDashboard) {
         ]
     );
 }
+
+// IMPE_ALIADOS_V2_JS_INICIO
+if ($controllerDashboard === 'aliado') {
+    $jsOpcionalHead[] = 'aliados_registro.js';
+}
+if ($controllerDashboard === 'crearconvocatoria') {
+    $jsOpcionalHead[] = 'crear_convocatoria.js';
+    $jsOpcionalHead[] = 'crear_convocatoria_v2_extension.js';
+    $jsOpcionalHead[] = 'aliados_registro.js';
+}
+// Con modal modular de Hostinger, el propio parcial carga su JS especifico.
+if ($controllerDashboard === 'convocatoria' && $actionDashboard === 'index'
+    && !empty($_GET['aliado_tipo']) && !empty($_GET['aliado_id'])
+    && !is_file(__DIR__ . '/../convocatorias/partials/aliado_programas_modular.php')) {
+    $jsOpcionalHead[] = 'convocatorias_aliado_programas.js';
+}
+// IMPE_ALIADOS_V2_JS_FIN
 
 $jsOpcionalHead = array_values(array_unique($jsOpcionalHead));
 

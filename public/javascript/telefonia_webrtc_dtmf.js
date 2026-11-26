@@ -9,6 +9,8 @@
         const peers = new Set();
         let installed = false;
         let lastError = '';
+        let manualSender = null;
+        let manualQueue = '';
 
         function install() {
             if (installed) return true;
@@ -16,7 +18,7 @@
             if (typeof NativePeer !== 'function' ||
                 typeof view?.Proxy !== 'function' ||
                 typeof view?.Reflect?.construct !== 'function') {
-                lastError = 'Este navegador no permite observar el canal WebRTC.';
+                lastError = 'Este navegador no permite utilizar el teclado del teléfono.';
                 return false;
             }
             // Proxy intercepta SOLO la construcción de conexiones de ESTE
@@ -44,7 +46,7 @@
                 installed = true;
                 return true;
             } catch (_) {
-                lastError = 'No se pudo preparar DTMF WebRTC.';
+                lastError = 'No se pudo preparar el teclado del teléfono.';
                 return false;
             }
         }
@@ -78,12 +80,14 @@
             if (!installed && !install()) return false;
             const sender = senderActivo();
             if (!sender) {
-                lastError = 'No hay un canal de audio WebRTC único con DTMF habilitado. Verifica la conexión SIP de esta extensión.';
+                lastError = 'El teclado no está disponible para esta llamada. Comprueba que el teléfono esté conectado.';
                 return false;
             }
             try {
                 // Zadarma requiere RFC2833/telephone-event: los tonos los
                 // transmite el navegador al peer SIP existente.
+                manualSender = null;
+                manualQueue = '';
                 sender.insertDTMF(tones, 180, 100);
                 return true; // Aceptado por WebRTC, NO confirmación de PBX.
             } catch (_) {
@@ -91,6 +95,33 @@
                 return false;
             }
         }
+        function sendDigit(digit) {
+            lastError = '';
+            if (typeof digit !== 'string' || !/^[0-9*#]$/.test(digit)) return false;
+            if (!installed && !install()) return false;
+            const sender = senderActivo();
+            if (!sender) {
+                lastError = 'La llamada aún no tiene un canal de audio para enviar tonos.';
+                return false;
+            }
+            const queued = sender.toneBuffer || '';
+            // Nunca combinar teclas manuales con comandos de transferencia.
+            if (!/^[0-9*#]{0,12}$/.test(queued) ||
+                (queued && (manualSender !== sender || !manualQueue.endsWith(queued)))) {
+                lastError = 'Espera a que termine el envío de tonos.';
+                return false;
+            }
+            try {
+                sender.insertDTMF(queued + digit, 180, 100);
+                manualSender = sender;
+                manualQueue = queued + digit;
+                return true;
+            } catch (_) {
+                lastError = 'No se pudo enviar el tono.';
+                return false;
+            }
+        }
+
         // Diagnóstico de sólo lectura: no altera pistas, volumen, SDP ni SIP.
         // Ejecutar durante una llamada desde la consola del host autenticado.
         async function diagnoseAudio() {
@@ -141,6 +172,7 @@
         return Object.freeze({
             install,
             send,
+            sendDigit,
             error: () => lastError,
             trackedCount: () => peers.size,
             diagnoseAudio

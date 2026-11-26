@@ -16,17 +16,30 @@ class TelefoniaController
 
     public function __construct()
     {
-        $modeloRol = new RolModel();
-        $modeloRol->inicializarPermisosSistema();
+        // El catálogo se instala en las rutas normales. POLL mantiene la
+        // autorización vigente sin reescribir permisos en cada tick.
+        $esSondeo = (($_GET['action'] ?? '') === 'disponibilidad'
+            && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+            && ($_POST['accion'] ?? '') === 'POLL')
+            || (($_GET['action'] ?? '') === 'detalleVenta'
+                && ($_SERVER['REQUEST_METHOD'] ?? '') === 'GET');
+        $modeloRol = $esSondeo ? new RolModel(Database::compartida()) : new RolModel();
+        if (!$esSondeo) {
+            $modeloRol->inicializarPermisosSistema();
+        }
 
-        if (isset($_SESSION['rol_id'])) {
+        if (isset($_SESSION['rol_id']) && !defined('IMPE_PERMISOS_REFRESCADOS')) {
             $_SESSION['permisos'] =
                 $modeloRol->obtenerCodigosPermisosPorRol(
                     (int)$_SESSION['rol_id']
                 );
         }
 
-        $this->service = new TelefoniaExtensionService();
+        // POLL no usa este servicio. Las otras rutas conservan su
+        // construcción y conexión independiente en el mismo lugar de siempre.
+        if (!$esSondeo) {
+            $this->service = new TelefoniaExtensionService();
+        }
     }
 
     /**
@@ -35,8 +48,10 @@ class TelefoniaController
      */
     public function index()
     {
-        $this->validarAdministrador();
+        $this->validarAccesoControlLlamadas();
 
+        $puedeAdministrarExtensiones = (int)($_SESSION['rol_id'] ?? 0) === 1
+            && tienePermiso('telefonia.configurar');
         $actividadTelefonicaError = '';
         $controlTelefonia = [];
         $filtros = [
@@ -274,6 +289,8 @@ class TelefoniaController
             $this->responderJson(['ok' => true, 'token' => $token]);
         } catch (InvalidArgumentException $e) {
             $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 422);
+        } catch (DomainException $e) {
+            $this->responderJson(['ok' => false, 'mensaje' => $e->getMessage()], 409);
         } catch (Throwable $e) {
             error_log('[telefonia_ventas_inicio] ' . $e->getMessage());
             $this->responderJson([
@@ -406,17 +423,93 @@ class TelefoniaController
         }
     }
 
+    public function observacionesVenta()
+    {
+        header('Cache-Control: private, no-store, max-age=0');
+        if(($_SERVER['REQUEST_METHOD']??'GET')!=='GET')$this->responderJson(['ok'=>false],405);
+        $uid=(int)($_SESSION['usuario_id']??0);
+        if($uid<=0)$this->responderJson(['ok'=>false,'mensaje'=>'Inicia sesión para consultar las observaciones.'],401);
+        require_once __DIR__.'/../services/TelefoniaObservacionesVentasService.php';
+        try {
+            $svc=new TelefoniaObservacionesVentasService((new Database())->connect(false));
+            if((int)($_SESSION['rol_id']??0)===3){
+                $this->validarAtencionVentaJson(false);
+                $data=$svc->propias($uid,(string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''));
+            } else $data=$svc->supervisadas($uid,(string)($_GET['llamada']??''));
+            $this->responderJson(['ok'=>true]+$data);
+        } catch(InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422);}
+        catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],403);}
+        catch(Throwable $e){error_log('[ventas_observaciones_consulta] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudieron consultar las observaciones adicionales.'],500);}
+    }
+
+    public function agregarObservacionVenta()
+    {
+        header('Cache-Control: private, no-store, max-age=0');
+        $this->validarAtencionVentaJson(true);
+        require_once __DIR__.'/../services/TelefoniaObservacionesVentasService.php';
+        try {
+            $note=(new TelefoniaObservacionesVentasService((new Database())->connect(false)))->agregar(
+                (int)$_SESSION['usuario_id'],(string)($_POST['pbx_call_id']??''),(string)($_POST['extension']??''),
+                (string)($_POST['nota']??''),(string)($_POST['token']??''));
+            $this->responderJson(['ok'=>true,'observacion'=>$note]);
+        } catch(InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422);}
+        catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[ventas_observacion_agregar] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo confirmar el guardado. Reintenta sin cambiar la nota para evitar duplicados.'],500);}
+    }
+
     public function detalleVenta()
     {
         $this->validarAtencionVentaJson(false);
+        // La identidad queda validada; la lectura PBX no necesita bloquear la navegación.
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
         require_once __DIR__.'/../services/TelefoniaVentasLlamadasService.php';
         try {
             $svc=new TelefoniaVentasLlamadasService();$uid=(int)$_SESSION['usuario_id'];
             $svc->sincronizar($uid);
-            $this->responderJson(['ok'=>true,'llamada'=>$svc->obtener($uid,
-                (string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''))]);
+            if(($_GET['pendientes']??'')==='1'){
+                $calls=$svc->listar($uid,[],false);
+                $pending=array_values(array_filter($calls,static fn($c)=>TelefoniaVentasLlamadasService::resultadoCapturable($c)&&!$c['registro']));
+                $pending=$svc->conVinculosSdk($uid,array_slice($pending,0,40));
+                $this->responderJson(['ok'=>true,'pendientes'=>array_map(static fn($c)=>array_intersect_key($c,array_flip(['pbx_call_id','extension','finalizada','conectada','sdk_tokens','solicitud_id','origen_extension'])),$pending)]);
+            }
+            if(isset($_GET['solicitud_id'])){
+                require_once __DIR__.'/../services/TelefoniaTransferenciaOperacionService.php';
+                $op=(new TelefoniaTransferenciaOperacionService())->paraDestinoConfirmado($uid,(int)$_GET['solicitud_id'],(string)($_GET['sdk']??''));
+                $this->responderJson(['ok'=>true,'llamada'=>$op?$svc->conVinculosSdk($uid,[$svc->obtener($uid,$op['referencia'],$op['destino_extension'])])[0]:null]);
+            }
+            if(isset($_GET['sdk']))$this->responderJson(['ok'=>true,'llamada'=>$svc->obtenerPorSdk($uid,(string)$_GET['sdk'])]);
+            $call=$svc->obtener($uid,(string)($_GET['pbx_call_id']??''),(string)($_GET['extension']??''));
+            $this->responderJson(['ok'=>true,'llamada'=>$svc->conVinculosSdk($uid,[$call])[0]]);
         }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
-        catch(Throwable $e){error_log('[detalle_venta] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo consultar tu llamada.'],500);}
+        catch(Throwable $e){if(Database::responderFalloTemporal($e))exit;error_log('[detalle_venta] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo consultar tu llamada.'],500);}
+    }
+
+    public function actualizarEvidenciaVenta()
+    {
+        $this->validarAtencionVentaJson(true);
+        try{
+            require_once __DIR__.'/../services/TelefoniaVentasLlamadasService.php';
+            require_once __DIR__.'/../services/TelefoniaVentasEvidenciaService.php';
+            $db=(new Database())->connect(false);$uid=(int)$_SESSION['usuario_id'];
+            $call=(new TelefoniaVentasLlamadasService($db))->obtener($uid,(string)($_POST['pbx_call_id']??''),(string)($_POST['extension']??''));
+            $call=(new TelefoniaVentasEvidenciaService($db))->consultar($call);
+            $this->responderJson(['ok'=>true,'llamada'=>$call,'mensaje'=>$call['segmentos']?'Grabaciones verificadas.':'La evidencia aún no identifica audio propio. Puedes comprobarla de nuevo en un minuto.']);
+        }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[ventas_evidencia] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo comprobar la evidencia. Inténtalo en un minuto.'],502);}
+    }
+
+    public function datosProspectoVenta()
+    {
+        $post=($_SERVER['REQUEST_METHOD']??'GET')==='POST';$this->validarAtencionVentaJson($post);
+        try{
+            require_once __DIR__.'/../services/TelefoniaProspectoLlamadaService.php';
+            $input=$post?$_POST:$_GET;$uid=(int)$_SESSION['usuario_id'];$ref=(string)($input['pbx_call_id']??'');$ext=(string)($input['extension']??'');
+            if(!preg_match('/^[0-9]{3,6}$/D',$ext))throw new InvalidArgumentException('Extensión inválida.');
+            $svc=new TelefoniaProspectoLlamadaService((new Database())->connect(false));
+            $data=$post?$svc->guardar($uid,$ref,$ext,$input,(int)($input['version']??-1)):$svc->leer($uid,$ref,$ext);
+            $this->responderJson(['ok'=>true,'captura'=>$data]);
+        }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+        catch(Throwable $e){error_log('[ventas_prospecto] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudieron guardar o recuperar los datos. Conserva el borrador para reintentar.'],500);}
     }
 
     private function validarAtencionVentaJson(bool $post): void
@@ -465,6 +558,9 @@ class TelefoniaController
     public function estadoUsuario()
     {
         $this->validarUsuarioTelefoniaJson();
+        // La autorización ya se refrescó en el constructor. La consulta no
+        // modifica la sesión; dejar pasar otras navegaciones del usuario.
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 
         try {
             $asignacion = $this->service->resolverParaUsuario(
@@ -620,6 +716,9 @@ class TelefoniaController
             $buscar = mb_substr(trim((string)($_GET['buscar'] ?? '')), 0, 80, 'UTF-8');
             $categoria = TelefoniaEnrutamientoService::categoriaRol($rol);
             $destinos = $servicio->destinos($usuarioId, $rol, $estadoId, $tipo, $buscar);
+            if ($categoria === 'RECEPCION' && $tipo === 'PROSPECTO') {
+                $destinos = $servicio->destinosProspectoPorPrograma($destinos);
+            }
             $instituciones = $categoria === 'RECEPCION' && $tipo === 'INSTITUCION'
                 ? $servicio->instituciones($usuarioId, $rol, $estadoId, $buscar) : [];
             $telefonoOrigen = trim((string)($_GET['telefono_origen'] ?? ''));
@@ -702,7 +801,8 @@ class TelefoniaController
             require_once __DIR__.'/../services/TelefoniaEnrutamientoService.php';
             require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
             $usuarioId=(int)$_SESSION['usuario_id'];$rol=(string)($_SESSION['rol']??'');
-            $disponibilidad=new TelefoniaDisponibilidadService();
+            $conexion = (new Database())->connect();
+            $disponibilidad=new TelefoniaDisponibilidadService($conexion);
             $solicitar=($_POST['intencion']??'')==='SOLICITAR';
             $id=(int)($_POST['disponibilidad_id']??0);$version=(int)($_POST['version']??0);
             $route=$solicitar?[
@@ -715,7 +815,7 @@ class TelefoniaController
                 'referencia_llamada'=>trim((string)($_POST['referencia_llamada']??'')),
                 'modo'=>'DIRECTA'
             ]:$disponibilidad->rutaAceptada($usuarioId,$id,$version);
-            $destino=(new TelefoniaEnrutamientoService())->validarDestino($usuarioId,$rol,
+            $destino=(new TelefoniaEnrutamientoService($conexion))->validarDestino($usuarioId,$rol,
                 (string)$route['extension'],(int)$route['estado_id'],(string)$route['tipo'],(int)$route['responsable_id']);
             if($solicitar){
                 $route['nombre_destino']=(string)$destino['nombre'];
@@ -729,7 +829,7 @@ class TelefoniaController
             $this->responderJson(['ok'=>true,'token'=>$token,'destino'=>$destino,
                 'mensaje'=>'Responsable confirmado. La transferencia aún no se ha enviado.']);
         }catch(InvalidArgumentException|DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
-        catch(Throwable $e){error_log('[telefonia_disponibilidad_autorizar] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No fue posible solicitar la atención.'],500);}
+        catch(Throwable $e){if(Database::responderFalloTemporal($e))exit;error_log('[telefonia_disponibilidad_autorizar] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No fue posible solicitar la atención.'],500);}
     }
 
     public function disponibilidad()
@@ -737,26 +837,39 @@ class TelefoniaController
         $this->validarUsuarioTelefoniaJson();
         if(!tienePermiso('telefonia.recibir'))$this->responderJson(['ok'=>false],403);
         require_once __DIR__.'/../services/TelefoniaDisponibilidadService.php';
+        $metodo = $_SERVER['REQUEST_METHOD'] ?? '';
+        if (!in_array($metodo, ['GET', 'POST'], true)) $this->responderJson(['ok'=>false],405);
+        if ($metodo === 'POST' && (empty($_SESSION['csrf_token']) ||
+            !hash_equals((string)$_SESSION['csrf_token'], (string)($_POST['csrf_token'] ?? '')))) {
+            $this->responderJson(['ok'=>false],403);
+        }
+        // El sondeo no modifica datos de la sesión; guardar permisos y liberar navegación.
+        if (($metodo === 'GET' || in_array(($_POST['accion'] ?? ''), ['PRESENCIA','POLL'], true)) && session_status() === PHP_SESSION_ACTIVE) session_write_close();
         try{
-            $user=(int)$_SESSION['usuario_id'];$svc=new TelefoniaDisponibilidadService();
-            if(($_SERVER['REQUEST_METHOD']??'')==='GET'){
+            $user=(int)$_SESSION['usuario_id'];
+            $sondeo = $metodo === 'POST' && ($_POST['accion'] ?? '') === 'POLL';
+            $svc = new TelefoniaDisponibilidadService($sondeo ? Database::compartida() : null);
+            if($metodo==='GET'){
                 $id=(int)($_GET['id']??0);
                 $this->responderJson(['ok'=>true,'solicitud'=>$id?$svc->obtener($user,$id):$svc->entrante($user),'devoluciones'=>$id?null:count($svc->devoluciones($user))]);
             }
-            if(($_SERVER['REQUEST_METHOD']??'')!=='POST')$this->responderJson(['ok'=>false],405);
-            $csrf=(string)($_SESSION['csrf_token']??'');
-            if($csrf===''||!hash_equals($csrf,(string)($_POST['csrf_token']??'')))$this->responderJson(['ok'=>false],403);
             if(in_array(($_POST['accion']??''),['PRESENCIA','POLL'],true)){
+                if (($_POST['accion'] ?? '') === 'POLL') {
+                    $this->responderJson(['ok'=>true] + $svc->sondear(
+                        $user, ($_POST['disponible'] ?? '') === '1', (int)($_POST['id'] ?? 0),
+                        ($_POST['consultar_devoluciones'] ?? '1') === '1',
+                        static function () use ($svc, $user) {
+                            return $svc->delOrigen($user, (string)($_POST['referencia'] ?? ''));
+                        }
+                    ));
+                }
                 $svc->presencia($user,($_POST['disponible']??'')==='1');
-                if(($_POST['accion']??'')==='POLL')$this->responderJson(['ok'=>true,
-                    'solicitud'=>(int)($_POST['id']??0)>0?$svc->obtener($user,(int)$_POST['id']):null,
-                    'entrante'=>$svc->entrante($user),'devoluciones'=>count($svc->devoluciones($user))]);
                 $this->responderJson(['ok'=>true]);
             }
             if(($_POST['accion']??'')==='ATENDIDA')$this->responderJson(['ok'=>false,'mensaje'=>'Registra el resultado desde Llamadas por devolver.'],409);
             $this->responderJson(['ok'=>true,'solicitud'=>$svc->accion($user,(int)($_POST['id']??0),(int)($_POST['version']??0),(string)($_POST['accion']??''),$_POST)]);
         }catch(DomainException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
-        catch(Throwable $e){error_log('[telefonia_disponibilidad] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la solicitud. Intenta de nuevo.'],500);}
+        catch(Throwable $e){if(Database::responderFalloTemporal($e))exit;error_log('[telefonia_disponibilidad] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la solicitud. Intenta de nuevo.'],500);}
     }
 
     public function completarProgramacionVenta(): void {
@@ -1025,6 +1138,30 @@ class TelefoniaController
             JSON_UNESCAPED_SLASHES |
             JSON_INVALID_UTF8_SUBSTITUTE
         );
+        exit;
+    }
+
+    private function validarAccesoControlLlamadas()
+    {
+        if ((int)($_SESSION['usuario_id'] ?? 0) > 0
+            && tienePermiso('telefonia.control_ver')) {
+            return;
+        }
+        http_response_code(403);
+        $tituloPagina = 'Acceso restringido';
+        $subtituloPagina = 'Control de llamadas';
+        $opcionActiva = 'telefonia';
+        require __DIR__ . '/../views/layout/dashboard_head.php';
+        require __DIR__ . '/../views/layout/sidebar.php';
+        require __DIR__ . '/../views/layout/topbar.php';
+        echo '<div class="dashboard-panel" role="alert" style="max-width:780px;margin:20px auto;'
+            . 'padding:24px;border:1px solid #dce5f2;border-radius:14px;background:#fff">'
+            . '<h2 style="font-size:18px;color:#233f7a;font-weight:800;margin:0 0 9px">'
+            . '<i class="bi bi-shield-lock" aria-hidden="true"></i> Acceso restringido</h2>'
+            . '<p style="color:#63738d;font-size:13px;line-height:1.7;margin:0">'
+            . 'Tu perfil no cuenta con el permiso para consultar el Control de llamadas. '
+            . 'Solicita la autorización desde Roles y permisos.</p></div>';
+        require __DIR__ . '/../views/layout/dashboard_footer.php';
         exit;
     }
 

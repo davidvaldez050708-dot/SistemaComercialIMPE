@@ -257,8 +257,8 @@
         };
 
         const convertirBoton = function (tarjeta, llamada) {
-            // El reproductor de transferencias PBX ya tiene su botón y consulta.
-            // No sustituirlo por el reproductor saliente ni abrir su panel vacío.
+            // Respetar el reproductor PBX de llamadas transferidas.
+            // No reemplazar su boton ni abrir un panel de audio vacio.
             if (tarjeta.querySelector('.linkage-incoming-audio-panel')) return;
             if (tarjeta.querySelector('[data-call-recording-toggle]')) return;
             const estadoActual = tarjeta.querySelector('.linkage-call-audio-state.is-available');

@@ -37,13 +37,239 @@
             document.head.appendChild(css);
         }
 
+        if (!document.getElementById('impe-call-result-rules-style')) {
+            const style = document.createElement('style');
+            style.id = 'impe-call-result-rules-style';
+            style.textContent = `
+              #offcanvasSeguimientoTrabajo .impe-call-result-card {display:flex;align-items:flex-start;gap:10px;
+                padding:12px 14px;margin:0 0 4px;border:1px solid #dce5f3;border-radius:12px;
+                background:#f5f8fd;color:#20365f;box-sizing:border-box;min-width:0}
+              #offcanvasSeguimientoTrabajo .impe-call-result-icon {display:grid;place-items:center;
+                flex:0 0 30px;height:30px;border-radius:9px;background:#e7eefb;color:#2c4289;font-size:16px}
+              #offcanvasSeguimientoTrabajo .impe-call-result-body {flex:1;min-width:0}
+              #offcanvasSeguimientoTrabajo .impe-call-result-body strong {display:block;
+                font-size:13px;font-weight:750;line-height:1.4;color:#243b70}
+              #offcanvasSeguimientoTrabajo .impe-call-result-body p {margin:4px 0 0;
+                font-size:12px;font-weight:400;line-height:1.55;color:#60718d;overflow-wrap:anywhere}
+              #offcanvasSeguimientoTrabajo .impe-call-result-retry {display:inline-flex;align-items:center;
+                justify-content:center;min-height:32px;max-width:100%;margin-top:9px;padding:6px 11px;
+                border:1px solid #cbd8ee;border-radius:8px;background:#fff;color:#2c4289;
+                font-family:inherit;font-size:12px;font-weight:700;line-height:1.4;cursor:pointer}
+              #offcanvasSeguimientoTrabajo .impe-call-result-retry:hover {background:#edf2fc;border-color:#a7bbe1}
+              #offcanvasSeguimientoTrabajo .impe-call-result-retry:focus-visible {outline:3px solid #c5d5f6;outline-offset:2px}
+              #offcanvasSeguimientoTrabajo .impe-call-result-retry:disabled {opacity:.6;cursor:wait}
+              #offcanvasSeguimientoTrabajo .impe-call-result-retry[hidden] {display:none}
+              #offcanvasSeguimientoTrabajo .impe-call-result-card[data-state="error"] {background:#fff9f0;border-color:#ecd7b7}
+              #offcanvasSeguimientoTrabajo .impe-call-result-card[data-state="error"] .impe-call-result-icon {background:#f9ecd8;color:#926321}
+            `;
+            document.head.appendChild(style);
+        }
+
         const vincularUrl =
             'prueba_telefonia/api/vincular_interaccion_zadarma.php';
+        // El resultado se valida ANTES de crear la interacción, no sólo al vincularla.
+        const reglasPorFormulario = new WeakMap();
+        const resultadosVerificables = ['CONTACTO_CORRECTO','CONTACTO_REFERIDO',
+            'SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES'];
+        function aplicarReglasResultado(form, captura) {
+            const selector = form.querySelector('[name="resultado"]');
+            if (!selector) return;
+            for (const option of selector.options) {
+                if (!option.value) continue;
+                option.disabled = captura.originales.get(option) === true || !captura.reglas || !captura.reglas.opciones.includes(option.value);
+            }
+            if (selector.selectedOptions[0]?.disabled) selector.value = '';
+            const verifica = captura.reglas?.permite_verificar === true &&
+                resultadosVerificables.includes(selector.value);
+            for (const field of form.querySelectorAll('[name^="verificacion_"]')) {
+                if (field.type !== 'checkbox') continue;
+                if (!verifica) { field.checked = false; field.disabled = true; }
+            }
+        }
+        function prepararResultadoConTelefonia(form, metadata) {
+            const anterior = reglasPorFormulario.get(form);
+            if (anterior) {
+                anterior.cancelada = true; clearTimeout(anterior.timer);
+                for (const [option,disabled] of anterior.originales) option.disabled = disabled;
+            }
+            const originales = new Map(Array.from(form.querySelectorAll('[name="resultado"] option')).map(option=>[option,option.disabled]));
+            const captura = {metadata, originales, reglas:null, cancelada:false, intentos:0};
+            reglasPorFormulario.set(form, captura);
+            let refInput = form.querySelector('[name="llamada_pbx_id"]');
+            if (!refInput) {
+                refInput = document.createElement('input'); refInput.type = 'hidden';
+                refInput.name = 'llamada_pbx_id'; form.appendChild(refInput);
+            }
+            refInput.value = String(metadata.pbx_call_id || '');
+            let notice = form.querySelector('[data-call-result-rules]');
+            if (!notice) {
+                notice = document.createElement('div'); notice.className = 'col-12';
+                notice.setAttribute('data-call-result-rules',''); notice.setAttribute('role','status');
+                const card = document.createElement('div'); card.className = 'impe-call-result-card';
+                const icon = document.createElement('span'); icon.className = 'impe-call-result-icon';
+                icon.setAttribute('aria-hidden','true');
+                const body = document.createElement('div'); body.className = 'impe-call-result-body';
+                const title = document.createElement('strong');
+                const text = document.createElement('p');
+                const retry = document.createElement('button'); retry.type = 'button';
+                retry.className = 'impe-call-result-retry'; retry.textContent = '↻ Volver a comprobar';
+                retry.setAttribute('aria-label','Volver a consultar el resultado de esta llamada');
+                retry.title = 'Consulta la misma llamada; no inicia otra.'; retry.hidden = true;
+                body.append(title,text,retry); card.append(icon,body); notice.append(card);
+                (form.querySelector('.row') || form).prepend(notice);
+            }
+            const text = notice.querySelector('p'), retry = notice.querySelector('button');
+            const card = notice.querySelector('.impe-call-result-card');
+            const title = notice.querySelector('strong'), icon = notice.querySelector('.impe-call-result-icon');
+            const submit = form.querySelector('button[type="submit"]');
+            const vigente = () => reglasPorFormulario.get(form) === captura && !captura.cancelada;
+            async function comprobar() {
+                if (!vigente() || captura.consultando) return;
+                clearTimeout(captura.timer); captura.consultando = true;
+                captura.reglas = null; aplicarReglasResultado(form, captura);
+                if (submit) submit.disabled = true;
+                card.dataset.state = 'pending'; title.textContent = 'Confirmando llamada…'; icon.textContent = '…';
+                retry.disabled = true; text.textContent = 'Espera un momento mientras se confirma el resultado para guardar.';
+                const controller = new AbortController();
+                const timeout = setTimeout(()=>controller.abort(),10000);
+                try {
+                    let ref = String(metadata.pbx_call_id || '');
+                    if (!/^out_[a-fA-F0-9]{32,64}$/.test(ref)) {
+                        // Sólo recuperar el marcado exacto, con checkpoint y ventana temporal.
+                        const key = typeof lastDialKey === 'string' ? lastDialKey : '';
+                        if (!key || !metadata.checkpoint_ready || localStorage.getItem(key) !== String(metadata.call_token) ||
+                            Date.now()/1000 - Number(metadata.finished_at || 0) > 30) {
+                            throw Error('El identificador de la llamada está pendiente. Vuelve a comprobar en unos segundos.');
+                        }
+                        const params = new URLSearchParams({destination:metadata.to || '',since:String(metadata.requested_at || 0),
+                            after_id:String(metadata.after_id || 0),final:'1'});
+                        const res = await fetch('prueba_telefonia/api/zadarma_estado_llamada.php?'+params,
+                            {credentials:'same-origin',cache:'no-store',signal:controller.signal});
+                        const data = await res.json();
+                        const start = Date.parse(data?.call?.start_time || '')/1000;
+                        ref = String(data?.call?.pbx_call_id || '');
+                        if (!res.ok || !data.ok || !/^out_[a-fA-F0-9]{32,64}$/.test(ref) || !Number.isFinite(start) ||
+                            start < Number(metadata.requested_at)-2 || start > Number(metadata.finished_at)+2 ||
+                            localStorage.getItem(key) !== String(metadata.call_token)) {
+                            throw Error('Todavía no se identifica esta llamada con certeza. Vuelve a comprobar.');
+                        }
+                        if (!vigente()) return;
+                        metadata.pbx_call_id = ref;
+                    }
+                    const params = new URLSearchParams({seguimiento_id:String(metadata.seguimiento_id),pbx_call_id:ref});
+                    const response = await fetch('prueba_telefonia/api/resultado_saliente_analista.php?'+params,
+                        {credentials:'same-origin',cache:'no-store',signal:controller.signal});
+                    const data = await response.json();
+                    if (!vigente()) return;
+                    if (!response.ok || !data.ok) throw Error(data.mensaje || 'No se pudo confirmar la llamada.');
+                    if (data.reglas?.pbx_call_id !== ref || !Array.isArray(data.reglas.opciones)) throw Error('La confirmación no corresponde a esta llamada.');
+                    captura.reglas = data.reglas; refInput.value = ref;
+                    const selector = form.querySelector('[name="resultado"]');
+                    if (data.reglas.opciones.includes('OCUPADO') && !selector.querySelector('option[value="OCUPADO"]')) {
+                        selector.add(new Option('Línea ocupada','OCUPADO'));
+                    }
+                    if (data.reglas.opciones.length === 1) selector.value = data.reglas.opciones[0];
+                    aplicarReglasResultado(form, captura);
+                    selector.dispatchEvent(new Event('change',{bubbles:true}));
+                    card.dataset.state = 'confirmed'; title.textContent = data.reglas.etiqueta; icon.textContent = '✓';
+                    retry.hidden = true;
+                    text.textContent = data.reglas.permite_verificar
+                        ? 'Selecciona lo ocurrido: conversación, buzón u otra respuesta.'
+                        : 'No se confirmó conversación. Registra el intento sin verificar datos.';
+                } catch (error) {
+                    if (!vigente()) return;
+                    card.dataset.state = 'error'; title.textContent = 'Confirmación pendiente'; icon.textContent = '!';
+                    retry.hidden = false;
+                    text.textContent = error.name === 'AbortError' ? 'La comprobación tardó demasiado. Vuelve a comprobar.' : error.message;
+                    if (++captura.intentos < 8) captura.timer = setTimeout(comprobar,2000);
+                } finally {
+                    clearTimeout(timeout); captura.consultando = false;
+                    if (vigente()) { retry.disabled = false; if (submit) submit.disabled = !captura.reglas; }
+                }
+            }
+            retry.onclick = comprobar;
+            void comprobar();
+        }
+        document.addEventListener('change', function (event) {
+            const form = event.target.closest?.('[data-work-interaction-form]');
+            const captura = form && reglasPorFormulario.get(form);
+            if (captura) aplicarReglasResultado(form,captura);
+        });
+        document.addEventListener('submit', function (event) {
+            const form = event.target, captura = reglasPorFormulario.get(form);
+            if (!captura || captura.cancelada) return;
+            const seleccion = form.querySelector('[name="resultado"]')?.value || '';
+            if (!captura.reglas || !captura.reglas.opciones.includes(seleccion)) {
+                event.preventDefault(); event.stopImmediatePropagation();
+                mostrarToast('Comprueba la llamada y selecciona un resultado compatible antes de guardar.',true);
+            } else captura.enviada = true;
+        },true);
+        for (const name of ['impe:interaction-exact-id-ready','impe:interaction-informative-saved']) {
+            document.addEventListener(name,function(event) {
+                const form = offcanvas.querySelector('[data-work-interaction-form]');
+                const captura = form && reglasPorFormulario.get(form);
+                if (!captura?.enviada || Number(event.detail?.seguimientoId) !== Number(captura.metadata.seguimiento_id)) return;
+                captura.cancelada = true; clearTimeout(captura.timer); reglasPorFormulario.delete(form);
+                for (const [option,disabled] of captura.originales) option.disabled = disabled;
+                form.querySelector('[data-call-result-rules]')?.remove();
+                form.querySelector('[name="llamada_pbx_id"]')?.remove();
+                const origen = form.querySelector('[name="origen_llamada"]');
+                if (origen?.value === 'ZADARMA') origen.value = 'MANUAL';
+            });
+        }
+        const fetchTechnical = async (url, options) => {
+            const abort = new AbortController();
+            const timeout = window.setTimeout(() => abort.abort(), 12000);
+            try { return await fetch(url, {...options, signal:abort.signal}); }
+            finally { window.clearTimeout(timeout); }
+        };
         const usuarioId =
             Number(window.IMPE_CURRENT_USER_ID || 0);
         const pendingLinkKey =
             'impe:zadarma:pending-link:' +
             String(usuarioId || 0);
+        const queueKey = pendingLinkKey + ':queue-v1';
+        const lastDialKey = pendingLinkKey + ':last-dial';
+        let queue = {};
+        const securedTokens = new Set();
+        try {
+            const closed = JSON.parse(sessionStorage.getItem('impe:analista:registro-obligatorio:' + usuarioId + ':closed') || '[]');
+            if (Array.isArray(closed)) closed.forEach(token => securedTokens.add(token));
+        } catch (_) {}
+        try { queue = JSON.parse(localStorage.getItem(queueKey) || '{}') || {}; }
+        catch (_) { /* No reemplazar una cola que no se pudo leer. */ }
+        const writeQueue = (token, job) => {
+            try {
+                const stored = JSON.parse(localStorage.getItem(queueKey) || '{}');
+                if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return false;
+                if (job) stored[token] = job;
+                else delete stored[token];
+                localStorage.setItem(queueKey, JSON.stringify(stored));
+                queue = stored; return true;
+            }
+            catch (_) { return false; }
+        };
+        const secureResult = (job, announce) => {
+            // El evento de guardado contiene el ID definitivo del backend.
+            // Persistir ANTES de liberar el panel; nunca afirmar un vínculo PBX.
+            queue[job.metadata.call_token] = job;
+            if (!writeQueue(job.metadata.call_token, job)) return false;
+            securedTokens.add(job.metadata.call_token);
+            document.dispatchEvent(new CustomEvent('impe:call-result-secured', {detail:{
+                seguimientoId:job.metadata.seguimiento_id, interaccionId:job.interactionId,
+                callToken:job.metadata.call_token
+            }}));
+            if (pendingMetadata?.call_token === job.metadata.call_token &&
+                pendingInteractionId === job.interactionId) {
+                pendingMetadata = null; pendingInteractionId = 0;
+                pendingInteractionFeedback = null; awaitingInteractionSave = false;
+                offcanvas.querySelector('[data-telephony-call-summary]')?.remove();
+            }
+            phone.clearFinished(job.metadata.call_token);
+            if (leerVinculoPendiente()?.callToken === job.metadata.call_token) limpiarVinculoPendiente();
+            if (announce) mostrarToast('Resultado guardado correctamente. La vinculación telefónica se comprobará por separado.', false);
+            return true;
+        };
 
         const guardarVinculoPendiente = function (
             seguimientoId,
@@ -68,11 +294,17 @@
                             Number(interaccionId),
                         callToken:
                             String(callToken || ''),
+                        metadata: pendingMetadata,
                         savedAt: Date.now()
                     })
                 );
             } catch (error) {
                 // El vínculo sigue disponible en memoria durante esta vista.
+            }
+            if (pendingMetadata && String(pendingMetadata.call_token || '') === String(callToken || '')) {
+                const known = Boolean(queue[callToken]);
+                secureResult({metadata:{...pendingMetadata}, interactionId:Number(interaccionId),
+                    feedback:pendingInteractionFeedback}, !known);
             }
         };
 
@@ -296,6 +528,9 @@
             if (!telephonyState) {
                 return;
             }
+            if (telephonyState.active && telephonyState.callToken) {
+                try { localStorage.setItem(lastDialKey, String(telephonyState.callToken)); } catch (_) {}
+            }
 
             extension =
                 String(
@@ -355,6 +590,7 @@
                             ?.call_token ||
                         ''
                     );
+                if (securedTokens.has(token) || queue[token]) return;
 
                 pendingMetadata =
                     Object.assign(
@@ -364,6 +600,9 @@
                         {
                             seguimiento_id:
                                 currentSeguimientoId,
+                            checkpoint_ready: telephonyState.checkpointReady === true,
+                            after_id: Number(telephonyState.afterEventId || 0),
+                            finished_at: Math.floor(Date.now() / 1000),
                             call_token: token
                         }
                     );
@@ -759,6 +998,7 @@
                         formulario,
                         metadata
                     );
+                    prepararResultadoConTelefonia(formulario, metadata);
                     document.dispatchEvent(new CustomEvent('impe:call-result-form-opened', {
                         detail:{form:formulario,ids:[metadata.pbx_call_id,metadata.call_token,lastFinishedToken].filter(Boolean)}
                     }));
@@ -806,9 +1046,12 @@
         };
 
         const vincularMetadata =
-            async function (attempt) {
+            async function (attempt, queuedJob) {
+                if (!queuedJob && !pendingMetadata) queuedJob = Object.values(queue).find(
+                    item => item && Number(item.interactionId) > 0 && item.metadata?.call_token &&
+                    Number(item.retryAt || 0) <= Date.now());
                 if (
-                    !pendingMetadata ||
+                    (!pendingMetadata && !queuedJob) ||
                     linkingMetadata
                 ) {
                     return;
@@ -817,11 +1060,13 @@
                 linkingMetadata = true;
 
                 const metadata =
-                    pendingMetadata;
+                    queuedJob ? queuedJob.metadata : {...pendingMetadata};
+                const interactionId = queuedJob ? queuedJob.interactionId : pendingInteractionId;
+                const job = queuedJob || {metadata, interactionId, feedback:pendingInteractionFeedback};
                 const formData =
                     new FormData();
 
-                if (pendingInteractionId <= 0) {
+                if (interactionId <= 0) {
                     linkingMetadata = false;
 
                     if (attempt < 24) {
@@ -845,7 +1090,7 @@
                 );
                 formData.set(
                     'interaccion_id',
-                    String(pendingInteractionId)
+                    String(interactionId)
                 );
                 formData.set(
                     'pbx_call_id',
@@ -892,8 +1137,36 @@
                 );
 
                 try {
+                    if (!metadata.pbx_call_id) {
+                        // Recuperar sólo eventos posteriores al checkpoint del marcado.
+                        // Nunca usar la llamada anterior al mismo número como sustituta.
+                        // El checkpoint no tiene cota superior: tras otro marcado podría
+                        // devolver una llamada posterior al mismo destino. No adivinar.
+                        if (!metadata.checkpoint_ready ||
+                            localStorage.getItem(lastDialKey) !== String(metadata.call_token) ||
+                            Date.now() / 1000 - Number(metadata.finished_at || 0) > 30) {
+                            throw new Error('Identificador telefónico pendiente. El resultado ya está guardado.');
+                        }
+                        const params = new URLSearchParams({destination:metadata.to || '',
+                            since:String(metadata.requested_at || 0), after_id:String(metadata.after_id || 0), final:'1'});
+                        const status = await fetchTechnical('prueba_telefonia/api/zadarma_estado_llamada.php?' + params,
+                            {credentials:'same-origin',cache:'no-store',headers:{'X-Requested-With':'fetch'}});
+                        const resolved = await status.json();
+                        const ref = resolved?.call?.pbx_call_id;
+                        const start = Date.parse(resolved?.call?.start_time || '') / 1000;
+                        if (!status.ok || !resolved.ok || !/^out_[a-fA-F0-9]{32,64}$/.test(ref || '') ||
+                            !Number.isFinite(start) || start < Number(metadata.requested_at) - 2 ||
+                            start > Number(metadata.finished_at) + 2 ||
+                            localStorage.getItem(lastDialKey) !== String(metadata.call_token)) {
+                            const pending = new Error('Identificador telefónico pendiente. El resultado ya está guardado.');
+                            pending.status = 409; throw pending;
+                        }
+                        metadata.pbx_call_id = ref;
+                        if (queue[metadata.call_token]) { queue[metadata.call_token].metadata = metadata; writeQueue(metadata.call_token, queue[metadata.call_token]); }
+                        formData.set('pbx_call_id', ref);
+                    }
                     const response =
-                        await fetch(
+                        await fetchTechnical(
                             vincularUrl,
                             {
                                 method: 'POST',
@@ -923,7 +1196,7 @@
                                 : 1000
                         );
                         void vincularMetadata(
-                            attempt + 1
+                            attempt + 1, job
                         );
                         return;
                     }
@@ -950,14 +1223,18 @@
                             ''
                         );
 
-                    pendingMetadata = null;
-                    pendingInteractionId = 0;
-                    awaitingInteractionSave =
-                        false;
-                    limpiarVinculoPendiente();
+                    const ownsForm = pendingMetadata?.call_token === token;
+                    securedTokens.add(token);
+                    delete queue[token]; writeQueue(token, null);
+                    if (pendingMetadata?.call_token === token) {
+                        pendingMetadata = null;
+                        pendingInteractionId = 0;
+                        awaitingInteractionSave = false;
+                    }
+                    if (leerVinculoPendiente()?.callToken === token) limpiarVinculoPendiente();
 
                     const feedback =
-                        pendingInteractionFeedback ||
+                        job.feedback ||
                         {};
                     let finalMessage =
                         'Llamada registrada · ' +
@@ -978,10 +1255,13 @@
                             true
                                 ? 'Verificación válida · esta institución ya fue contabilizada hoy. La llamada quedó guardada en el expediente.'
                                 : 'Llamada registrada y verificada · esta institución cuenta en la meta de hoy.';
+                    } else if (feedback.confirmacionParcial===true) {
+                        finalMessage='Llamada guardada con confirmación parcial. Para contar como efectiva faltan teléfono y correo confirmados en esta misma llamada.';
                     } else if (
                         feedback
                             .tieneEvidencia ===
                             true &&
+                        feedback.verificacionAplicable !== false &&
                         data.hubo_respuesta !==
                             true
                     ) {
@@ -990,7 +1270,7 @@
                     } else if (
                         feedback
                             .tieneEvidencia !==
-                            true
+                            true && feedback.verificacionAplicable === true
                     ) {
                         finalMessage =
                             'Llamada registrada · ' +
@@ -1002,13 +1282,13 @@
                             ' · no contabilizó como verificación porque no se confirmó ningún dato.';
                     }
 
-                    pendingInteractionFeedback =
-                        null;
+                    if (ownsForm) pendingInteractionFeedback = null;
                     phone.clearFinished(token);
                     // El resultado técnico fue vinculado: despejar sólo el
                     // resumen de ESTA llamada, sin modificar los selectores.
                     const form = offcanvas.querySelector('[data-work-interaction-form]');
-                    const notice = form?.querySelector('[data-telephony-call-summary]');
+                    const notice = Number(offcanvas.dataset.flowSeguimientoId) === Number(metadata.seguimiento_id)
+                        && ownsForm ? form?.querySelector('[data-telephony-call-summary]') : null;
                     if (notice) notice.remove();
                     void window.IMPE_CALL_DRAFTS?.remove(usuarioId,
                         [metadata.pbx_call_id,metadata.call_token,token].filter(Boolean),
@@ -1020,14 +1300,16 @@
 
                     const detail = {
                         seguimientoId:
-                            currentSeguimientoId,
+                            Number(metadata.seguimiento_id),
                         interaccionId:
                             Number(
                                 data
                                     .interaccion_id ||
                                 0
                             ),
-                        provider: 'ZADARMA'
+                        provider: 'ZADARMA',
+                        callToken: token,
+                        pbxCallId: String(metadata.pbx_call_id || '')
                     };
 
                     document.dispatchEvent(
@@ -1044,14 +1326,15 @@
                         linkingMetadata = false;
                         await sleep(1500);
                         void vincularMetadata(
-                            attempt + 1
+                            attempt + 1, job
                         );
                         return;
                     }
 
-                    awaitingInteractionSave =
-                        false;
-                    mostrarToast(
+                    if (queue[metadata.call_token]) {
+                        queue[metadata.call_token].retryAt = Date.now() + 60000;
+                        writeQueue(metadata.call_token, queue[metadata.call_token]);
+                    } else mostrarToast(
                         error.message ||
                         'La interacción se guardó, pero no fue posible vincular los datos técnicos de la llamada. El estado de la llamada se conserva para reintentar.',
                         true
@@ -1178,10 +1461,12 @@
                     );
 
                 pendingInteractionFeedback = {
+                    verificacionAplicable: formulario.dataset.verificacionAplicable !== 'false',
                     resultado: resultado,
                     resultadoLabel:
                         labels[resultado] ||
                         'Llamada registrada',
+                    confirmacionParcial: ['telefono','correo','contacto'].some(campo=>formulario.querySelector('[name="verificacion_'+campo+'_confirmado"]')?.checked) && !(formulario.querySelector('[name="verificacion_telefono_confirmado"]')?.checked && formulario.querySelector('[name="verificacion_correo_confirmado"]')?.checked),
                     tieneEvidencia:
                         evidence
                 };
@@ -1460,11 +1745,27 @@
                     pendingInteractionId > 0 &&
                     awaitingInteractionSave
                 ) {
+                    secureResult({metadata:{...pendingMetadata}, interactionId:pendingInteractionId,
+                        feedback:pendingInteractionFeedback}, false);
                     void vincularMetadata(0);
                 }
             },
             250
         );
+        // La interacción ya existe: reintentar sin formulario ni nuevo POST de alta.
+        const resumeQueue = () => {
+            if (linkingMetadata || phone.getState()?.active) return;
+            try { queue = JSON.parse(localStorage.getItem(queueKey) || '{}') || {}; } catch (_) { return; }
+            const job = Object.values(queue).find(item => item && Number(item.interactionId) > 0 &&
+                item.metadata?.call_token && Number(item.metadata.seguimiento_id) > 0 &&
+                Number(item.retryAt || 0) <= Date.now());
+            if (job) {
+                secureResult(job, false);
+                void vincularMetadata(0, job);
+            }
+        };
+        window.setTimeout(resumeQueue, 500);
+        window.setInterval(resumeQueue, 15000);
 
         const probe = function () {
             if (

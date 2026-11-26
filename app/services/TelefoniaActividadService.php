@@ -8,11 +8,9 @@ class TelefoniaActividadService
 {
     private $db;
 
-    public function __construct()
+    public function __construct(?mysqli $conexion = null)
     {
-        $database = new Database();
-        $this->db = $database->connect();
-        (new ZadarmaWebhookEventStoreService())->asegurarEstructura();
+        $this->db = $conexion ?? (new Database())->connect();
     }
 
     public function consultar(?string $extension = null, ?int $usuarioId = null): array
@@ -47,7 +45,7 @@ class TelefoniaActividadService
             // Nunca mezclar eventos antiguos de una extensión que pudo
             // pertenecer a Vinculación: mostrar solo llamadas atribuibles
             // al asesor mediante el registro de Inicio de Ventas.
-            (new TelefoniaMarcacionesVentasService())->asegurarEstructura();
+            new TelefoniaMarcacionesVentasService($this->db);
             $sql .= " AND EXISTS (
                 SELECT 1 FROM telefonia_ventas_marcaciones vm
                 WHERE vm.pbx_call_id = e.pbx_call_id
@@ -75,7 +73,7 @@ class TelefoniaActividadService
 
         $resultados = [];
         if ($usuarioId !== null && $usuarioId > 0 && $extension !== null) {
-            $resultados = (new TelefoniaResultadoVentasService())
+            $resultados = (new TelefoniaResultadoVentasService($this->db))
                 ->consultarExtension($usuarioId, $extension);
         }
         $etiquetasResultados = TelefoniaResultadoVentasService::opciones();

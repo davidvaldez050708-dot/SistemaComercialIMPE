@@ -23,7 +23,12 @@ final class TelefoniaProgramacionVentasService
                 r.pbx_call_id, r.extension
             FROM telefonia_ventas_resultados r JOIN telefonia_ventas_llamadas c ON c.usuario_id=r.usuario_id AND c.extension=BINARY r.extension AND c.pbx_call_id=BINARY r.pbx_call_id
             WHERE r.usuario_id=? AND r.proxima_accion_at IS NOT NULL AND r.recordatorio_atendido_at IS NULL ORDER BY fecha,id");
-        $s->bind_param('ii',$uid,$uid);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $rows;
+        $s->bind_param('ii',$uid,$uid);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        try {
+            require_once __DIR__.'/EmbudoComercialV3RecordatoriosService.php';
+            $rows=(new EmbudoComercialV3RecordatoriosService($this->db))->filtrarTelefonia($uid,$rows);
+        } catch(Throwable $e){error_log('[agenda_comercial_v3] '.get_class($e));}
+        return $rows;
     }
     public function completar(int $uid,string $source,int $id,string $date): void {
         (new TelefoniaVentasLlamadasService($this->db))->autorizar($uid);

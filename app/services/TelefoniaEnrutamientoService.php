@@ -45,7 +45,7 @@ final class TelefoniaEnrutamientoService
         if ($estadoId < 0) {
             throw new InvalidArgumentException('Estado inválido.');
         }
-        $asignacion = (new TelefoniaExtensionService())->resolverParaUsuario($actorId);
+        $asignacion = (new TelefoniaExtensionService($this->db))->resolverParaUsuario($actorId);
         if (!$asignacion || empty($asignacion['permite_transferir']) ||
             empty($asignacion['permite_entrantes'])) {
             return [];
@@ -143,6 +143,73 @@ final class TelefoniaEnrutamientoService
         return $res;
     }
 
+    public function destinosProspectoPorPrograma(array $destinos): array
+    {
+        $asesores = [];
+        $usuarios = [];
+        foreach ($destinos as $destino) {
+            $usuarioId = (int)$destino['usuario_id'];
+            $usuarios[$usuarioId] = true;
+            $clave = $usuarioId . ':' . $destino['extension'];
+            // Conservar un territorio autorizado para la validación de la transferencia.
+            $asesores[$clave] ??= $destino;
+        }
+        if (!$asesores) {
+            return [];
+        }
+
+        $programas = $this->programasDeAsesores(array_keys($usuarios));
+        foreach ($asesores as &$asesor) {
+            $asesor['programas'] = $programas[$asesor['usuario_id']] ?? [];
+        }
+        unset($asesor);
+
+        return array_values($asesores);
+    }
+
+    private function programasDeAsesores(array $usuarios): array
+    {
+        $ids = implode(',', $usuarios);
+        $consulta = static function (string $relacion, string $codigo) use ($ids): string {
+            return "SELECT c.usuario_id, p.codigo, p.nombre
+                    FROM prospecto_asesores_config c
+                    $relacion
+                    JOIN formulario_programas p ON p.codigo = $codigo AND p.activo = 1
+                    WHERE c.usuario_id IN ($ids)
+                    ORDER BY p.nombre, p.codigo";
+        };
+
+        try {
+            $filas = $this->db->query($consulta(
+                'LEFT JOIN prospecto_asesores_programas a ON a.usuario_id = c.usuario_id',
+                'COALESCE(a.programa_codigo, c.programa_codigo)'
+            ));
+        } catch (mysqli_sql_exception $error) {
+            if ((int)$error->getCode() !== 1146) {
+                error_log('[telefonia_programas_asesores] ' . $error->getCode());
+                return [];
+            }
+            // Compatibilidad con instalaciones que aún conservan un programa por asesor.
+            try {
+                $filas = $this->db->query($consulta('', 'c.programa_codigo'));
+            } catch (mysqli_sql_exception $error) {
+                if ((int)$error->getCode() !== 1146) {
+                    error_log('[telefonia_programas_asesores] ' . $error->getCode());
+                }
+                return [];
+            }
+        }
+
+        $programas = [];
+        foreach ($filas ?: [] as $fila) {
+            $programas[(int)$fila['usuario_id']][] = [
+                'codigo' => (string)$fila['codigo'],
+                'nombre' => (string)$fila['nombre'],
+            ];
+        }
+        return $programas;
+    }
+
     public function estados(): array
     {
         $r = $this->db->query(
@@ -165,7 +232,7 @@ final class TelefoniaEnrutamientoService
         $destinos = $this->destinos($actorId, $rol, $estadoId, 'INSTITUCION');
         $permitidos = [];
         foreach ($destinos as $d) {
-            $permitidos[(int)$d['estado_id'] . ':' . (int)$d['usuario_id']] = $d;
+            $permitidos[(int)$d['estado_id']][] = $d;
         }
         if (!$permitidos) return [];
         $q = '%' . mb_substr(trim($busqueda), 0, 80, 'UTF-8') . '%';
@@ -188,9 +255,7 @@ final class TelefoniaEnrutamientoService
         $stmt->close();
         $matches = [];
         foreach ($rows as $row) {
-            $key = (int)$row['estado_id'] . ':' . (int)$row['analista_id'];
-            if (!isset($permitidos[$key])) continue;
-            $responsable = $permitidos[$key];
+            foreach ($permitidos[(int)$row['estado_id']] ?? [] as $responsable) {
             $matches[] = [
                 'seguimiento_id' => (int)$row['id'],
                 'nombre' => (string)$row['nombre_entidad'],
@@ -200,7 +265,8 @@ final class TelefoniaEnrutamientoService
                 'responsable' => (string)$responsable['nombre'],
                 'extension' => (string)$responsable['extension']
             ];
-            if (count($matches) >= 20) break;
+            if (count($matches) >= 20) break 2;
+            }
         }
         return $matches;
     }
@@ -228,8 +294,7 @@ final class TelefoniaEnrutamientoService
         $destinos = $this->destinos($actorId, $rol, 0, 'INSTITUCION');
         $responsables = [];
         foreach ($destinos as $destino) {
-            $responsables[(int)$destino['estado_id'] . ':' .
-                (int)$destino['usuario_id']] = $destino;
+            $responsables[(int)$destino['estado_id']][] = $destino;
         }
         if (!$responsables) return [];
 
@@ -261,10 +326,7 @@ final class TelefoniaEnrutamientoService
         if (count($registros) >= 60) return [];
         $encontrados = [];
         foreach ($registros as $registro) {
-            $key = (int)$registro['estado_id'] . ':' .
-                (int)$registro['analista_id'];
-            if (!isset($responsables[$key])) continue;
-            $responsable = $responsables[$key];
+            foreach ($responsables[(int)$registro['estado_id']] ?? [] as $responsable) {
             $encontrados[] = [
                 'seguimiento_id' => (int)$registro['id'],
                 'nombre' => (string)$registro['nombre_entidad'],
@@ -274,6 +336,7 @@ final class TelefoniaEnrutamientoService
                 'responsable' => (string)$responsable['nombre'],
                 'extension' => (string)$responsable['extension']
             ];
+            }
         }
         return $encontrados;
     }

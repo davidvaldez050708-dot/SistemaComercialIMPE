@@ -18,10 +18,14 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             <div>
                 <span class="marketing-reception-eyebrow">TU RECEPCIÓN</span>
                 <h2>Recepción telefónica</h2>
-                <p>Consulta tus llamadas entrantes y salientes desde esta extensión, sin mezclar expedientes ni prospectos.</p>
             </div>
         </div>
         <div class="marketing-reception-actions">
+            <label class="marketing-reception-tab-preference" data-marketing-reception-auto-wrap hidden
+                title="Permite conectar la extensión automáticamente al iniciar sesión">
+                <input type="checkbox" data-marketing-reception-auto checked>
+                <span>Recepción automática</span>
+            </label>
             <label class="marketing-reception-tab-preference"
                 title="La pestaña telefónica debe permanecer abierta para recibir llamadas">
                 <input type="checkbox" data-marketing-reception-tab-mode>
@@ -41,14 +45,6 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
     </div>
     <div class="marketing-reception-details" id="marketingRecepcionHistorial"
         data-marketing-reception-details>
-    <p class="marketing-reception-browser-note" data-marketing-reception-browser-note hidden>
-        <i class="bi bi-info-circle" aria-hidden="true"></i>
-        <span>La conexión WebRTC permanece en una ventana pequeña. Puedes minimizarla,
-            pero no cerrarla mientras recibas llamadas.</span>
-    </p>
-    <div class="marketing-reception-explainer" data-marketing-reception-hint>
-        Estamos verificando la extensión telefónica asignada a tu usuario.
-    </div>
     <div class="marketing-reception-metrics" aria-label="Resumen telefónico de los últimos 30 días">
         <article class="marketing-reception-metric">
             <span class="marketing-reception-metric-icon"><i class="bi bi-telephone-inbound" aria-hidden="true"></i></span>
@@ -120,7 +116,6 @@ $recepcionMarketingPermitida = marketingTieneRecepcionAsignada();
             </button>
         </div>
 
-    <p class="marketing-reception-history-note">El estado lo confirma la centralita. El resultado lo registra recepción y queda definitivo al guardarlo.</p>
     <div class="table-responsive marketing-reception-table-scroll">
         <table class="table align-middle marketing-reception-table telephony-history-table">
             <thead>

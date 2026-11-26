@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 
@@ -11,7 +12,6 @@ class ZadarmaWebhookEventStoreService
         // Permite reutilizar la conexión del expediente en consultas del
         // historial; el resto de los consumidores sigue funcionando igual.
         $this->connection = $connection ?? (new Database())->connect();
-        $this->asegurarEstructura();
     }
 
     public function asegurarEstructura()
@@ -84,6 +84,9 @@ class ZadarmaWebhookEventStoreService
         }
 
         $internal = trim((string)($registro['internal'] ?? ''));
+        // En llamadas compartidas se conserva todo el evento para el Analista;
+        // sólo una exclusión global impide almacenar la referencia completa.
+        if (TelefoniaLimpiezaGuard::bloqueada($this->connection,$pbxCallId,'')) return true;
         $destination = trim((string)($registro['destination'] ?? ''));
         $destinationDigits = $this->soloDigitos($destination);
         $callerId = trim((string)($registro['caller_id'] ?? ''));
@@ -436,7 +439,10 @@ class ZadarmaWebhookEventStoreService
             if (
                 ($tipo === 'NOTIFY_END' || ($salienteTransferida && $tipo === 'NOTIFY_OUT_END')) &&
                 (
-                    ($salienteTransferida && $tipo === 'NOTIFY_OUT_END' && $internal === $origenTransferencia) ||
+                    // OUT_END del origen que llegó antes de ANSWER del receptor
+                    // cierra el tramo 100, NO una conversación futura del 150.
+                    ($salienteTransferida && $tipo === 'NOTIFY_OUT_END' &&
+                        $internal === $origenTransferencia && $respuesta !== null) ||
                     $internal === '' ||
                     $internal === $extension ||
                     $lastInternal === $extension

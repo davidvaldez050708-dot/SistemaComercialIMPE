@@ -111,7 +111,7 @@
 }
 .marketing-reception-metrics {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
     margin: 15px 0 19px;
 }
@@ -239,28 +239,6 @@
     color: #496583;
     font-size: 10px;
     font-weight: 750;
-}
-.marketing-reception-direction {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 8px;
-    border-radius: 8px;
-    font-size: 10px;
-    font-weight: 750;
-    white-space: nowrap;
-}
-.marketing-reception-direction.is-incoming {
-    color: #246282;
-    background: #edf5fb;
-}
-.marketing-reception-direction.is-outgoing {
-    color: #374b97;
-    background: #edf0ff;
-}
-.marketing-reception-metric-icon.is-outgoing {
-    color: #374b97;
-    background: #edf0ff;
 }
 .marketing-reception-status.is-answered {
     background: #edf9f3;
@@ -397,39 +375,21 @@
     white-space: nowrap;
 }
 
-
-/* Una acción general por registro, compacta y consistente con el CRM. */
-.marketing-reception-action-cell { white-space: nowrap; }
-.marketing-reception-call {
+.marketing-reception-number .marketing-reception-callback {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    min-height: 32px;
-    padding: 6px 12px;
-    border: 1px solid #d4def0;
-    border-radius: 9px;
-    background: #f5f7fe;
-    color: #263e86;
-    font: inherit;
-    font-size: 11px;
+    min-height: 28px;
+    padding: 4px 9px;
+    margin: 5px 0 0;
+    font-size: 10px;
     font-weight: 750;
-    line-height: 1.2;
     white-space: nowrap;
-    cursor: pointer;
 }
-.marketing-reception-call:hover:not(:disabled),
-.marketing-reception-call:focus-visible:not(:disabled) {
-    background: #eaf0ff;
-    border-color: #aebee5;
+.marketing-reception-number .marketing-reception-callback:disabled {
+    opacity: .55;
+    cursor: not-allowed;
 }
-.marketing-reception-call:disabled { opacity: .55; cursor: not-allowed; }
-.marketing-reception-record-check:not(.is-available) {
-    background: #f6f8fc;
-    border-color: #dbe4f0;
-    color: #516586;
-}
-
 .marketing-reception-callback-status {
     margin: 10px 0 8px;
     padding: 9px 11px;
@@ -445,7 +405,6 @@
     border-color: #f0d7d2;
     color: #a12c24;
 }
-
 
 /* Recepción como prioridad operativa: inmediatamente debajo de las tarjetas. */
 .metric-grid + .marketing-reception-panel {
@@ -527,7 +486,6 @@
     cursor: not-allowed;
 }
 
-
 /* Configuración opcional de conexión automática del perfil Marketing. */
 .marketing-reception-auto-preference {
     display: inline-flex;
@@ -547,6 +505,60 @@
 }
 .marketing-reception-auto-preference[hidden] {
     display: none !important;
+}
+
+/* Una acción general por registro, compacta y consistente con el CRM. */
+.marketing-reception-action-cell { white-space: nowrap; }
+.marketing-reception-call {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 32px;
+    padding: 6px 12px;
+    border: 1px solid #d4def0;
+    border-radius: 9px;
+    background: #f5f7fe;
+    color: #263e86;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 750;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.marketing-reception-call:hover:not(:disabled),
+.marketing-reception-call:focus-visible:not(:disabled) {
+    background: #eaf0ff;
+    border-color: #aebee5;
+}
+.marketing-reception-call:disabled { opacity: .55; cursor: not-allowed; }
+.marketing-reception-record-check:not(.is-available) {
+    background: #f6f8fc;
+    border-color: #dbe4f0;
+    color: #516586;
+}
+
+
+/* Historial único Marketing: entrantes y salientes */
+.marketing-reception-direction {
+ display: inline-flex; align-items: center; gap: 6px;
+ padding: 5px 8px; border-radius: 8px;
+ font-size: 10px; font-weight: 750; white-space: nowrap;
+}
+.marketing-reception-direction.is-incoming {
+ color: #246282; background: #edf5fb;
+}
+.marketing-reception-direction.is-outgoing {
+ color: #374b97; background: #edf0ff;
+}
+.marketing-reception-metric-icon.is-outgoing {
+ color: #374b97; background: #edf0ff;
+}
+@media (min-width: 1051px) {
+ .marketing-reception-metrics {
+   grid-template-columns: repeat(5, minmax(0, 1fr));
+ }
 }
 
 /* Recepción operativa: filtros en una fila propia, aislados del título. */

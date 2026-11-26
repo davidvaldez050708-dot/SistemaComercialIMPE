@@ -1,0 +1,131 @@
+/* Control de llamadas V2. Encapsulado: no modifica el motor telefónico ni otros módulos. */
+.telephony-control-center .telephony-control-filter-panel {
+  border: 1px solid var(--color-border, #dce5f2);
+  border-radius: 15px;
+  padding: 22px 24px 18px;
+  background: var(--color-surface, #fff);
+}
+.telephony-control-center .telephony-control-title-row {
+  align-items: center;
+  gap: 18px;
+}
+.telephony-control-center .telephony-control-title-row h2 {
+  font-size: 18px;
+  line-height: 1.35;
+  letter-spacing: -.02em;
+}
+.telephony-control-center .telephony-control-title-row p {
+  font-size: 12px;
+  line-height: 1.55;
+}
+.telephony-control-center .telephony-control-filters {
+  gap: 13px 14px;
+  margin-top: 20px;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  align-items: end;
+}
+.telephony-control-center .telephony-control-filters label {
+  min-width: 0;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 750;
+  color: #5b6c86;
+}
+.telephony-control-center .telephony-control-filters .form-control,
+.telephony-control-center .telephony-control-filters .form-select {
+  min-height: 46px;
+  border: 1px solid #d9e3f0;
+  border-radius: 10px;
+  background-color: #f8fafd;
+  font-size: 12px;
+  color: #263b63;
+  padding-inline: 13px;
+}
+.telephony-control-center .telephony-control-filters .form-control:focus,
+.telephony-control-center .telephony-control-filters .form-select:focus {
+  border-color: #334b94;
+  box-shadow: 0 0 0 3px rgba(46,70,145,.1);
+}
+.telephony-control-center .telephony-control-filter-actions {
+  grid-column: 1/-1;
+  min-height: 23px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 13px;
+}
+.telephony-control-center .telephony-control-clear.filter-clear-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 25px;
+  padding: 2px 0;
+  color: #008f75;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  border: 0;
+  background: none;
+}
+.telephony-control-center .telephony-control-clear.filter-clear-link:hover,
+.telephony-control-center .telephony-control-clear.filter-clear-link:focus-visible {
+  color: #086f62;
+  text-decoration: underline;
+}
+.telephony-control-center .telephony-control-clear.d-none { display:none !important; }
+.telephony-control-center .telephony-control-filter-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #61728d;
+  font-size: 11px;
+  font-weight: 700;
+}
+.telephony-control-center .telephony-control-filter-loading[hidden],
+.telephony-control-center .telephony-control-filter-message[hidden] {
+  display: none !important;
+}
+.telephony-control-center .telephony-control-filters.is-updating
+.form-control, .telephony-control-center .telephony-control-filters.is-updating .form-select {
+  opacity: .75;
+}
+.telephony-control-center .telephony-control-filter-message {
+  grid-column: 1/-1;
+  margin: 0;
+  padding: 10px 13px;
+  border: 1px solid #efc8c5;
+  background: #fff4f2;
+  border-radius: 10px;
+  color: #ad352e;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.telephony-control-center .telephony-control-help {
+  margin-top: 15px;
+  padding-top: 13px;
+  border-top: 1px solid #edf1f6;
+}
+.telephony-control-center .telephony-control-kpi {
+  border-radius: 14px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.telephony-control-center .telephony-control-kpi:hover {
+  border-color: #ccd9eb;
+  box-shadow: 0 9px 21px rgba(25,43,88,.055);
+}
+@media (max-width: 991px) {
+  .telephony-control-center .telephony-control-filters {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+}
+@media (max-width: 575px) {
+  .telephony-control-center .telephony-control-filter-panel { padding: 18px 15px; }
+  .telephony-control-center .telephony-control-title-row h2 { font-size: 16px; }
+  .telephony-control-center .telephony-control-filters {
+    grid-template-columns: minmax(0,1fr);
+    gap: 12px;
+  }
+  .telephony-control-center .telephony-control-filters .form-control,
+  .telephony-control-center .telephony-control-filters .form-select { min-height: 44px; }
+}

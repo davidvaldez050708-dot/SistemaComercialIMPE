@@ -147,9 +147,10 @@
                             </div>
                         </div>
                     </div>
-                    <div class="linkage-call-verification-box mt-3" data-incoming-referred hidden>
-                        <strong>Contacto proporcionado por la institución</strong>
-                        <p class="text-muted small">Estos datos se incorporarán al expediente. La persona referida puede ser distinta de quien atendió.</p>
+                    <div class="mt-3" data-incoming-referred hidden>
+                        <input type="hidden" name="actualizar_datos_llamada" value="1">
+                        <div class="mt-2"><label class="form-label" for="incomingInstitutionUpdate">Nombre institucional actualizado (opcional)</label><input id="incomingInstitutionUpdate" name="nombre_entidad_actualizado" maxlength="180" class="form-control"></div>
+                        <p class="text-muted small">Al guardar el resultado, la persona de contacto y los datos capturados se incorporarán a la ficha. Los campos vacíos conservan los datos actuales.</p>
                         <div class="row g-3">
                             <div class="col-12 col-md-6"><label class="form-label" for="incomingReferredName">Nombre del contacto</label>
                                 <input id="incomingReferredName" name="nuevo_contacto_nombre" maxlength="140" class="form-control"></div>

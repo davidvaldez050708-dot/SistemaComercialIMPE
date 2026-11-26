@@ -6,24 +6,7 @@ require_once __DIR__.'/../../config/db_connection.php';
 final class TelefoniaTransferenciaOperacionService
 {
     private mysqli $db;
-    private static ?WeakMap $ready=null;
-    public function __construct(?mysqli $db=null){$this->db=$db??(new Database())->connect();$this->estructura();}
-    private function estructura(): void {
-        self::$ready??=new WeakMap();if(isset(self::$ready[$this->db]))return;
-        $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_transferencia_operaciones (
-            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, origen_usuario INT NOT NULL,
-            origen_extension VARCHAR(12) NOT NULL, destino_usuario INT NOT NULL,
-            destino_extension VARCHAR(12) NOT NULL, referencia VARCHAR(100) NOT NULL,
-            numero VARCHAR(40) NOT NULL, modo VARCHAR(16) NOT NULL, estado VARCHAR(24) NOT NULL,
-            intento INT NOT NULL DEFAULT 1, evento_desde BIGINT NOT NULL DEFAULT 0,
-            sdk_consulta VARCHAR(100) NULL, destino_atendida DATETIME NULL,
-            destino_fin DATETIME NULL, entregada_at DATETIME NULL,
-            created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL,
-            UNIQUE KEY uk_tr_operacion (origen_usuario,referencia),
-            KEY idx_tr_destino (destino_usuario,estado,created_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-        self::$ready[$this->db]=true;
-    }
+    public function __construct(?mysqli $db=null){$this->db=$db??(new Database())->connect();}
     private function fila(string $sql,array $args=[]): ?array {
         $s=$this->db->prepare($sql);
         if($args)$s->bind_param(str_repeat('s',count($args)),...$args);
@@ -79,13 +62,47 @@ final class TelefoniaTransferenciaOperacionService
         $bound=$this->obtener($user,(int)$r['id']);
         return ($bound['sdk_consulta']??null)===$sdk?$bound:null;
     }
-    private function actualizar(array $r): array {
-        $this->db->begin_transaction();
-        try{
-        // Los sondeos no pueden sobrescribir una entrega confirmada en otra petición.
-        $r=$this->fila('SELECT * FROM telefonia_transferencia_operaciones WHERE id=? FOR UPDATE',[$r['id']])??$r;
-        $s=$this->db->prepare('SELECT evento,internal,disposition,duration,received_at,payload_json FROM telefonia_zadarma_eventos WHERE pbx_call_id=? AND id>? ORDER BY id');
-        $s->bind_param('si',$r['referencia'],$r['evento_desde']);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+    /** Vincular un INVITE al envío exacto sólo cuando la PBX acredita respuesta propia viva.
+     * No usa teléfono ni proximidad de fechas; una oferta aceptada sola no es evidencia. */
+    public function paraDestinoConfirmado(int $user,int $request,string $sdk): ?array {
+        if($request<=0||!preg_match('/^sdk-[a-z0-9-]{12,94}$/D',$sdk))return null;
+        $s=$this->db->prepare("SELECT o.*,d.ruta_json verified_route,
+           EXISTS(SELECT 1 FROM telefonia_zadarma_eventos a WHERE a.pbx_call_id=BINARY o.referencia AND a.internal=BINARY o.destino_extension AND a.evento='NOTIFY_ANSWER' AND a.id>o.evento_desde) AS answered,
+           EXISTS(SELECT 1 FROM telefonia_zadarma_eventos e
+            JOIN telefonia_zadarma_eventos a ON a.pbx_call_id=BINARY o.referencia
+                AND a.evento='NOTIFY_ANSWER' AND a.internal=BINARY o.destino_extension
+                AND a.id>o.evento_desde AND e.id>a.id
+            WHERE e.pbx_call_id=BINARY o.referencia
+              AND ((e.evento='NOTIFY_END' AND
+                  (e.internal=BINARY o.destino_extension OR
+                   (JSON_VALID(e.payload_json) AND JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal'))=BINARY o.destino_extension)))
+                OR (e.evento='NOTIFY_OUT_END' AND
+                  (e.internal=BINARY o.destino_extension OR
+                   (JSON_VALID(e.payload_json) AND JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal'))=BINARY o.destino_extension) OR
+                   (e.internal=BINARY o.origen_extension AND
+                    (NOT JSON_VALID(e.payload_json) OR
+                     COALESCE(JSON_UNQUOTE(JSON_EXTRACT(e.payload_json,'$.last_internal')),'') IN ('',o.origen_extension))))))) AS ended
+          FROM telefonia_transferencia_operaciones o
+          JOIN telefonia_disponibilidad d ON d.id=? AND d.destino_usuario=o.destino_usuario
+           AND d.origen_usuario=o.origen_usuario AND d.origen_extension=BINARY o.origen_extension AND d.destino_extension=BINARY o.destino_extension AND d.referencia=BINARY o.referencia
+          WHERE o.destino_usuario=? AND d.estado IN ('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR')
+           AND (o.sdk_consulta IS NULL OR o.sdk_consulta=?)
+           AND EXISTS(SELECT 1 FROM telefonia_extensiones t WHERE t.usuario_id=o.destino_usuario AND t.extension=BINARY o.destino_extension AND t.activo=1 AND t.permite_entrantes=1 AND t.proveedor='ZADARMA')
+           LIMIT 2");
+        $s->bind_param('iis',$request,$user,$sdk);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        if(count($rows)!==1)return null;$r=$rows[0];
+        $route=json_decode((string)$r['verified_route'],true)?:[];
+        if(($route['tipo']??'')!=='PROSPECTO'||(int)($route['responsable_id']??0)!==$user||(string)($route['extension']??'')!==$r['destino_extension']||(string)($route['referencia_llamada']??'')!==$r['referencia'])return null;
+        // Reservar la identidad SDK mientras la operación vive, sin devolver
+        // referencia ni acreditar respuesta. Permite conciliar el mismo SDK
+        // si ANSWER y END llegan juntos después del cierre local.
+        if($r['ended']&&$r['sdk_consulta']!==$sdk)return null;
+        $s=$this->db->prepare('UPDATE telefonia_transferencia_operaciones SET sdk_consulta=? WHERE id=? AND sdk_consulta IS NULL');
+        $s->bind_param('si',$sdk,$r['id']);$s->execute();$s->close();
+        if(!$r['answered'])return null;
+        $bound=$this->obtener($user,(int)$r['id']);return ($bound['sdk_consulta']??null)===$sdk?$bound:null;
+    }
+    private function evaluarEventos(array $r,array $events): array {
         $patch=[];$globalEnd=false;
         foreach($events as $e){
             $p=json_decode((string)$e['payload_json'],true)?:[];
@@ -115,6 +132,16 @@ final class TelefoniaTransferenciaOperacionService
             elseif(empty($r['destino_atendida']) && strtotime($r['created_at'].' UTC')<time()-120 && !in_array($r['estado'],['FALLIDA','DEVUELTA'],true))$patch=['estado'=>'SIN_CONFIRMAR'];
             elseif($ringing&&$r['estado']==='SOLICITADA')$patch=['estado'=>'TIMBRANDO'];
         }
+        return [$patch,$globalEnd];
+    }
+    private function actualizar(array $r): array {
+        $this->db->begin_transaction();
+        try{
+        // Los sondeos no pueden sobrescribir una entrega confirmada en otra petición.
+        $r=$this->fila('SELECT * FROM telefonia_transferencia_operaciones WHERE id=? FOR UPDATE',[$r['id']])??$r;
+        $s=$this->db->prepare('SELECT evento,internal,disposition,duration,received_at,payload_json FROM telefonia_zadarma_eventos WHERE pbx_call_id=? AND id>? ORDER BY id');
+        $s->bind_param('si',$r['referencia'],$r['evento_desde']);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        [$patch,$globalEnd]=$this->evaluarEventos($r,$events);
         if($patch){$this->guardar((int)$r['id'],$patch);$r=array_merge($r,$patch);}
         $r['llamada_finalizada']=$globalEnd;
         $this->db->commit();return $r;
@@ -147,6 +174,42 @@ final class TelefoniaTransferenciaOperacionService
         $s=$this->db->prepare('SELECT * FROM telefonia_transferencia_operaciones WHERE (origen_usuario=? OR destino_usuario=?) AND created_at>=? ORDER BY id DESC LIMIT 100');
         $since=gmdate('Y-m-d H:i:s',time()-30*86400);$s->bind_param('iis',$user,$user,$since);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
         return array_map(fn($r)=>$this->actualizar($r),$rows);
+    }
+    /** Lectura agrupada sólo para la campana; los cambios reales conservan el bloqueo de fila. */
+    public function delUsuarioParaAvisos(int $user): array {
+        $s=$this->db->prepare('SELECT * FROM telefonia_transferencia_operaciones WHERE (origen_usuario=? OR destino_usuario=?) AND created_at>=? ORDER BY id DESC LIMIT 100');
+        $since=gmdate('Y-m-d H:i:s',time()-30*86400);$s->bind_param('iis',$user,$user,$since);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        return $this->actualizarLoteParaAvisos($rows);
+    }
+    public function porIdsParaAvisos(int $user,array $ids): array {
+        $ids=array_values(array_unique(array_filter(array_map('intval',$ids),static fn($id)=>$id>0)));$result=[];
+        foreach(array_chunk($ids,100) as $lote){
+            $s=$this->db->prepare('SELECT * FROM telefonia_transferencia_operaciones WHERE (origen_usuario=? OR destino_usuario=?) AND id IN ('.implode(',',array_fill(0,count($lote),'?')).')');
+            $s->bind_param(str_repeat('i',2+count($lote)),$user,$user,...$lote);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+            foreach($this->actualizarLoteParaAvisos($rows) as $row)$result[(int)$row['id']]=$row;
+        }
+        return $result;
+    }
+    private function actualizarLoteParaAvisos(array $rows): array {
+        if(!$rows)return [];
+        $desde=[];
+        foreach($rows as $row){$ref=(string)$row['referencia'];$desde[$ref]=isset($desde[$ref])?min($desde[$ref],(int)$row['evento_desde']):(int)$row['evento_desde'];}
+        $conditions=[];$args=[];
+        foreach($desde as $ref=>$id){$conditions[]='(pbx_call_id=? AND id>?)';$args[]=(string)$ref;$args[]=$id;}
+        $s=$this->db->prepare('SELECT pbx_call_id,id,evento,internal,disposition,duration,received_at,payload_json FROM telefonia_zadarma_eventos WHERE '.implode(' OR ',$conditions).' ORDER BY id');
+        $s->bind_param(str_repeat('si',count($desde)),...$args);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        $porReferencia=[];
+        foreach($events as $event)$porReferencia[strtolower((string)$event['pbx_call_id'])][]=$event;
+        $result=[];
+        foreach($rows as $row){
+            $events=array_values(array_filter($porReferencia[strtolower((string)$row['referencia'])]??[],static fn($e)=>(int)$e['id']>(int)$row['evento_desde']));
+            [$patch,$globalEnd]=$this->evaluarEventos($row,$events);
+            $changed=false;foreach($patch as $key=>$value)if(($row[$key]??null)!==$value){$changed=true;break;}
+            if($changed)$row=$this->actualizar($row);
+            else $row['llamada_finalizada']=$globalEnd;
+            $result[]=$row;
+        }
+        return $result;
     }
     public function tramoDestino(int $user,string $ref,array $call): array {
         $r=$this->fila('SELECT numero,entregada_at FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND referencia=? AND entregada_at IS NOT NULL',[$user,$ref]);

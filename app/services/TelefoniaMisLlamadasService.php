@@ -77,13 +77,85 @@ final class TelefoniaMisLlamadasService
                 'numero' => (string)($call['numero'] ?? ''),
                 'fecha' => (string)($call['fecha'] ?? ''),
                 'segundos' => max(0, (int)($call['segundos'] ?? 0)),
-                'conectada' => !empty($call['contestada']),
+                // Contrato público de Recepción: contestada sólo existe durante
+                // la reducción de eventos y se elimina antes de devolver datos.
+                'conectada' => !empty($call['atendida']),
                 'resultado' => (string)($call['resultado_etiqueta'] ?? ''),
                 'estado_recepcion' => (string)($call['estado'] ?? ''),
                 'transferida' => (string)($call['estado'] ?? '') === 'Transferida'
             ];
         }
         return $filas;
+    }
+
+    /**
+     * Cruza la vista técnica con la bandeja propia ya autorizada del Analista.
+     * El PBX se identifica por referencia exacta y extensión; las observaciones
+     * SDK mantienen su origen distinto y nunca acreditan verificación efectiva.
+     */
+    public static function integrarAnalista(
+        array $pbx, array $operativas, int $usuarioId, string $extension,
+        string $desde, string $hasta, string $direccion = ''
+    ): array {
+        if ($usuarioId <= 0 || !preg_match('/^[0-9]{3,6}$/', $extension)) return $pbx;
+        $index = [];
+        foreach ($pbx as $i => $fila) {
+            if ((int)($fila['usuario_id'] ?? 0) !== $usuarioId ||
+                (string)($fila['extension'] ?? '') !== $extension) continue;
+            $id = (string)($fila['pbx_call_id'] ?? '');
+            if ($id !== '') $index[$id] = $i;
+        }
+        foreach ($operativas as $item) {
+            if (!is_array($item)) continue;
+            $id = (string)($item['pbx_call_id'] ?? '');
+            $fuente = (string)($item['fuente'] ?? '');
+            $sentido = (string)($item['tipo_llamada'] ?? '');
+            if ($id === '' || !preg_match('/^[a-zA-Z0-9_-]{3,100}$/D', $id) ||
+                !in_array($fuente, ['PBX', 'SDK_WEBRTC'], true) ||
+                !in_array($sentido, ['SALIENTE', 'ENTRANTE', 'INTERNA'], true)) continue;
+            $tipo = $sentido === 'SALIENTE' ? 'Saliente' : 'Entrante';
+            if ($direccion !== '' && $direccion !== $tipo) continue;
+            $fecha = (string)($item['fecha'] ?? '');
+            $dia = substr($fecha, 0, 10);
+            if ($dia < $desde || $dia > $hasta ||
+                !preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/D', $fecha)) continue;
+            $clasificacion = (string)($item['clasificacion'] ?? 'PENDIENTE');
+            if (!in_array($clasificacion, ['PENDIENTE','SIN_IDENTIFICAR','VINCULADA','INTERNA'], true))
+                $clasificacion = 'PENDIENTE';
+            $confirmada = $fuente === 'PBX' && !empty($item['pbx_conversacion_confirmada']);
+            if (isset($index[$id])) {
+                $i = $index[$id];
+                if ((string)($pbx[$i]['resultado'] ?? '') === '' &&
+                    $clasificacion !== 'PENDIENTE') {
+                    $pbx[$i]['resultado'] = $clasificacion === 'VINCULADA'
+                        ? 'REGISTRADA' : $clasificacion;
+                }
+                $pbx[$i]['detalle_operativo'] = true;
+                continue;
+            }
+            $pbx[] = [
+                'pbx_call_id'=>$id,
+                'fecha'=>$fecha,
+                'extension'=>$extension,
+                'usuario_id'=>$usuarioId,
+                'proceso'=>$fuente === 'PBX' ? 'Vinculación' : 'WebRTC observado',
+                'direccion'=>$tipo,
+                'numero'=>(string)($item['numero'] ?? ''),
+                'conectada'=>$confirmada,
+                'observada'=>$fuente === 'SDK_WEBRTC' && !empty($item['contestada']),
+                'efectiva'=>false,
+                'resultado'=>$clasificacion === 'VINCULADA' ? 'REGISTRADA' :
+                    ($clasificacion === 'PENDIENTE' ? '' : $clasificacion),
+                'segundos'=>max(0, (int)($item['duracion'] ?? 0)),
+                'fuente_operativa'=>$fuente,
+                'detalle_operativo'=>true
+            ];
+            $index[$id] = count($pbx) - 1;
+        }
+        usort($pbx, static function (array $a, array $b): int {
+            return strcmp((string)($b['fecha'] ?? ''), (string)($a['fecha'] ?? ''));
+        });
+        return $pbx;
     }
 
     private function consultarDevoluciones(int $usuarioId, string $desde, string $hasta): array
@@ -163,6 +235,23 @@ final class TelefoniaMisLlamadasService
             $rows = self::enriquecerDevoluciones($rows, $this->consultarDevoluciones(
                 $usuarioId, (string)$control['filtros']['desde'], (string)$control['filtros']['hasta']
             ), $usuarioId);
+            if (strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Analista de Datos') === 0) {
+                try {
+                    require_once __DIR__ . '/TelefoniaEntrantesAnalistaService.php';
+                    $bandeja = (new TelefoniaEntrantesAnalistaService())->listar($usuarioId);
+                    $rows = self::integrarAnalista(
+                        $rows, $bandeja['llamadas'] ?? [], $usuarioId,
+                        (string)($bandeja['extension'] ?? ''),
+                        (string)$control['filtros']['desde'],
+                        (string)$control['filtros']['hasta'],
+                        (string)($control['filtros']['direccion'] ?? '')
+                    );
+                } catch (Throwable $error) {
+                    // La bandeja operativa no debe impedir consultar PBX si
+                    // temporalmente falta un componente ajeno a esa lectura.
+                    error_log('[mis_llamadas_analista_operativas] '.get_class($error));
+                }
+            }
         }
         // Un identificador PBX puede tener varias extensiones: en esta vista,
         // cada fila es un tramo atribuido, no una nueva llamada externa.
@@ -179,7 +268,7 @@ final class TelefoniaMisLlamadasService
             'entrantes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Entrante')),
             'salientes' => count(array_filter($rows, static fn(array $r): bool => ($r['direccion'] ?? '') === 'Saliente')),
             'filtros' => $control['filtros'],
-            'limitacion' => 'Vista inicial de solo lectura: muestra tramos del intervalo consultado, con atribución verificada y paginación de 20 registros. No incluye devoluciones sin PBX confirmado ni registros ambiguos. Marketing conserva una ventana de 30 días; las grabaciones se consultan en sus módulos de origen.'
+            'limitacion' => 'Vista inicial de solo lectura: muestra tramos del intervalo consultado, con atribución verificada y paginación de 20 registros. No incluye devoluciones sin llamada confirmada ni registros ambiguos. Marketing conserva una ventana de 30 días; las grabaciones se consultan en sus módulos de origen.'
         ];
     }
 }

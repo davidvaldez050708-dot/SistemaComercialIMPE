@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/TelefoniaResultadoVentasService.php';
+require_once __DIR__ . '/ProspectoNoContactarV3.php';
 
 /**
  * Identidad de las llamadas que nacen en Inicio del Asesor de Ventas.
@@ -52,6 +53,9 @@ class TelefoniaMarcacionesVentasService
         }
         $extension = $this->extension($usuarioId);
         $destino = TelefoniaContactosService::normalizarTelefono($telefono);
+        // Bloquear antes de guardar el intento o iniciar Zadarma. No basta
+        // con esconder botones en Gestión Comercial: Inicio también marca.
+        ProspectoNoContactarV3::exigirPermitido($this->db,$destino);
         $stmt = $this->db->prepare(
             "INSERT INTO telefonia_ventas_marcaciones (usuario_id, extension, destino, token)
              VALUES (?, ?, ?, ?)"
@@ -97,9 +101,9 @@ class TelefoniaMarcacionesVentasService
         return new DateTimeZone(sprintf('%s%02d:%02d',$sign,intdiv($abs,3600),intdiv($abs%3600,60)));
     }
 
-    private function horaEventoDesdeMarcacion(string $mysqlDate): DateTimeImmutable
+    private function horaEventoDesdeMarcacion(string $mysqlDate, ?DateTimeZone $source=null): DateTimeImmutable
     {
-        $source=$this->zonaMySQL();
+        $source=$source??$this->zonaMySQL();
         $date=DateTimeImmutable::createFromFormat('!Y-m-d H:i:s',$mysqlDate,$source);
         if(!$date||$date->format('Y-m-d H:i:s')!==$mysqlDate)
             throw new DomainException('Fecha de marcación no válida.');
@@ -209,9 +213,24 @@ class TelefoniaMarcacionesVentasService
         );
         if (!$stmt) throw new RuntimeException('No se pudo vincular la llamada comercial.');
         $stmt->bind_param('ssis', $pbxCallId, $token, $usuarioId, $extension);
-        $stmt->execute();
-        $actualizadas = $stmt->affected_rows;
-        $stmt->close();
+        try {
+            $ok = $stmt->execute();
+            if (!$ok) {
+                if ($stmt->errno === 1062) {
+                    throw new DomainException('La llamada ya está vinculada a otra marcación. Se conserva su asociación original.');
+                }
+                throw new RuntimeException('No se pudo vincular la llamada comercial.');
+            }
+            $actualizadas = $stmt->affected_rows;
+        } catch (mysqli_sql_exception $e) {
+            // Un intento duplicado no debe interrumpir la conciliación de toda
+            // la cuenta. La restricción única mantiene intacta la asociación;
+            // reconciliarPendientes ya conserva las evidencias insuficientes.
+            if ((int)$e->getCode() !== 1062) throw $e;
+            throw new DomainException('La llamada ya está vinculada a otra marcación. Se conserva su asociación original.', 0, $e);
+        } finally {
+            $stmt->close();
+        }
         if ($actualizadas !== 1) {
             throw new DomainException('La llamada comercial no pudo vincularse.');
         }
@@ -245,16 +264,17 @@ class TelefoniaMarcacionesVentasService
 
         if(!$pendientes)return;
         // La ventana del webhook usa reloj de México; MySQL puede usar UTC.
-        $instantes=[];foreach($pendientes as $i)$instantes[]=$this->horaEventoDesdeMarcacion((string)$i['created_at'])->getTimestamp();
+        $zonaMarcaciones=$this->zonaMySQL();
+        $instantes=[];foreach($pendientes as $index=>$i)$instantes[$index]=$this->horaEventoDesdeMarcacion((string)$i['created_at'],$zonaMarcaciones)->getTimestamp();
         $from=(new DateTimeImmutable('@'.(min($instantes)-5)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
         $until=(new DateTimeImmutable('@'.(max($instantes)+30)))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('Y-m-d H:i:s');
         $eventos=$this->db->prepare("SELECT pbx_call_id,destination,MIN(received_at) fecha FROM telefonia_zadarma_eventos WHERE internal=? AND evento='NOTIFY_OUT_START' AND received_at BETWEEN ? AND ? GROUP BY pbx_call_id,destination");
         $eventos->bind_param('sss',$extension,$from,$until);$eventos->execute();$rs=$eventos->get_result();$byNumber=[];
         while($ev=$rs->fetch_assoc()){try{$number=TelefoniaContactosService::normalizarTelefono((string)$ev['destination']);$byNumber[$number][]=$ev;}catch(InvalidArgumentException $ignored){}}
         $eventos->close();$forward=[];$reverse=[];
-        foreach($pendientes as $intent){
+        foreach($pendientes as $index=>$intent){
             try{$number=TelefoniaContactosService::normalizarTelefono($intent['destino']);}catch(InvalidArgumentException $ignored){continue;}
-            $at=$this->horaEventoDesdeMarcacion((string)$intent['created_at'])->getTimestamp();
+            $at=$instantes[$index];
             foreach($byNumber[$number]??[] as $ev){$when=(new DateTimeImmutable((string)$ev['fecha'],new DateTimeZone('America/Mexico_City')))->getTimestamp();if($when<$at-5||$when>$at+30)continue;
                 $ref=(string)$ev['pbx_call_id'];$forward[$intent['token']][$ref]=true;$reverse[$ref][$intent['token']]=true;
             }

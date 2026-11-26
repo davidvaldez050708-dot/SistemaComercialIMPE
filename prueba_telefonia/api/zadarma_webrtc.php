@@ -83,9 +83,10 @@ if ($apiKey === '' || $apiSecret === '') {
 
 try {
     $asignacionTelefonica =
-        (new TelefoniaExtensionService())
+        (new TelefoniaExtensionService(Database::compartida()))
             ->resolverParaUsuario($usuarioId);
 } catch (Throwable $e) {
+    if (Database::responderFalloTemporal($e)) exit;
     responderJson([
         'ok' => false,
         'mensaje' => 'No fue posible consultar la extensión telefónica del usuario.'
@@ -95,6 +96,7 @@ try {
 if (!$asignacionTelefonica) {
     responderJson([
         'ok' => false,
+        'codigo' => 'EXTENSION_NO_ASIGNADA',
         'mensaje' => 'Tu usuario no tiene una extensión Zadarma activa asignada.'
     ], 422);
 }

@@ -7,6 +7,7 @@ $extension = (string)($panelTelefono['extension'] ?? '');
 $callerId = (string)($panelTelefono['caller_id'] ?? '');
 $historial = is_array($panelTelefono['historial'] ?? null) ? $panelTelefono['historial'] : [];
 $contactos = is_array($panelTelefono['contactos'] ?? null) ? $panelTelefono['contactos'] : [];
+$contactosNoCargados = !empty($panelTelefono['mensaje_contactos']);
 $urlActualizarMarcador = BASE_URL . (
     strtolower((string)($_GET['controller'] ?? '')) === 'home'
         ? 'index.php?controller=home&action=index'
@@ -16,6 +17,7 @@ $urlActualizarMarcador = BASE_URL . (
 <div class="telephony-dialer-page"
     data-telephony-dialer
     data-can-call="<?= $extension !== '' ? '1' : '0' ?>"
+    data-contacts-unavailable="<?= $contactosNoCargados ? '1' : '0' ?>"
     data-contact-add-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=guardarContacto') ?>"
     data-contact-delete-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=eliminarContacto') ?>"
     data-result-save-url="<?= $esc(BASE_URL . 'index.php?controller=telefonia&action=guardarResultadoVenta') ?>"
@@ -232,7 +234,7 @@ $urlActualizarMarcador = BASE_URL . (
           </table>
         </div>
         <p class="telephony-contacts-empty" data-telephony-contacts-empty
-            <?= !empty($contactos) ? 'hidden' : '' ?>>
+            <?= !empty($contactos) || $contactosNoCargados ? 'hidden' : '' ?>>
             Aún no has guardado prospectos en tu agenda. Agrega el primero arriba.
         </p>
         <p class="telephony-contacts-empty" data-telephony-contacts-no-results hidden>

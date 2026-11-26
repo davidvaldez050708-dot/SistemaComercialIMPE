@@ -88,6 +88,72 @@
         const note = qs('[data-dialer-context]');
         const restore = qs('[data-dialer-restore]');
         const transfer = qs('[data-dialer-transfer-panel]');
+        const dialog=qs('.impe-dialer-dialog'),heading=qs('.impe-dialer-heading');
+        let dialogPosition=null,dialogDrag=null,fitQueued=false;
+        function viewport() {
+            const width=Number(global.innerWidth)||0,height=Number(global.innerHeight)||0;
+            return {width:Math.min(width,global.visualViewport?.width||width),
+                height:Math.min(height,global.visualViewport?.height||height),
+                left:Math.max(0,Number(global.visualViewport?.offsetLeft)||0),
+                top:Math.max(0,Number(global.visualViewport?.offsetTop)||0)};
+        }
+        function placeDialog(left,top) {
+            dialogPosition={left:left,top:top};
+            dialog.style.left=left+'px';dialog.style.top=top+'px';
+            dialog.style.right='auto';dialog.style.bottom='auto';dialog.style.transform='none';
+        }
+        function fitDialog() {
+            if (!visible || wrap.hidden || !dialog?.getBoundingClientRect) return;
+            const view=viewport();if(!view.width || !view.height)return;
+            const gap=view.width<=575?8:14;
+            const limit=Math.max(1,view.height-gap*2)+'px';
+            if(dialog.style.maxHeight!==limit)dialog.style.maxHeight=limit;
+            const rect=dialog.getBoundingClientRect();
+            const left=dialogPosition?dialogPosition.left:rect.left;
+            const top=dialogPosition?dialogPosition.top:rect.top;
+            const x=Math.max(view.left+gap,Math.min(left,view.left+view.width-rect.width-gap));
+            const y=Math.max(view.top+gap,Math.min(top,view.top+view.height-rect.height-gap));
+            if(dialogPosition || x!==rect.left || y!==rect.top)placeDialog(x,y);
+        }
+        function queueFit() {
+            if(fitQueued)return;fitQueued=true;
+            const run=()=>{fitQueued=false;fitDialog();};
+            if(typeof global.requestAnimationFrame==='function')global.requestAnimationFrame(run);
+            else run();
+        }
+        function endDialogDrag(event) {
+            if(!dialogDrag || (event?.pointerId!==undefined && event.pointerId!==dialogDrag.id))return;
+            const id=dialogDrag.id;dialogDrag=null;wrap.classList.remove('is-dragging');
+            try{if(heading.hasPointerCapture?.(id))heading.releasePointerCapture(id);}catch(_){}
+        }
+        function resetDialogPosition() {
+            endDialogDrag();dialogPosition=null;
+            if(!dialog?.style)return;
+            ['left','top','right','bottom','transform'].forEach(name=>dialog.style.removeProperty(name));
+        }
+        heading?.setAttribute('title','Arrastra para mover el teléfono');
+        heading?.addEventListener('pointerdown',function(event){
+            if(!visible || wrap.hidden || event.button!==0 || event.isPrimary===false ||
+                event.target.closest?.('button,input,select,textarea,a,[contenteditable="true"]'))return;
+            fitDialog();const rect=dialog.getBoundingClientRect();
+            dialogDrag={id:event.pointerId,x:event.clientX-rect.left,y:event.clientY-rect.top};
+            placeDialog(rect.left,rect.top);wrap.classList.add('is-dragging');
+            try{heading.setPointerCapture(event.pointerId);}catch(_){}
+            event.preventDefault();
+        });
+        global.addEventListener?.('pointermove',function(event){
+            if(!dialogDrag || dialogDrag.id!==event.pointerId)return;
+            placeDialog(event.clientX-dialogDrag.x,event.clientY-dialogDrag.y);fitDialog();
+            event.preventDefault();
+        });
+        global.addEventListener?.('pointerup',endDialogDrag);
+        global.addEventListener?.('pointercancel',endDialogDrag);
+        heading?.addEventListener('lostpointercapture',endDialogDrag);
+        global.addEventListener?.('resize',queueFit);
+        global.visualViewport?.addEventListener('resize',queueFit);
+        if(typeof global.ResizeObserver==='function' && dialog){
+            new global.ResizeObserver(queueFit).observe(dialog);
+        }
         function phoneApi() {
             try { return typeof opt.getApi === 'function' ? opt.getApi() : null; }
             catch (error) { return null; }
@@ -130,6 +196,7 @@
             qs('[data-dialer-hangup]').disabled = !callState?.active;
             if (!active) transfer.hidden = true;
             if (finished && !visible) restore.hidden = true;
+            fitDialog();
         }
         function show() {
             wrap.hidden = false;
@@ -142,6 +209,7 @@
             else input.focus();
         }
         function handoffToCall() {
+            endDialogDrag();
             // El marcador sólo introduce números. El panel persistente único
             // del shell controla la llamada entrante o saliente.
             visible = false;
@@ -152,6 +220,7 @@
             previousFocus?.focus?.();
         }
         function hide() {
+            endDialogDrag();
             visible = false;
             wrap.classList.remove('is-open');
             wrap.classList.add('is-minimized');
@@ -211,6 +280,7 @@
                     'Comprueba el número y pulsa Llamar.';
             }
             previousFocus = document.activeElement;
+            if(!callState)resetDialogPosition();
             show();
             void checkCapability();
         }

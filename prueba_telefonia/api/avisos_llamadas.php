@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once dirname(__DIR__,2).'/app/helpers/PausaConsultasAutomaticas.php';
 session_start();
 date_default_timezone_set('America/Mexico_City');
 header('Content-Type: application/json; charset=utf-8');
@@ -48,6 +49,7 @@ try {
     }
     responderAvisos(['ok'=>true,'extension'=>$data['extension'],'llamadas'=>$calls]);
 }catch(Throwable $e){
+    if (Database::responderFalloTemporal($e)) exit;
     error_log('[avisos_llamadas] '.$e->getMessage());
     responderAvisos(['ok'=>false,'mensaje'=>'No se pudo actualizar el cierre de llamadas.'],500);
 }

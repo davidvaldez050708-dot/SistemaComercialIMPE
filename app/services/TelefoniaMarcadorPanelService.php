@@ -12,6 +12,7 @@ class TelefoniaMarcadorPanelService
     {
         $panel = [
             'extension' => '',
+            'estado_extension' => 'no_verificada',
             'caller_id' => '',
             'mensaje' => '',
             'mensaje_contactos' => '',
@@ -28,13 +29,15 @@ class TelefoniaMarcadorPanelService
         ];
 
         try {
-            $asignacion = (new TelefoniaExtensionService())->resolverParaUsuario($usuarioId);
+            $conexion = Database::compartida();
+            $asignacion = (new TelefoniaExtensionService($conexion))->resolverParaUsuario($usuarioId);
             if ($asignacion && !empty($asignacion['permite_salientes'])) {
+                $panel['estado_extension'] = 'asignada';
                 $panel['extension'] = (string)($asignacion['extension'] ?? '');
                 $panel['caller_id'] = (string)($asignacion['caller_id'] ?? '');
                 try {
                     require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
-                    $commercial=new TelefoniaVentasLlamadasService();
+                    $commercial=new TelefoniaVentasLlamadasService($conexion);
                     if($commercial->disponible()){
                         $calls=$commercial->listar($usuarioId);$h=$panel['historial'];
                         foreach($calls as $call){$h['atenciones']++;$h['contestadas']+=(int)$call['conectada'];
@@ -44,9 +47,9 @@ class TelefoniaMarcadorPanelService
                     }else{
                     // El historiador reconstruye la asociación cuando el
                     // webhook llegó después de cerrar el marcador.
-                    (new TelefoniaMarcacionesVentasService())
+                    (new TelefoniaMarcacionesVentasService($conexion))
                         ->reconciliarPendientes($usuarioId, $panel['extension']);
-                    $panel['historial'] = (new TelefoniaActividadService())
+                    $panel['historial'] = (new TelefoniaActividadService($conexion))
                         ->consultar($panel['extension'], $usuarioId);
                     }
                 } catch (Throwable $e) {
@@ -54,6 +57,7 @@ class TelefoniaMarcadorPanelService
                     $panel['mensaje'] = 'La extensión está disponible, pero el historial no se pudo consultar.';
                 }
             } else {
+                $panel['estado_extension'] = 'sin_asignar';
                 $panel['mensaje'] = 'El administrador debe asignarte una extensión activa con llamadas salientes.';
             }
         } catch (Throwable $e) {
@@ -62,7 +66,7 @@ class TelefoniaMarcadorPanelService
         }
 
         try {
-            $panel['contactos'] = (new TelefoniaContactosService())->listar($usuarioId);
+            $panel['contactos'] = (new TelefoniaContactosService(Database::compartida(), false))->listar($usuarioId);
         } catch (Throwable $e) {
             error_log('Teléfonos personales: ' . $e->getMessage());
             $panel['mensaje_contactos'] = 'No fue posible consultar los teléfonos guardados.';

@@ -1469,7 +1469,6 @@
     }
 }
 
-
 /* ======================================================================
    INFORMACIÓN TERRITORIAL · MODALES DE ACTUALIZACIÓN OFICIAL
    Reglas intencionalmente acotadas a los dos diálogos: corrigen la
@@ -1648,8 +1647,7 @@
     }
 }
 
-
-/* Telefonía · extensiones: limitar específicamente los dos diálogos.
+Telefonía · extensiones: limitar específicamente los dos diálogos.
    La regla compartida .admin-content .modal-dialog tiene mayor especificidad
    que el ancho original de telefonia.css y agrandaba los modales al 100%. */
 #modalTelefoniaExtension .modal-dialog.telephony-modal-dialog {

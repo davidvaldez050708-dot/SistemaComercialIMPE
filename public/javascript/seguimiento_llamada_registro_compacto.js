@@ -31,52 +31,6 @@
             }) || null;
         };
 
-        const obtenerResumenLlamada = function (formulario) {
-            const resumenTecnico = formulario?.querySelector('[data-telephony-call-summary]');
-            const texto = normalizarTexto(resumenTecnico?.textContent || '');
-            const segundos = Math.max(
-                0,
-                Number(resumenTecnico?.dataset.callDurationSeconds || 0)
-            );
-            const duracionTexto = texto.match(/\b\d{2}:\d{2}\b/)?.[0] || '';
-            const duracion = segundos > 0
-                ? String(Math.floor(segundos / 60)).padStart(2, '0') + ':' +
-                    String(segundos % 60).padStart(2, '0')
-                : duracionTexto;
-            let estadoGrabacion = String(
-                resumenTecnico?.dataset.callRecordingState || ''
-            ).trim();
-
-            if (estadoGrabacion === '') {
-                if (/grabaci[oó]n disponible/i.test(texto)) {
-                    estadoGrabacion = 'available';
-                } else if (/grabaci[oó]n.*proces/i.test(texto)) {
-                    estadoGrabacion = 'processing';
-                } else if (/sin grabaci[oó]n/i.test(texto)) {
-                    estadoGrabacion = 'none';
-                }
-            }
-
-            let titulo = 'Llamada finalizada';
-
-            if (duracion !== '') {
-                titulo += ' · ' + duracion;
-            }
-
-            if (estadoGrabacion === 'available') {
-                titulo += ' · Grabación disponible';
-            } else if (estadoGrabacion === 'processing') {
-                titulo += ' · Grabación procesándose';
-            } else if (estadoGrabacion === 'none' && texto !== '') {
-                titulo += ' · Sin grabación';
-            }
-
-            return {
-                titulo: titulo,
-                resumenTecnico: resumenTecnico
-            };
-        };
-
         const restaurarFormulario = function () {
             const formulario = obtenerFormulario();
 
@@ -100,35 +54,17 @@
                 return;
             }
 
-            const avisoObligatorio = formulario.querySelector('[data-call-registration-required-note]');
+            // Este módulo solo oculta información redundante.
+            // El aviso de registro obligatorio tiene un único responsable
+            // (seguimiento_llamada_registro_obligatorio.js): no cambiar su
+            // texto, icono ni contenido durante el sondeo telefónico.
             const avisoInformativo = formulario.querySelector('[data-work-informative-interaction-note]');
+            const resumenTecnico = formulario.querySelector('[data-telephony-call-summary]');
             const botonCancelar = buscarBotonCancelar(formulario);
-            const resumen = obtenerResumenLlamada(formulario);
 
             avisoInformativo?.classList.add(claseOculta);
-            resumen.resumenTecnico?.classList.add(claseOculta);
+            resumenTecnico?.classList.add(claseOculta);
             botonCancelar?.classList.add(claseOculta);
-
-            if (avisoObligatorio) {
-                const tituloActual = avisoObligatorio.querySelector('strong');
-                const textoActual = avisoObligatorio.querySelector('span');
-                const icono = avisoObligatorio.querySelector('i');
-
-                if (icono) {
-                    icono.className = 'bi bi-telephone-check';
-                }
-
-                if (tituloActual && tituloActual.textContent !== resumen.titulo) {
-                    tituloActual.textContent = resumen.titulo;
-                }
-
-                const subtitulo =
-                    'Selecciona el resultado y guarda la interacción para conservar esta llamada en el expediente.';
-
-                if (textoActual && textoActual.textContent !== subtitulo) {
-                    textoActual.textContent = subtitulo;
-                }
-            }
         };
 
         const programarAplicacion = function () {

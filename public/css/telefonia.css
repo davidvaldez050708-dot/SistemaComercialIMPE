@@ -206,7 +206,7 @@
     white-space: nowrap;
 }
 
-.telephony-user > div:last-child > span {
+.telephony-user span {
     display: block;
     max-width: 220px;
     margin-top: 2px;
@@ -969,8 +969,7 @@
     .telephony-control-day small { font-size: 7px; }
 }
 
-
-/* El selector heredado .telephony-user span modificaba el avatar sin foto,
+El selector heredado .telephony-user span modificaba el avatar sin foto,
    agregándole margen, truncado y line-height de los correos del listado. */
 .telephony-admin .telephony-user > .system-avatar.system-avatar-initials {
     display: inline-flex;

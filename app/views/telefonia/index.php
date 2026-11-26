@@ -19,7 +19,8 @@ $porcentaje = static function ($a, $b) {
 $baseTel = BASE_URL . 'index.php?controller=telefonia&action=';
 $hoy = date('Y-m-d');
 $etiquetasResultado = [
-    'CONVERSACION_PERSONA' => 'Hablé con una persona',
+    'CONVERSACION_PERSONA' => 'Se habló con el prospecto',
+    'REQUIERE_SEGUIMIENTO' => 'En seguimiento',
     'BUZON_VOZ' => 'Buzón de voz',
     'FUERA_HORARIO' => 'Fuera de horario',
     'FUERA_SERVICIO' => 'Fuera de servicio',
@@ -38,7 +39,9 @@ $etiquetasResultado = [
 ];
 ?>
 
+<link rel="stylesheet" href="<?= $esc(BASE_URL . 'public/css/telefonia_control_filtros_v2.css?v=20261027') ?>">
 <div class="telephony-admin telephony-control-center" data-telephony-control>
+    <?php if (!empty($puedeAdministrarExtensiones)): ?>
     <nav class="telephony-admin-tabs" aria-label="Secciones de Telefonía">
         <a href="<?= $esc($baseTel . 'index') ?>" class="is-active" aria-current="page">
             <i class="bi bi-bar-chart-line" aria-hidden="true"></i> Control de llamadas
@@ -47,6 +50,7 @@ $etiquetasResultado = [
             <i class="bi bi-diagram-3" aria-hidden="true"></i> Extensiones
         </a>
     </nav>
+    <?php endif; ?>
     <section class="dashboard-panel telephony-control-filter-panel">
         <div class="telephony-control-title-row">
             <div>
@@ -54,14 +58,17 @@ $etiquetasResultado = [
                 <h2>Actividad y desempeño del equipo</h2>
                 <p>Consulta las llamadas verificadas por Zadarma, el tiempo observado y las conversaciones registradas. Los indicadores se ajustan a los filtros.</p>
             </div>
+            <?php if (!empty($puedeAdministrarExtensiones)): ?>
             <a href="<?= $esc($baseTel . 'extensiones') ?>" class="btn btn-system-light telephony-control-config-link">
                 <i class="bi bi-sliders" aria-hidden="true"></i> Administrar extensiones
             </a>
+            <?php endif; ?>
         </div>
         <?php if (!empty($actividadTelefonicaError)): ?>
             <div class="alert alert-warning mb-2" role="alert"><?= $esc($actividadTelefonicaError) ?></div>
         <?php endif; ?>
-        <form action="<?= $esc(BASE_URL . 'index.php') ?>" method="get" class="telephony-control-filters">
+        <form action="<?= $esc(BASE_URL . 'index.php') ?>" method="get"
+            class="telephony-control-filters" data-control-auto-filters>
             <input type="hidden" name="controller" value="telefonia">
             <input type="hidden" name="action" value="index">
             <label>Desde
@@ -110,9 +117,22 @@ $etiquetasResultado = [
                 </select>
             </label>
             <div class="telephony-control-filter-actions">
-                <button type="submit" class="btn btn-system-primary"><i class="bi bi-funnel" aria-hidden="true"></i> Aplicar</button>
-                <a class="btn btn-system-light" href="<?= $esc($baseTel . 'index') ?>">Restablecer</a>
+                <a class="filter-clear-link telephony-control-clear <?= (
+                    !empty($_GET['desde']) || !empty($_GET['hasta']) ||
+                    !empty($_GET['rol']) || !empty($_GET['usuario_id']) ||
+                    !empty($_GET['direccion']) || !empty($_GET['orden'])
+                ) ? '' : 'd-none' ?>"
+                    href="<?= $esc($baseTel . 'index') ?>" data-control-clear>
+                    <i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar filtros
+                </a>
+                <span class="telephony-control-filter-loading" data-control-filter-loading
+                    role="status" aria-live="polite" hidden>
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    Actualizando resultados…
+                </span>
             </div>
+            <p class="telephony-control-filter-message" role="alert"
+                data-control-filter-message hidden></p>
         </form>
         <p class="telephony-control-help">
             <i class="bi bi-info-circle" aria-hidden="true"></i>
@@ -123,10 +143,11 @@ $etiquetasResultado = [
     <section class="telephony-control-kpi-grid" aria-label="Indicadores generales de telefonía">
         <?php
         $kpis = [
-            ['label'=>'Llamadas únicas', 'valor'=>$numero($stats['llamadas_unicas'] ?? 0), 'icon'=>'bi-telephone', 'help'=>'Identificadores distintos de llamadas en la PBX'],
+            ['label'=>'Llamadas únicas', 'valor'=>$numero($stats['llamadas_unicas'] ?? 0), 'icon'=>'bi-telephone', 'help'=>'Comunicaciones distintas registradas por el servicio telefónico'],
             ['label'=>'Atenciones', 'valor'=>$numero($stats['atenciones'] ?? 0), 'icon'=>'bi-telephone-outbound', 'help'=>'Registros por extensión, incluidas transferencias'],
-            ['label'=>'Conectadas (PBX)', 'valor'=>$numero($stats['conectadas'] ?? 0), 'icon'=>'bi-telephone-fill', 'help'=>'Una conexión puede ser buzón de voz'],
-            ['label'=>'Conversaciones verificadas', 'valor'=>$numero($stats['efectivas'] ?? 0), 'icon'=>'bi-person-check', 'help'=>'Resultados con contacto humano registrado en Ventas y Vinculación'],
+            ['label'=>'Conexión confirmada', 'valor'=>$numero($stats['conectadas'] ?? 0), 'icon'=>'bi-telephone-fill', 'help'=>'Una conexión puede ser buzón de voz'],
+            ['label'=>'Conversaciones verificadas', 'valor'=>$numero($stats['efectivas'] ?? 0), 'icon'=>'bi-person-check', 'help'=>'Conversaciones identificadas por resultados autorizados en Ventas y Vinculación'],
+            ['label'=>'En seguimiento · Ventas', 'valor'=>$numero($stats['en_seguimiento_ventas'] ?? 0), 'icon'=>'bi-calendar-check', 'help'=>'Atenciones de Ventas con resultado principal En seguimiento y próxima acción registrada'],
             ['label'=>'Tiempo observado', 'valor'=>$tiempo($stats['segundos'] ?? 0), 'icon'=>'bi-clock-history', 'help'=>'Duración acumulada por atención; no es facturación'],
             ['label'=>'Sin atribución', 'valor'=>$numero($stats['sin_atribucion'] ?? 0), 'icon'=>'bi-person-exclamation', 'help'=>'Sin evidencia suficiente para asignarlas a una persona']
         ];
@@ -216,7 +237,7 @@ $etiquetasResultado = [
         </div>
         <div class="table-responsive">
             <table class="table telephony-control-table align-middle mb-0">
-                <thead><tr><th>#</th><th>Usuario</th><th>Rol</th><th>Atenciones</th><th>Conectadas</th><th>Conversaciones</th><th>Salientes</th><th>Entrantes</th><th>Tiempo</th></tr></thead>
+                <thead><tr><th>#</th><th>Usuario</th><th>Rol</th><th>Atenciones</th><th>Conectadas</th><th>Conversaciones</th><th>En seguimiento · Ventas</th><th>Salientes</th><th>Entrantes</th><th>Tiempo</th></tr></thead>
                 <tbody>
                 <?php foreach (($stats['por_usuario'] ?? []) as $i => $user): ?>
                     <tr>
@@ -226,13 +247,14 @@ $etiquetasResultado = [
                         <td><?= $numero($user['atenciones']) ?></td>
                         <td><?= $numero($user['conectadas']) ?></td>
                         <td><?= $numero($user['efectivas']) ?></td>
+                        <td><?= $numero($user['en_seguimiento_ventas'] ?? 0) ?></td>
                         <td><?= $numero($user['salientes']) ?></td>
                         <td><?= $numero($user['entrantes']) ?></td>
                         <td class="telephony-control-time"><?= $esc($tiempo($user['segundos'])) ?></td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if (empty($stats['por_usuario'])): ?>
-                    <tr><td colspan="9" class="text-center text-muted py-4">No hay usuarios con llamadas atribuibles en este intervalo.</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-4">No hay usuarios con llamadas atribuibles en este intervalo.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
@@ -289,7 +311,7 @@ $etiquetasResultado = [
         </div>
         <div class="table-responsive">
             <table class="table telephony-control-table align-middle mb-0">
-                <thead><tr><th>Fecha</th><th>Usuario</th><th>Origen</th><th>Ext.</th><th>Dirección</th><th>Número</th><th>Estado PBX</th><th>Resultado</th><th>Duración</th></tr></thead>
+                <thead><tr><th>Fecha</th><th>Usuario</th><th>Origen</th><th>Ext.</th><th>Dirección</th><th>Número</th><th>Estado de la llamada</th><th>Resultado</th><th>Duración</th></tr></thead>
                 <tbody data-telephony-control-history-rows>
                 <?php foreach (($stats['historial'] ?? []) as $call): ?>
                     <tr data-telephony-control-history-row>
@@ -299,18 +321,22 @@ $etiquetasResultado = [
                         <td><?= $esc($call['extension']) ?></td>
                         <td><?= $esc($call['direccion']) ?></td>
                         <td><?= $esc($call['numero'] ?: 'No disponible') ?></td>
-                        <td><?= $call['conectada'] ? 'Conectada' : 'Sin conexión confirmada' ?></td>
+                        <td><?= $esc((string)($call['estado_pbx'] ?? ($call['conectada'] ? 'Conectada' : 'Sin conexión confirmada'))) ?></td>
                         <td>
                             <?php
                             $resultadoLlamada = (string)($call['resultado'] ?? '');
-                            $textoResultado = $call['efectiva']
+                            $textoResultado = $call['proceso']==='Ventas' && isset($etiquetasResultado[$resultadoLlamada])
+                                ? $etiquetasResultado[$resultadoLlamada]
+                                : ($call['efectiva']
                                 ? 'Conversación verificada'
                                 : ($resultadoLlamada !== ''
                                     ? ($etiquetasResultado[$resultadoLlamada] ??
                                         ucfirst(strtolower(str_replace('_', ' ', $resultadoLlamada))))
-                                    : ($call['proceso'] === 'Recepción'
-                                        ? ($call['conectada'] ? 'Atendida' : 'Sin respuesta confirmada')
-                                        : 'Sin clasificar'));
+                                    : ($call['proceso'] === 'Ventas'
+                                        ? (string)($call['resultado_estado'] ?? 'Sin clasificar')
+                                        : ($call['proceso'] === 'Recepción'
+                                            ? ($call['conectada'] ? 'Atendida' : 'Sin respuesta confirmada')
+                                            : 'Sin clasificar'))));
                             ?>
                             <?= $esc($textoResultado) ?>
                         </td>

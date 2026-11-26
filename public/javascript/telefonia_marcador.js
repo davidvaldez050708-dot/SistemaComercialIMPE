@@ -59,9 +59,13 @@
         let dialing = false;
         let saving = false;
         let checkingPhone = false;
+        let reintentoExtension = null;
+        let fallosExtension = 0;
         let extensionAssigned = root.dataset.canCall === '1';
+        let callStatusOwned = false;
 
-        function say(text, error) {
+        function say(text, error, fromCall = false) {
+            callStatusOwned = fromCall;
             callStatus.textContent = String(text || '');
             callStatus.classList.toggle('is-error', Boolean(error));
         }
@@ -77,8 +81,7 @@
                 throw new Error('Escribe un teléfono con dígitos y, si aplica, prefijo internacional.');
             }
 
-            let digits = raw.replace(/\D/g, '');
-            if (digits.length === 10) digits = '52' + digits;
+            let digits = window.IMPE_PHONE_NUMBERS.key(raw);
 
             if (!/^[1-9][0-9]{10,14}$/.test(digits)) {
                 throw new Error('Usa diez dígitos de México o un número internacional válido.');
@@ -142,7 +145,8 @@
             const canClassify = ownFinished && /^out_[a-fA-F0-9]{32,64}$/.test(pbxId);
             const pendingResult = canClassify && !classifiedCalls.has(pbxId);
 
-            callButton.disabled = !ready || dialing || active || ownFinished;
+            const resultRequired = ownFinished && (!canClassify || pendingResult || savingResult);
+            callButton.disabled = !ready || dialing || active || resultRequired;
             hangupButton.disabled = !active;
             const canMute = active && String(state.status || '') === 'in-progress';
             muteButton.disabled = !canMute;
@@ -157,17 +161,21 @@
                 !String(state.destination || numberInput.value || '').trim();
 
             if (active) {
-                say(muted ? 'Micrófono silenciado' : (state.message || 'Llamada en curso…'));
+                say(muted ? 'Micrófono silenciado' : (state.message || 'Llamada en curso…'), false, true);
             } else if (ownFinished) {
                 if (!canClassify) {
-                    say('La llamada aún no tiene identificador verificable. Actualiza el historial para clasificarla.');
+                    say('La llamada aún no tiene identificador verificable. Actualiza el historial para clasificarla.', false, true);
                 } else {
                     say(pendingResult
                         ? 'Registra el resultado de esta llamada para continuar.'
-                        : 'Resultado registrado. Puedes iniciar otra llamada y actualizar el historial.');
+                        : 'Resultado registrado. Puedes iniciar otra llamada y actualizar el historial.', false, true);
                 }
             } else if (phase === 'error') {
-                say(state.message || 'No fue posible realizar la llamada.', true);
+                say(state.message || 'No fue posible realizar la llamada.', true, true);
+            } else if (callStatusOwned) {
+                // Reposo invalida el mensaje de la llamada anterior. Conservar
+                // mensajes de entrada/validación que no provienen del teléfono.
+                say(ready ? 'Listo para marcar.' : '');
             }
         }
 
@@ -187,7 +195,7 @@
 
         root.querySelector('[data-telephony-dialer-form]').addEventListener(
             'submit',
-            function (event) {
+            async function (event) {
                 event.preventDefault();
                 if (dialing || !ready || !api) return;
 
@@ -209,39 +217,37 @@
 
                 dialing = true;
                 renderCall();
-                // Enviar el registro al servidor desde el mismo clic,
-                // SIN esperar el POST antes de abrir el host WebRTC.
-                const registrar = postContact(root.dataset.callStartUrl, {
-                    destino: destination,
-                    token: token
-                });
-                registrosInicio.set(token, registrar);
-                void registrar.catch(function (error) {
-                    say(
-                        'La llamada puede continuar, pero no pudo registrarse su origen en Ventas: ' +
-                            error.message,
-                        true
-                    );
-                });
-
-                void api.startCall({
-                    destination: destination,
-                    institution: '',
-                    context: {type: 'DIALER', venta_intento: token}
-                }).then(function () {
-                    say('Solicitud de llamada enviada. Esperando a Zadarma…');
-                }).catch(function (error) {
-                    say(error.message || 'No fue posible iniciar la llamada.', true);
-                }).finally(function () {
-                    dialing = false;
+                // Conservar la activación de audio del clic del usuario.
+                try {window.parent?.IMPE_TELEPHONY_SHELL?.unlockAudio?.();}catch(_){}
+                // IMPORTANTE: NO activar WebRTC hasta confirmar la aceptación
+                // de la marcación en el servidor. Su 409 protege NO_CONTACTAR
+                // y la ausencia de permiso. Si falla el POST, NO se llama.
+                try {
+                    const registrar=postContact(root.dataset.callStartUrl,{
+                        destino:destination,
+                        token:token
+                    });
+                    registrosInicio.set(token,registrar);
+                    await registrar;
+                    await api.startCall({
+                        destination: destination,
+                        institution: '',
+                        context: {type: 'DIALER', venta_intento: token}
+                    });
+                    say('Solicitud de llamada enviada. Esperando a Zadarma…', false, true);
+                } catch (error) {
+                    registrosInicio.delete(token);
+                    say(error?.message || 'No fue posible autorizar la llamada.', true);
+                } finally {
+                    dialing=false;
                     renderCall();
-                });
+                }
             }
         );
 
         hangupButton.addEventListener('click', function () {
             api?.hangup?.();
-            say('Finalizando llamada…');
+            say('Finalizando llamada…', false, true);
         });
 
         muteButton.addEventListener('click', function () {
@@ -286,7 +292,7 @@
             // Búsqueda y paginación se realizan localmente (máximo 150 registros).
             const all = Array.from(contactList.querySelectorAll('[data-telephony-contact-row]'));
             const query = normalizeContactSearch(contactSearch.value);
-            const digits = contactSearch.value.replace(/\D/g, '');
+            const digits = window.IMPE_PHONE_NUMBERS.key(contactSearch.value);
             const phoneQuery = digits !== '' && /^[+\d\s().-]+$/.test(contactSearch.value.trim());
             const matching = all.filter(function (row) {
                 if (!query) return true;
@@ -295,7 +301,7 @@
                 );
                 const phone = String(row.dataset.contactNumber || '');
                 return name.includes(query) || normalizeContactSearch(phone).includes(query) ||
-                    (phoneQuery && phone.replace(/\D/g, '').includes(digits));
+                    (phoneQuery && window.IMPE_PHONE_NUMBERS.key(phone).includes(digits));
             });
 
             matching.sort(function (a, b) {
@@ -313,11 +319,14 @@
                 row.hidden = !visible.has(row);
             });
 
-            contactEmpty.hidden = all.length > 0;
+            const contactosNoCargados = root.dataset.contactsUnavailable === '1';
+            contactEmpty.hidden = all.length > 0 || contactosNoCargados;
             contactNoResults.hidden = all.length === 0 || matching.length > 0;
             contactSearchClear.hidden = contactSearch.value === '';
 
-            if (all.length === 0) {
+            if (contactosNoCargados) {
+                contactCount.textContent = '';
+            } else if (all.length === 0) {
                 contactCount.textContent = '0 prospectos guardados';
             } else if (matching.length === 0) {
                 contactCount.textContent = '0 resultados de ' + all.length + ' contactos';
@@ -523,11 +532,23 @@
             if (!/^out_[a-fA-F0-9]{32,64}$/.test(pbxId) || !resultado) {
                 throw new Error('Selecciona un resultado válido de una llamada finalizada.');
             }
+            const classifiedState = api?.getState?.() || {};
+            const classifiedRef = String(classifiedState.finalMetadata?.pbx_call_id || classifiedState.pbxCallId || '');
+            const classifiedExtension = String(classifiedState.extension || '');
             const response = await postContact(root.dataset.resultSaveUrl, {
                 pbx_call_id: pbxId,
                 resultado: resultado
             });
             classifiedCalls.set(pbxId, resultado);
+            // Notificar el mismo diálogo sólo después del acuse del servidor.
+            // El shell conserva sus guardas de referencia, extensión y token.
+            if (classifiedRef === pbxId && /^[0-9]{3,6}$/.test(classifiedExtension)) {
+                try {
+                    if (window.parent !== window) window.parent.postMessage({
+                        type: 'IMPE_SALES_RESULT_SAVED', ref: pbxId, extension: classifiedExtension
+                    }, window.location.origin);
+                } catch (_) { /* El resultado guardado sigue disponible en el historial. */ }
+            }
             return response.registro || {};
         }
 
@@ -744,21 +765,33 @@
 
         function verifyExtension(forceRefresh) {
             if (!api || typeof api.probe !== 'function' || checkingPhone) return;
-            if (api?.getState?.()?.active) return;
+            if (api?.getState?.()?.active || document.hidden) return;
+            window.clearTimeout(reintentoExtension);
+            reintentoExtension = null;
             checkingPhone = true;
             void api.probe(Boolean(forceRefresh)).then(function (info) {
+                fallosExtension = 0;
                 applyExtension(info);
             }).catch(function (error) {
+                if (error.sinExtension) {
+                    fallosExtension = 0;
+                    applyExtension(null);
+                    return;
+                }
                 ready = false;
-                extensionAssigned = false;
                 root.dataset.canCall = '0';
-                if (salesStatus) salesStatus.textContent = 'Extensión pendiente';
-                if (salesCaption) salesCaption.textContent = 'Solicita la configuración al administrador';
-                if (identity) identity.textContent = 'Sin extensión asignada';
-                if (warning && !warning.hidden) {
-                    say('');
-                } else {
-                    say(error.message || 'No fue posible consultar la extensión.', true);
+                if (salesStatus && !extensionAssigned) salesStatus.textContent = 'Extensión por verificar';
+                if (identity && !extensionAssigned) identity.textContent = 'Extensión por verificar';
+                if (salesCaption) salesCaption.textContent = 'Esperando respuesta de telefonía';
+                if (warning) warning.hidden = true;
+                say(error.message || 'No fue posible consultar la extensión.', true);
+                if (!error.status || error.status >= 500 || error.status === 429) {
+                    const demora = Math.min(15000, 3000 * 2 ** fallosExtension);
+                    fallosExtension = Math.min(fallosExtension + 1, 3);
+                    reintentoExtension = window.setTimeout(function () {
+                        reintentoExtension = null;
+                        verifyExtension(true);
+                    }, demora + Math.floor(Math.random() * 300));
                 }
                 renderCall();
             }).finally(function () {

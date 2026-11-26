@@ -8,7 +8,7 @@
         const s = Math.floor(value);
         return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
     }
-    function create(host, endpoint, count) {
+    function create(host, endpoint, count, segments = []) {
         if (!host || !/^https?:\/\//.test(String(endpoint || '')) ||
             !Number.isInteger(count) || count < 1 || count > 8) return false;
         const list = [];
@@ -16,12 +16,15 @@
         for (let i = 0; i < count; i++) {
             const frame = document.createElement('div');
             frame.className = 'linkage-call-inline-player';
-            frame.style.marginBottom = '10px';
             const head = document.createElement('div');
             head.className = 'linkage-call-inline-player-heading';
             const title = document.createElement('span');
             title.textContent = count === 1 ? 'Grabación de la llamada' :
                 'Grabación de la llamada · parte ' + (i + 1) + ' de ' + count;
+            const info=Array.isArray(segments)?segments[i]:null;
+            if(info?.etiqueta)title.textContent+=' · '+String(info.etiqueta);
+            if(Number.isInteger(info?.tramo)&&info.tramo>0&&Number.isInteger(info?.segundos)&&info.segundos>=0)
+                title.textContent+=' · Tramo '+info.tramo+' · '+time(info.segundos);
             head.appendChild(title);
             const controls = document.createElement('div');
             controls.className = 'linkage-call-custom-player';
@@ -29,8 +32,9 @@
             audio.className = 'linkage-call-player-audio-source';
             audio.preload = 'none';
             const url = new URL(endpoint);
+            if(url.origin!==location.origin)return false;
             url.searchParams.delete('verificar');
-            url.searchParams.set('segmento', String(i));
+            url.searchParams.set('segmento', String(Number.isInteger(info?.indice)?info.indice:i));
             audio.src = url.toString();
             const play = document.createElement('button');
             play.type = 'button';
@@ -50,7 +54,8 @@
             progress.setAttribute('aria-label', 'Posición del audio');
             const duration = document.createElement('span');
             duration.className = 'linkage-call-player-time';
-            duration.textContent = '0:00';
+            const confirmedSeconds=Number.isInteger(info?.segundos)&&info.segundos>=0?info.segundos:null;
+            duration.textContent = confirmedSeconds===null?'—':time(confirmedSeconds);
             const mute = document.createElement('button');
             mute.type = 'button';
             mute.className = 'linkage-call-player-button linkage-call-player-volume';
@@ -81,9 +86,9 @@
             error.hidden = true;
             error.setAttribute('role', 'status');
             const refresh = () => {
-                const total = Number.isFinite(audio.duration) ? audio.duration : 0;
+                const total = Number.isFinite(audio.duration)&&audio.duration>0 ? audio.duration : confirmedSeconds;
                 elapsed.textContent = time(audio.currentTime);
-                duration.textContent = time(total);
+                duration.textContent = total===null?'—':time(total);
                 const pct = total > 0 ? Math.max(0, Math.min(100, audio.currentTime / total * 100)) : 0;
                 progress.value = String(pct);
                 progress.style.setProperty('--player-progress', pct + '%');
@@ -131,5 +136,10 @@
         host.replaceChildren(fragment);
         return true;
     }
-    global.IMPE_TELEPHONY_SEGMENTS = Object.freeze({create});
+    const message=(info,status)=>status===401?'Sesión vencida. Vuelve a iniciar sesión.':status===403?'Acceso no autorizado.':({
+        DISPONIBLE:'Grabación disponible',DISPONIBLE_PARCIAL:'Grabación disponible · otro tramo aún en preparación',
+        GRABACION_EN_PREPARACION:'Grabación en preparación. Vuelve a intentarlo.',SIN_GRABACION_REPORTADA:'Sin grabación reportada.',
+        TRAMO_PENDIENTE_VINCULACION:'Tramo pendiente de vinculación.',ERROR_TEMPORAL:'Error temporal del servicio Zadarma. Vuelve a intentarlo.'
+    }[info?.estado]||'No se pudo verificar la grabación. Vuelve a intentarlo.');
+    global.IMPE_TELEPHONY_SEGMENTS = Object.freeze({create,message});
 })(window);

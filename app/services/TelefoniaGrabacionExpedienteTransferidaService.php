@@ -9,6 +9,8 @@
  */
 declare(strict_types=1);
 require_once __DIR__.'/../helpers/ZadarmaPbxIdentifierHelper.php';
+require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
+require_once __DIR__.'/TelefoniaGrabacionesTransferenciaInstitucionService.php';
 
 class TelefoniaGrabacionExpedienteTransferidaService
 {
@@ -30,7 +32,13 @@ class TelefoniaGrabacionExpedienteTransferidaService
         if(in_array(strtoupper((string)$row['resultado']),['NO_CONTESTO','SIN_RESPUESTA','OCUPADO','BUZON_VOZ','FUERA_SERVICIO','NUMERO_INCORRECTO'],true)||
             preg_match('/\[(BUZON_VOZ|FUERA_SERVICIO)\]/',(string)$row['notas']))return $reply('SOLO_HISTORIAL','Este intento se conserva sin reproducción de audio.');
         $proveedor=strtoupper((string)$row['proveedor_externo']);$pbx=null;
-        if($proveedor==='ZADARMA_WEBRTC')$pbx=$this->buscar($usuarioId,$seguimientoId,$interaccionId);
+        if($proveedor==='ZADARMA_WEBRTC'){
+            // La interacción conserva WEBRTC-{session_id}. Preferir el vínculo
+            // exacto con la transferencia PBX confirmada, igual que Recibidas.
+            $pbx=$this->buscarTransferenciaExacta(
+                $usuarioId,$seguimientoId,$interaccionId,(string)$row['id_externo']);
+            if(!$pbx)$pbx=$this->buscar($usuarioId,$seguimientoId,$interaccionId);
+        }
         elseif($proveedor==='ZADARMA'){
             $pbx=(string)$row['id_externo'];
             // Una saliente ordinaria conserva su reproductor y autorización actuales.
@@ -44,36 +52,117 @@ class TelefoniaGrabacionExpedienteTransferidaService
         $q=$this->db->prepare("SELECT extension,GREATEST(created_at,updated_at) desde FROM telefonia_extensiones WHERE usuario_id=? AND proveedor='ZADARMA' AND activo=1 AND permite_entrantes=1 LIMIT 1");
         $q->bind_param('i',$usuarioId);$q->execute();$assignment=$q->get_result()->fetch_assoc();$q->close();
         if(!$assignment)return $reply('PARTICIPACION_PENDIENTE','Falta verificar la extensión que atendió esta llamada.');
-        $q=$this->db->prepare('SELECT evento,internal,received_at,call_id_with_rec,payload_json FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
+        $q=$this->db->prepare('SELECT evento,internal,received_at,call_id_with_rec,payload_json,is_recorded FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
         $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
-        $extension=(string)$assignment['extension'];$answer='';$end=false;$arrival=false;$ids=[];$transferSource='';
-        foreach($events as $e){
-            $payload=json_decode((string)($e['payload_json']??''),true)?:[];
-            if($e['evento']==='NOTIFY_INTERNAL'&&$e['internal']===$extension)$arrival=true;
-            if($e['evento']==='NOTIFY_ANSWER'&&$e['internal']===$extension && strcmp((string)$e['received_at'],(string)$assignment['desde'])>=0){
-                if($answer==='')$answer=(string)$e['received_at'];
-                $transferSource=(string)($payload['transfer_from']??'');
+        $extension=(string)$assignment['extension'];
+        // Excepción EXCLUSIVA: salida 100 -> Analista 101 acreditada y
+        // vinculada al mismo expediente. El END del 100 no acredita el fin
+        // del 101, pero tampoco debe ocultar los dos NOTIFY_RECORD firmados.
+        if(str_starts_with($pbx,'out_')){
+            $institucion=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
+            if($institucion->identidad($pbx,$usuarioId,$extension,$seguimientoId)){
+                try {
+                    $verified=$institucion->verificar($pbx,$usuarioId,$extension,$seguimientoId);
+                    if($verified['ids']){
+                        $r=$reply('REPORTADA',
+                            'Grabaciones reportadas para la transferencia institucional; disponibilidad al abrir.',
+                            $pbx,$verified['ids']);
+                        $r['tipo_audio']='INSTITUCION_SALIENTE';
+                        return $r;
+                    }
+                    return $reply('AUDIO_PENDIENTE','Aún no hay grabaciones reportadas para esta transferencia.');
+                }catch(DomainException $ignored){
+                    return $reply('PARTICIPACION_PENDIENTE',
+                        'Falta acreditar la respuesta de tu extensión en la transferencia.');
+                }
             }
         }
-        if(!$arrival&&$transferSource!==''&&$transferSource!==$extension){
-            foreach($events as $e)if($e['evento']==='NOTIFY_OUT_START'&&$e['internal']===$transferSource)$arrival=true;
-        }
-        if(!$arrival||$answer==='')return $reply('RESPUESTA_PENDIENTE','Falta el evento de respuesta de tu extensión; todavía no se habilita el audio.');
-        foreach($events as $e){
-            $payload=json_decode((string)($e['payload_json']??''),true)?:[];
-            if(in_array($e['evento'],['NOTIFY_END','NOTIFY_OUT_END'],true)&&strcmp((string)$e['received_at'],$answer)>=0 &&
-                ($e['internal']===$extension||$e['internal']===''||($payload['last_internal']??'')===$extension))$end=true;
-            if($e['evento']==='NOTIFY_RECORD'){
-                $id=trim((string)($e['call_id_with_rec']??''));
-                if($id==='')continue;
-                if(!ZadarmaPbxIdentifierHelper::callIdValido($id))return $reply('AUDIO_PENDIENTE','La centralita aún no entrega una referencia de audio válida.');
-                if(!in_array($id,$ids,true))$ids[]=$id;
-            }
-        }
+        $proof=TelefoniaPbxSegmentosService::transferencia($events,$extension);
+        $arrival=(bool)array_filter($events,static fn($e)=>$e['evento']==='NOTIFY_INTERNAL'&&$e['internal']===$extension);
+        if((!$arrival&&$proof['origen']==='')||!$proof['atendida']||$proof['answer_at']<(string)$assignment['desde'])
+            return $reply('RESPUESTA_PENDIENTE','Falta el evento de respuesta de tu extensión; todavía no se habilita el audio.');
+        $end=$proof['finalizada'];
+        $ids=TelefoniaPbxSegmentosService::deEventos($events,$extension,$proof['origen']!==''?[$proof['origen']]:[])['segmentos'];
         if(!$end)return $reply('CIERRE_PENDIENTE','Falta confirmar el cierre de la llamada en tu extensión.');
         if(!$ids)return $reply('AUDIO_PENDIENTE','La centralita aún no ha confirmado el archivo de audio de esta llamada.');
         if(count($ids)>8)return $reply('AUDIO_PENDIENTE','La grabación requiere revisar sus segmentos antes de reproducirla.');
         return $reply('REPORTADA','Audio reportado por la centralita; su disponibilidad se comprueba al abrirlo.',$pbx,$ids);
+    }
+
+    /**
+     * Une la interacción existente con la misma sesión RTCSession utilizada
+     * durante la entrega, y de allí a la referencia de transferencia PBX.
+     * No utiliza teléfono, fechas, ni un PBX proporcionado por el navegador.
+     */
+    public function buscarTransferenciaExacta(int $usuarioId,int $seguimientoId,
+                                               int $interaccionId,string $externo): ?string
+    {
+        $session=self::sessionIdExterno($externo);
+        if($session===null)return null;
+        $audios=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
+        // Si el registro PBX ya conservó la interacción exacta, no exigir
+        // también una sesión WebRTC "ended" para habilitar sus dos tramos.
+        $q=$this->db->prepare("SELECT pbx_call_id,extension
+            FROM telefonia_analista_entrantes
+            WHERE usuario_id=? AND seguimiento_id=? AND interaccion_id=?
+              AND pbx_call_id LIKE 'out_%'
+            LIMIT 2");
+        $q->bind_param('iii',$usuarioId,$seguimientoId,$interaccionId);
+        $q->execute();$directas=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
+        if(count($directas)>1)return null;
+        if(count($directas)===1){
+            $pbxDirecto=(string)$directas[0]['pbx_call_id'];
+            try{
+                $ok=$audios->verificar($pbxDirecto,$usuarioId,
+                    (string)$directas[0]['extension'],$seguimientoId);
+                if($ok['ids'])return $pbxDirecto;
+            }catch(DomainException $ignored){ /* sin privilegio PBX */ }
+        }
+        $stmt=$this->db->prepare("SELECT session_id,extension
+            FROM telefonia_analista_webrtc_sesiones
+            WHERE usuario_id=? AND seguimiento_id=? AND interaccion_id=?
+              AND session_id=BINARY ? AND clasificacion='VINCULADA'
+              AND fecha_atendida IS NOT NULL
+            LIMIT 2");
+        $stmt->bind_param('iiis',$usuarioId,$seguimientoId,$interaccionId,$session);
+        $stmt->execute();$sesiones=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
+        if(count($sesiones)!==1)return null;
+        $extension=(string)$sesiones[0]['extension'];
+        if(!preg_match('/^[0-9]{3,6}$/D',$extension))return null;
+        $stmt=$this->db->prepare("SELECT referencia,sdk_consulta
+            FROM telefonia_transferencia_operaciones
+            WHERE destino_usuario=? AND destino_extension=BINARY ?
+              AND sdk_consulta IS NOT NULL
+              AND (sdk_consulta=BINARY ? OR CONCAT(sdk_consulta,'-external')=BINARY ?)
+            LIMIT 3");
+        $stmt->bind_param('isss',$usuarioId,$extension,$session,$session);
+        $stmt->execute();$rows=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
+        if(count($rows)!==1||
+            !self::sdkDeTransferenciaCoincide((string)$rows[0]['sdk_consulta'],$session))return null;
+        $pbx=(string)$rows[0]['referencia'];
+        if(!preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$pbx))return null;
+        try {
+            $verified=$audios->verificar($pbx,$usuarioId,$extension,$seguimientoId);
+            return $verified['ids']?$pbx:null;
+        } catch (DomainException $ignored) {
+            return null;
+        }
+    }
+
+    /** Nunca aceptar coincidencia por prefijo ni por proximidad temporal. */
+    public static function sdkDeTransferenciaCoincide(string $sdkConsulta,string $sesion): bool
+    {
+        return $sdkConsulta!=='' &&
+            ($sdkConsulta===$sesion || $sdkConsulta.'-external'===$sesion);
+    }
+
+    /** El prefijo de interacción WebRTC no debe confundirse con el PBX. */
+    public static function sessionIdExterno(string $externo): ?string
+    {
+        if(!str_starts_with($externo,'WEBRTC-'))return null;
+        $id=substr($externo,7);
+        // Misma convención usada al registrar la sesión telefónica.
+        return preg_match('/^sdk-[a-z0-9-]{12,94}$/D',$id) ? $id : null;
     }
 
     public static function numero10(string $numero): string
@@ -138,10 +227,33 @@ class TelefoniaGrabacionExpedienteTransferidaService
         // Vincular únicamente transferencias asociadas por Recepción al MISMO
         // expediente y a la MISMA extensión del analista, nunca estadísticas
         // buscadas por un teléfono aislado.
+        // Producción mezcla collations de las tablas históricas de contextos
+        // y disponibilidad (MySQL 1271 al construir UNION ALL).
+        // Normalizar SOLO las columnas textuales de las proyecciones,
+        // nunca las tablas ni su contenido; mismo tipo/collation en cada rama.
+        $utf8=static fn(string $field):string=>
+            "CONVERT($field USING utf8mb4) COLLATE utf8mb4_general_ci";
         $fuentes=[];
         foreach(['telefonia_transferencia_contextos_v2'=>'referencia_llamada','telefonia_transferencia_contextos'=>'pbx_call_id'] as $nombre=>$campo){
             $existe=$this->db->query("SHOW TABLES LIKE '$nombre'");
-            if($existe&&$existe->num_rows>0)$fuentes[]="SELECT $campo AS pbx_call_id,destino_usuario_id,destino_extension,seguimiento_id,telefono10,created_at FROM $nombre";
+            if($existe&&$existe->num_rows>0){
+                $fuentes[]="SELECT ".$utf8($campo)." AS pbx_call_id,
+                    destino_usuario_id,".$utf8('destino_extension')." AS destino_extension,
+                    seguimiento_id,".$utf8('telefono10')." AS telefono10,created_at FROM $nombre";
+            }
+        }
+        if($this->db->query("SHOW TABLES LIKE 'telefonia_disponibilidad'")->num_rows){
+            $fuentes[]="SELECT ".$utf8('d.referencia')." AS pbx_call_id,
+                d.destino_usuario AS destino_usuario_id,
+                ".$utf8('d.destino_extension')." AS destino_extension,
+                CAST(JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.seguimiento_id')) AS UNSIGNED) AS seguimiento_id,
+                ".$utf8("RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(d.numero,'+',''),' ',''),'-',''),'(',''),')',''),10)")." AS telefono10,d.created_at
+                FROM telefonia_disponibilidad d
+                WHERE JSON_VALID(d.ruta_json) AND d.estado IN('ENVIANDO','ENVIADA','TRANSFERIDA','SIN_CONFIRMAR','SIN_RESPUESTA')
+                  AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.tipo'))='INSTITUCION'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.referencia_llamada'))=BINARY d.referencia
+                  AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.responsable_id'))=CAST(d.destino_usuario AS CHAR)
+                  AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(d.ruta_json),d.ruta_json,'{}'),'$.extension'))=BINARY d.destino_extension";
         }
         $tieneTablaContextos=count($fuentes)>0;
         $tabla='('.implode(' UNION ALL ',$fuentes).') AS contextos_verificados';
@@ -162,84 +274,26 @@ class TelefoniaGrabacionExpedienteTransferidaService
             $stmt->close();
         }
 
-        // En una transferencia hecha desde el teléfono de Recepción (100),
-        // Zadarma puede confirmar ambos tramos sin que el contexto opcional
-        // del modal llegue a persistirse. Sólo en ese caso buscar grupos PBX
-        // firmados en un intervalo acotado; nunca inferir audio por duración.
-        if (count($transferencias) === 0) {
-            $stmt = $this->db->prepare(
-                "SELECT pbx_call_id, caller_id, received_at
-                   FROM telefonia_zadarma_eventos
-                  WHERE evento = 'NOTIFY_INTERNAL' AND internal = '100'
-                    AND received_at >= DATE_SUB(NOW(), INTERVAL 2 DAY)
-                  ORDER BY id DESC LIMIT 150"
-            );
-            $stmt->execute();
-            $iniciosRecepcion = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-            // Evitar declarar unicidad si la ventana se truncó por LIMIT.
-            if (count($iniciosRecepcion) >= 150) return null;
-            $vistos = [];
-            foreach ($iniciosRecepcion as $inicioRecepcion) {
-                $pbx = trim((string)($inicioRecepcion['pbx_call_id'] ?? ''));
-                if (!preg_match('/^[A-Za-z0-9_-]{6,100}$/D', $pbx) ||
-                    isset($vistos[$pbx]) ||
-                    self::numero10((string)($inicioRecepcion['caller_id'] ?? '')) !== $numero10) {
-                    continue;
-                }
-                $vistos[$pbx] = true;
-                // El inicio con Tania precede a la sesión observada por Diego.
-                $delta = self::distanciaSegundos(
-                    $inicioUtc, (string)($inicioRecepcion['received_at'] ?? '')
-                );
-                if ($delta === null || $delta > 180) continue;
-
-                // Si ya hay un contexto institucional para el PBX, debe
-                // corresponder exactamente a este expediente/analista.
-                // Nunca utilizar la búsqueda alternativa para eludirlo.
-                if ($tieneTablaContextos) {
-                    $ctx = $this->db->prepare(
-                        "SELECT destino_usuario_id, destino_extension, seguimiento_id
-                           FROM $tabla
-                          WHERE $campoPbx = ? LIMIT 2"
-                    );
-                    $ctx->bind_param('s', $pbx);
-                    $ctx->execute();
-                    $contextosPbx = $ctx->get_result()->fetch_all(MYSQLI_ASSOC);
-                    $ctx->close();
-                    if (count($contextosPbx) > 1) return null;
-                } else {
-                    $contextosPbx = [];
-                }
-                if ($contextosPbx) {
-                    $registrado = $contextosPbx[0];
-                    if ((int)$registrado['destino_usuario_id'] !== $usuarioId ||
-                        (string)$registrado['destino_extension'] !== $extension ||
-                        (int)$registrado['seguimiento_id'] !== $seguimientoId) {
-                        continue;
-                    }
-                }
-                $transferencias[] = ['pbx_call_id' => $pbx];
-            }
-        }
+        // Sin contexto institucional verificable no adivinar por numero/hora.
+        if (count($transferencias) === 0) return null;
 
         $candidatas = [];
         foreach ($transferencias as $contexto) {
             $pbx = trim((string)$contexto['pbx_call_id']);
             if (!preg_match('/^[A-Za-z0-9_-]{6,100}$/D', $pbx)) continue;
             if($tieneTablaContextos){
-                $q=$this->db->prepare("SELECT destino_usuario_id,destino_extension,seguimiento_id FROM $tabla WHERE pbx_call_id=? LIMIT 2");
+                $q=$this->db->prepare("SELECT DISTINCT destino_usuario_id,destino_extension,seguimiento_id FROM $tabla WHERE pbx_call_id=? LIMIT 2");
                 $q->bind_param('s',$pbx);$q->execute();$owners=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
                 if(count($owners)>1)return null;
                 if($owners&&((int)$owners[0]['destino_usuario_id']!==$usuarioId||(string)$owners[0]['destino_extension']!==$extension||(int)$owners[0]['seguimiento_id']!==$seguimientoId))continue;
             }
             $stmt = $this->db->prepare(
                 "SELECT
-                    MIN(CASE WHEN evento = 'NOTIFY_INTERNAL' AND internal = ?
+                    MIN(CASE WHEN evento IN ('NOTIFY_INTERNAL','NOTIFY_ANSWER') AND internal = ?
                         THEN received_at END) AS llegada,
                     SUM(CASE WHEN evento = 'NOTIFY_ANSWER' AND internal = ?
                         THEN 1 ELSE 0 END) AS respondida,
-                    SUM(CASE WHEN evento = 'NOTIFY_END'
+                    SUM(CASE WHEN evento IN ('NOTIFY_END','NOTIFY_OUT_END')
                         THEN 1 ELSE 0 END) AS finalizada,
                     SUM(CASE WHEN evento = 'NOTIFY_RECORD'
                          AND TRIM(COALESCE(call_id_with_rec,'')) <> ''
@@ -252,9 +306,19 @@ class TelefoniaGrabacionExpedienteTransferidaService
             $e = $stmt->get_result()->fetch_assoc() ?: [];
             $stmt->close();
             if (empty($e['llegada']) || (int)($e['respondida'] ?? 0) < 1 ||
-                (int)($e['finalizada'] ?? 0) < 1 ||
                 (int)($e['con_audio'] ?? 0) < 1) {
                 continue;
+            }
+            // El OUT_END de Recepción puede ser el único END o incluso
+            // faltar. Sólo en SALIENTE institucional verificada se permite
+            // buscar asociación sin END, jamás por proximidad a otro PBX.
+            if ((int)($e['finalizada'] ?? 0) < 1) {
+                if(!preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$pbx))continue;
+                $svc=new TelefoniaGrabacionesTransferenciaInstitucionService($this->db);
+                if(!$svc->identidad($pbx,$usuarioId,$extension,$seguimientoId))continue;
+                try{
+                    if(!$svc->verificar($pbx,$usuarioId,$extension,$seguimientoId)['ids'])continue;
+                }catch(DomainException $ignored){continue;}
             }
             // La llegada PBX de esta extensión coincide con el inicio
             // observado por el navegador con un margen máximo de 90 segundos.

@@ -6,10 +6,12 @@ class TelefoniaExtensionService
 {
     private $connection;
     private $rootPath;
+    private static ?WeakMap $estructuras = null;
 
     public function __construct(?mysqli $connection=null)
     {
-        $this->connection = $connection ?? (new Database())->connect();
+        require_once __DIR__.'/../helpers/ControlCargaMysql.php';
+        $this->connection = $connection ?? ImpeControlCargaMysql::conexion();
         $this->rootPath = dirname(__DIR__, 2);
     }
 
@@ -167,6 +169,8 @@ class TelefoniaExtensionService
             );
         }
 
+        self::$estructuras ??= new WeakMap();
+        self::$estructuras[$this->connection] = true;
         return true;
     }
 
@@ -789,15 +793,12 @@ class TelefoniaExtensionService
 
     private function estructuraDisponible()
     {
-        try {
-            $resultado = $this->connection->query(
-                "SHOW TABLES LIKE 'telefonia_extensiones'"
-            );
-
-            return $resultado && $resultado->num_rows > 0;
-        } catch (Throwable $e) {
-            return false;
+        self::$estructuras ??= new WeakMap();
+        if (!isset(self::$estructuras[$this->connection])) {
+            $resultado = $this->connection->query("SHOW TABLES LIKE 'telefonia_extensiones'");
+            self::$estructuras[$this->connection] = $resultado && $resultado->num_rows > 0;
         }
+        return self::$estructuras[$this->connection];
     }
 
     private function cargarConfig()

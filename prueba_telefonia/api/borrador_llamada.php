@@ -40,4 +40,5 @@ try {
     responderBorrador(['ok'=>true,'borrador'=>$service->guardar($usuario,array_unique($ids),$input['valores'],$revision)]);
 } catch (InvalidArgumentException|JsonException $e) {responderBorrador(['ok'=>false,'mensaje'=>$e->getMessage()],422);}
 catch (DomainException $e) {responderBorrador(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
-catch (Throwable $e) {error_log('[borrador_llamada] '.get_class($e));responderBorrador(['ok'=>false,'mensaje'=>'El servidor no pudo guardar el borrador. Conserva esta ventana abierta para reintentar.'],500);}
+catch (Throwable $e) {
+    if (Database::responderFalloTemporal($e)) exit;error_log('[borrador_llamada] '.get_class($e));responderBorrador(['ok'=>false,'mensaje'=>'El servidor no pudo guardar el borrador. Conserva esta ventana abierta para reintentar.'],500);}

@@ -2,20 +2,47 @@
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/../helpers/AdminRolePolicy.php';
+require_once __DIR__ . '/../helpers/FormularioPermisos.php';
+require_once __DIR__ . '/../helpers/InscritosPermisos.php';
+require_once __DIR__ . '/../helpers/SupervisionRolePolicy.php';
 
 class RolModel
 {
     private $connection;
 
-    public function __construct()
+    public function __construct(?mysqli $connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        require_once __DIR__.'/../helpers/ControlCargaMysql.php';
+        $this->connection = $connection ?? ImpeControlCargaMysql::conexion();
     }
 
     public function inicializarPermisosSistema()
     {
-        $permisos = $this->obtenerCatalogoInicialPermisos();
+        require_once __DIR__.'/../helpers/CatalogoPermisosInicializador.php';
+        ImpeCatalogoPermisosInicializador::ejecutar(function () {
+            $this->inicializarCatalogoPermisos();
+        }, [__FILE__,__DIR__.'/../helpers/AdminRolePolicy.php',
+            __DIR__.'/../helpers/FormularioPermisos.php',__DIR__.'/../helpers/InscritosPermisos.php',
+            __DIR__.'/../helpers/SupervisionRolePolicy.php']);
+    }
+
+    private function inicializarCatalogoPermisos()
+    {
+        $permisos = array_merge($this->obtenerCatalogoInicialPermisos(), FormularioPermisos::catalogo(), InscritosPermisos::catalogo());
+        $inscritosNuevos = [];
+        foreach (InscritosPermisos::catalogo() as $permiso) {
+            if (!$this->existePermisoPorCodigo($permiso['codigo'])) {
+                $inscritosNuevos[] = $permiso['codigo'];
+            }
+        }
+        $formulariosNuevos = [];
+        foreach (FormularioPermisos::catalogo() as $permisoFormulario) {
+            if (!$this->existePermisoPorCodigo($permisoFormulario['codigo'])) {
+                $formulariosNuevos[] = $permisoFormulario['codigo'];
+            }
+        }
+        $permisoImportacionMetaNuevo =
+            !$this->existePermisoPorCodigo('prospectos.importar_meta');
         $permisosTerritorioNuevos =
             !$this->existePermisoPorCodigo('territorios.ver') ||
             !$this->existePermisoPorCodigo('territorios.asignar');
@@ -48,6 +75,19 @@ class RolModel
             !$this->existePermisoPorCodigo('telefonia.salientes') ||
             !$this->existePermisoPorCodigo('telefonia.recibir') ||
             !$this->existePermisoPorCodigo('telefonia.transferir');
+        $permisoControlTelefoniaNuevo =
+            !$this->existePermisoPorCodigo('telefonia.control_ver');
+
+        // El catálogo es común a todas las peticiones. Un solo envío evita
+        // viajes repetidos a MySQL al abrir módulos o consultar telefonía.
+        $filasCatalogo = [];
+        $valoresCatalogo = [];
+        foreach ($permisos as $permiso) {
+            $filasCatalogo[] = '(?, ?, ?, ?, 1)';
+            foreach (['modulo', 'codigo', 'nombre', 'descripcion'] as $campo) {
+                $valoresCatalogo[] = $permiso[$campo];
+            }
+        }
 
         $sql = "INSERT INTO permisos (
                     modulo,
@@ -55,7 +95,7 @@ class RolModel
                     nombre,
                     descripcion,
                     estado
-                ) VALUES (?, ?, ?, ?, 1)
+                ) VALUES " . implode(', ', $filasCatalogo) . "
                 ON DUPLICATE KEY UPDATE
                     modulo = VALUES(modulo),
                     nombre = VALUES(nombre),
@@ -64,17 +104,10 @@ class RolModel
 
         $stmt = $this->connection->prepare($sql);
 
-        foreach ($permisos as $permiso) {
-            $stmt->bind_param(
-                "ssss",
-                $permiso['modulo'],
-                $permiso['codigo'],
-                $permiso['nombre'],
-                $permiso['descripcion']
-            );
-
-            $stmt->execute();
-        }
+        $tiposCatalogo = str_repeat('s', count($valoresCatalogo));
+        $stmt->bind_param($tiposCatalogo, ...$valoresCatalogo);
+        $stmt->execute();
+        $stmt->close();
 
         $sinPermisosActivosSistema =
             !$this->existenRelacionesPermisosActivas();
@@ -119,8 +152,79 @@ class RolModel
         if ($permisosTelefoniaNuevos) {
             $this->asignarPermisosInicialesTelefonia();
         }
+        if ($permisoControlTelefoniaNuevo) {
+            $this->asignarPermisoInicialControlTelefonia();
+        }
 
+        if ($permisoImportacionMetaNuevo) {
+            // Concesión inicial única a Marketing si ya consultaba Prospectos.
+            // Al revocarla desde Roles y permisos, nunca se restaura.
+            $this->asignarPermisoInicialImportacionMeta();
+        }
+
+        $this->asignarPermisosInicialesFormularios($formulariosNuevos);
+        $this->asignarPermisosInicialesInscritos($inscritosNuevos);
         $this->asegurarPermisosAdministrador();
+        $this->inicializarPermisosAgenda();
+    }
+
+    private function inicializarPermisosAgenda()
+    {
+        $catalogo = [
+            ['agenda.ver', 'Ver agenda', 'Abrir el calendario. Las reuniones conservan sus permisos y su alcance.'],
+            ['agenda.comentarios.ver', 'Ver comentarios', 'Consultar los comentarios visibles para el usuario y recibir sus avisos. Requiere Ver agenda.'],
+            ['agenda.comentarios.crear', 'Agregar comentarios', 'Crear comentarios compartidos, dirigidos o privados. Requiere Ver comentarios.'],
+            ['agenda.comentarios.eliminar', 'Eliminar comentarios propios', 'Eliminar los comentarios que escribió el usuario. Requiere Ver comentarios.'],
+            ['agenda.comentarios.recibir_dirigidos', 'Recibir avisos dirigidos sin acceso a comentarios', 'Recibir avisos de comentarios asignados al usuario aunque su rol no pueda consultar los comentarios en la Agenda.'],
+            ['agenda.comentarios.enviar_administrador', 'Enviar comentarios al Administrador', 'Elegir al Administrador como destinatario directo. Requiere permiso para agregar comentarios.']
+        ];
+
+        $registrados = $this->connection->query(
+            "SELECT codigo FROM permisos WHERE codigo LIKE 'agenda.%'"
+        );
+        $codigos = array_column($registrados->fetch_all(MYSQLI_ASSOC), 'codigo');
+        $catalogo = array_filter($catalogo, static fn ($permiso) => !in_array($permiso[0], $codigos, true));
+        if (!$catalogo) {
+            return;
+        }
+
+        $this->connection->begin_transaction();
+        try {
+            $registrar = $this->connection->prepare(
+                "INSERT IGNORE INTO permisos (modulo, codigo, nombre, descripcion, estado)
+                 VALUES ('Agenda', ?, ?, ?, 1)"
+            );
+            $asignar = $this->connection->prepare(
+                "INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+                 SELECT r.id, ?
+                 FROM roles r
+                 WHERE CASE ?
+                     WHEN 'agenda.comentarios.enviar_administrador' THEN
+                         LOWER(TRIM(r.nombre)) IN ('rh','recursos humanos','cuenta clave','director de operaciones')
+                     WHEN 'agenda.ver' THEN 1
+                     WHEN 'agenda.comentarios.recibir_dirigidos' THEN 1
+                     ELSE EXISTS (
+                         SELECT 1 FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
+                         WHERE rp.rol_id = r.id AND p.codigo = 'reuniones.ver' AND p.estado = 1
+                     )
+                 END"
+            );
+
+            foreach ($catalogo as [$codigo, $nombre, $descripcion]) {
+                $registrar->bind_param('sss', $codigo, $nombre, $descripcion);
+                $registrar->execute();
+                if ($registrar->affected_rows !== 1) {
+                    continue;
+                }
+                $permisoId = (int)$registrar->insert_id;
+                $asignar->bind_param('is', $permisoId, $codigo);
+                $asignar->execute();
+            }
+            $this->connection->commit();
+        } catch (Throwable $error) {
+            $this->connection->rollback();
+            throw $error;
+        }
     }
 
     public function obtenerRoles()
@@ -324,21 +428,31 @@ class RolModel
 
     public function actualizarPermisosRol($rolId, $permisosIds, $actorUsuarioId = 0)
     {
-        if ((int)$rolId === 1) {
-            /*
-             * Administrador es un rol protegido. Sus permisos se mantienen desde
-             * el catálogo del sistema y no pueden editarse desde la interfaz.
-             */
-            $this->asegurarPermisosAdministrador();
-            return true;
-        }
-
         $permisosIds = array_values(array_unique(array_map('intval', $permisosIds)));
-        $permisosIds = $this->normalizarDependenciasPermisos($permisosIds);
-        $permisosIds = $this->retirarPermisosSoloAdministrador(
-            (int)$rolId,
-            $permisosIds
-        );
+        $esAdministrador = (int)$rolId === 1;
+        $actorEsAdministrador = (int)($_SESSION['rol_id'] ?? 0) === 1;
+        $permisosAgenda = [];
+        $permisoProtegido = 0;
+        if ($esAdministrador) {
+            if (!$actorEsAdministrador) {
+                return false;
+            }
+            $resultado = $this->connection->query(
+                "SELECT id FROM permisos WHERE estado = 1 AND codigo LIKE 'agenda.%'"
+            );
+            $permisosAgenda = array_map('intval', array_column($resultado->fetch_all(MYSQLI_ASSOC), 'id'));
+            $permisosIds = array_values(array_intersect($permisosIds, $permisosAgenda));
+        } else {
+            $permisosIds = $this->normalizarDependenciasPermisos($permisosIds);
+            $permisosIds = $this->retirarPermisosSoloAdministrador((int)$rolId, $permisosIds);
+            if (!$actorEsAdministrador) {
+                $permiso = $this->connection->query(
+                    "SELECT id FROM permisos WHERE codigo = 'agenda.comentarios.enviar_administrador'"
+                )->fetch_assoc();
+                $permisoProtegido = (int)($permiso['id'] ?? 0);
+                $permisosIds = array_values(array_diff($permisosIds, [$permisoProtegido]));
+            }
+        }
 
         if (!$this->validarPermisosExistentes($permisosIds)) {
             return false;
@@ -349,10 +463,16 @@ class RolModel
         $this->connection->begin_transaction();
 
         try {
-            $sqlEliminar = "DELETE FROM rol_permisos
-                            WHERE rol_id = ?";
+            $sqlEliminar = $esAdministrador
+                ? "DELETE rp FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
+                   WHERE rp.rol_id = ? AND p.codigo LIKE 'agenda.%'"
+                : "DELETE FROM rol_permisos WHERE rol_id = ? AND permiso_id <> ?";
             $stmtEliminar = $this->connection->prepare($sqlEliminar);
-            $stmtEliminar->bind_param("i", $rolId);
+            if ($esAdministrador) {
+                $stmtEliminar->bind_param("i", $rolId);
+            } else {
+                $stmtEliminar->bind_param("ii", $rolId, $permisoProtegido);
+            }
 
             if (!$stmtEliminar->execute()) {
                 throw new RuntimeException('No fue posible limpiar los permisos anteriores.');
@@ -378,7 +498,9 @@ class RolModel
                 (int)$rolId,
                 (int)$actorUsuarioId,
                 $permisosAnteriores,
-                $permisosIds
+                $esAdministrador
+                    ? array_merge(array_diff($permisosAnteriores, $permisosAgenda), $permisosIds)
+                    : array_merge($permisosIds, array_intersect($permisosAnteriores, [$permisoProtegido]))
             );
 
             $this->connection->commit();
@@ -463,7 +585,8 @@ class RolModel
                      SELECT 1, p.id
                      FROM permisos p
                      WHERE p.estado = 1
-                       AND p.codigo NOT IN ($marcadores)";
+                       AND p.codigo NOT IN ($marcadores)
+                       AND p.codigo NOT LIKE 'agenda.%'";
 
                 $stmtAsignar = $this->connection->prepare(
                     $sqlAsignar
@@ -482,7 +605,7 @@ class RolModel
                      )
                      SELECT 1, p.id
                      FROM permisos p
-                     WHERE p.estado = 1"
+                     WHERE p.estado = 1 AND p.codigo NOT LIKE 'agenda.%'"
                 );
             }
 
@@ -589,7 +712,8 @@ class RolModel
                         INNER JOIN permisos
                             ON permisos.id = rol_permisos.permiso_id
                         WHERE roles.nombre = ?
-                            AND permisos.estado = 1";
+                            AND permisos.estado = 1
+                            AND permisos.codigo NOT LIKE 'agenda.%'";
 
         $sqlInsertar = "INSERT IGNORE INTO rol_permisos (
                     rol_id,
@@ -713,7 +837,6 @@ class RolModel
          * módulo correspondiente exista.
          */
         $codigos = [
-            'prospectos.ver_todos',
             'prospectos.ver_propios',
             'prospectos.editar',
             'prospectos.asignar',
@@ -922,8 +1045,10 @@ class RolModel
         $asignaciones = [
             'Cuenta Clave' => [
                 'whatsapp.ver',
-                'whatsapp.enviar'
+                'whatsapp.enviar',
+                'whatsapp.gestionar_conversaciones'
             ],
+            'Director de Operaciones' => ['whatsapp.ver','whatsapp.gestionar_conversaciones'],
             'Asesor de Ventas' => [
                 'whatsapp.ver',
                 'whatsapp.enviar'
@@ -954,6 +1079,52 @@ class RolModel
                 $stmt->execute();
             }
         }
+    }
+
+    /**
+     * Concesión inicial una sola vez: Marketing con acceso previo a Formularios.
+     * Revocaciones posteriores no se restauran porque se detecta sólo si el
+     * permiso NO existía previamente en el catálogo.
+     */
+    private function asignarPermisosInicialesInscritos(array $codigos): void
+    {
+        if (!$codigos) return;
+        $stmt = $this->connection->prepare(
+            "INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+             SELECT r.id, p.id
+               FROM roles r
+               JOIN permisos p ON p.codigo=? AND p.estado=1
+              WHERE r.nombre='Marketing' AND r.estado=1
+                AND EXISTS (
+                    SELECT 1 FROM rol_permisos rp
+                    JOIN permisos ver ON ver.id=rp.permiso_id
+                    WHERE rp.rol_id=r.id
+                      AND ver.codigo='formularios.ver' AND ver.estado=1
+                )"
+        );
+        foreach ($codigos as $codigo) {
+            $stmt->bind_param('s', $codigo);
+            $stmt->execute();
+        }
+    }
+
+    private function asignarPermisoInicialImportacionMeta()
+    {
+        // Mantiene la capacidad que ya tenía Marketing al instalar el importador.
+        // Es una relación editable en rol_permisos, NO una autorización por nombre
+        // de rol durante las peticiones HTTP. No concede nada a roles nuevos.
+        $this->connection->query(
+            "INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+             SELECT r.id, p.id
+               FROM roles r
+               JOIN permisos p ON p.codigo='prospectos.importar_meta' AND p.estado=1
+              WHERE r.nombre='Marketing' AND r.estado=1
+                AND EXISTS (
+                    SELECT 1 FROM rol_permisos rp
+                    JOIN permisos v ON v.id=rp.permiso_id
+                    WHERE rp.rol_id=r.id AND v.codigo='prospectos.ver_todos' AND v.estado=1
+                )"
+        );
     }
 
     private function asignarPermisosInicialesTelefonia()
@@ -998,6 +1169,30 @@ class RolModel
         }
     }
 
+    /** Se concede al Director una sola vez: nunca se restaura tras revocación. */
+    private function asignarPermisoInicialControlTelefonia()
+    {
+        $this->connection->query(
+            "INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+             SELECT r.id, p.id FROM roles r
+             INNER JOIN permisos p
+                 ON p.codigo = 'telefonia.control_ver' AND p.estado = 1
+             WHERE r.nombre = 'Director de Operaciones' AND r.estado = 1"
+        );
+    }
+
+    /** Conservar el acceso anterior sólo al crear cada permiso; nunca restaurar revocaciones. */
+    private function asignarPermisosInicialesFormularios(array $codigos)
+    {
+        if (!$codigos) return;
+        $s = $this->connection->prepare(
+            "INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
+             SELECT r.id,p.id FROM roles r JOIN permisos p ON p.codigo=? AND p.estado=1
+             WHERE r.nombre='Marketing' AND r.estado=1"
+        );
+        foreach ($codigos as $codigo) { $s->bind_param('s',$codigo); $s->execute(); }
+    }
+
     private function asignarPermisosInicialesReporteConvocatorias()
     {
         $nombreRol = 'Marketing';
@@ -1034,6 +1229,13 @@ class RolModel
         }
 
         $dependencias = [
+            FormularioPermisos::REGISTRO => FormularioPermisos::VER,
+            FormularioPermisos::INSCRIPCION => FormularioPermisos::VER,
+            FormularioPermisos::COMPARTIR => FormularioPermisos::VER,
+            FormularioPermisos::COMPROBANTES => FormularioPermisos::VER,
+            InscritosPermisos::EXPORTAR => InscritosPermisos::VER,
+            'prospectos.importar_meta' => 'prospectos.ver_todos',
+            'prospectos.configurar_formularios' => 'prospectos.ver_todos',
             'usuarios.crear' => 'usuarios.ver',
             'usuarios.editar' => 'usuarios.ver',
             'usuarios.cambiar_estado' => 'usuarios.ver',
@@ -1067,6 +1269,7 @@ class RolModel
             'whatsapp.enviar' => 'whatsapp.ver',
             'whatsapp.gestionar_conversaciones' => 'whatsapp.ver',
             'whatsapp.gestionar_cuentas' => 'whatsapp.ver',
+            'whatsapp.responder_todas' => 'whatsapp.gestionar_conversaciones',
             'telefonia.salientes' => 'telefonia.usar',
             'telefonia.recibir' => 'telefonia.usar',
             'telefonia.transferir' => 'telefonia.recibir',
@@ -1079,6 +1282,7 @@ class RolModel
             'reportes.usuarios' => 'reportes.ver'
         ];
         $dependenciasAdicionales = [
+            'whatsapp.responder_todas' => ['whatsapp.ver','whatsapp.enviar'],
             'reportes.seguimiento.cartera' => [
                 'seguimientos_vinculacion.ver'
             ],
@@ -1113,19 +1317,6 @@ class RolModel
         }
 
         $seleccionados = array_fill_keys(array_map('intval', $permisosIds), true);
-
-        /*
-         * El Reporte de Convocatorias forma parte del Centro de Reportes.
-         * Todo rol que conserve reportes.ver debe conservar también esta familia,
-         * sin que eso le conceda acceso operativo al módulo de Convocatorias.
-         */
-        if (
-            isset($idPorCodigo['reportes.ver']) &&
-            isset($idPorCodigo['reportes.convocatorias']) &&
-            isset($seleccionados[(int)$idPorCodigo['reportes.ver']])
-        ) {
-            $seleccionados[(int)$idPorCodigo['reportes.convocatorias']] = true;
-        }
 
         foreach (array_keys($seleccionados) as $permisoId) {
             $codigo = $codigoPorId[(int)$permisoId] ?? '';
@@ -1272,24 +1463,13 @@ class RolModel
             return $permisosIds;
         }
 
-        $resultado = $this->connection->query(
-            "SELECT id
-             FROM permisos
-             WHERE codigo IN (
-                'reportes.usuarios',
-                'whatsapp.gestionar_cuentas',
-                'telefonia.configurar'
-             )"
-        );
-
-        if (!$resultado || $resultado->num_rows === 0) {
-            return $permisosIds;
-        }
-
+        $resultado = $this->connection->query('SELECT id, codigo FROM permisos');
+        if (!$resultado) throw new RuntimeException('No fue posible validar los permisos reservados.');
         $permisosSoloAdministrador = [];
-
         while ($permiso = $resultado->fetch_assoc()) {
-            $permisosSoloAdministrador[(int)$permiso['id']] = true;
+            if (permisoReservadoParaRol((int)$rolId, (string)$permiso['codigo'])) {
+                $permisosSoloAdministrador[(int)$permiso['id']] = true;
+            }
         }
 
         return array_values(array_filter(
@@ -1345,7 +1525,9 @@ class RolModel
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.editar', 'nombre' => 'Editar roles', 'descripcion' => 'Actualizar datos de roles.'],
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.cambiar_estado', 'nombre' => 'Activar / desactivar roles', 'descripcion' => 'Modificar estado de roles.'],
             ['modulo' => 'Roles y permisos', 'codigo' => 'roles.asignar_permisos', 'nombre' => 'Asignar permisos', 'descripcion' => 'Administrar permisos por rol.'],
-            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_todos', 'nombre' => 'Ver todos los prospectos', 'descripcion' => 'Consultar prospectos de todos los equipos.'],
+            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_todos', 'nombre' => 'Ver todos los prospectos', 'descripcion' => 'Consultar los prospectos del almacén central, incluidos formularios de Registro, aliados y Meta Ads.'],
+            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.importar_meta', 'nombre' => 'Importar prospectos de Meta Ads', 'descripcion' => 'Subir CSV o Excel de Meta, revisar campañas y confirmar su incorporación al almacén central. Requiere ver todos los prospectos.'],
+            ['modulo' => 'Prospectos', 'codigo' => 'prospectos.configurar_formularios', 'nombre' => 'Configurar formularios de campañas', 'descripcion' => 'Asociar IDs de formularios al catálogo educativo y autorizar excepciones avanzadas por campaña. Requiere ver todos los prospectos.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.ver_propios', 'nombre' => 'Ver prospectos propios', 'descripcion' => 'Consultar prospectos asignados al usuario.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.editar', 'nombre' => 'Editar prospectos', 'descripcion' => 'Actualizar información de prospectos.'],
             ['modulo' => 'Prospectos', 'codigo' => 'prospectos.asignar', 'nombre' => 'Asignar prospectos', 'descripcion' => 'Asignar prospectos a usuarios o equipos.'],
@@ -1380,12 +1562,14 @@ class RolModel
             ['modulo' => 'Aliados', 'codigo' => 'aliados.compartir_correo', 'nombre' => 'Compartir convocatorias por correo', 'descripcion' => 'Enviar convocatorias vigentes por correo a aliados autorizados.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.ver', 'nombre' => 'Ver conversaciones de WhatsApp', 'descripcion' => 'Consultar conversaciones de WhatsApp autorizadas.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.enviar', 'nombre' => 'Enviar mensajes por WhatsApp', 'descripcion' => 'Enviar mensajes mediante cuentas de WhatsApp Business autorizadas.'],
-            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_conversaciones', 'nombre' => 'Supervisar conversaciones de WhatsApp', 'descripcion' => 'Consultar las conversaciones del equipo dentro del alcance autorizado.'],
+            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_conversaciones', 'nombre' => 'Consultar todas las conversaciones', 'descripcion' => 'Consultar las conversaciones del equipo. No permite responder ni configurar canales.'],
+            ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.responder_todas', 'nombre' => 'Responder conversaciones del equipo', 'descripcion' => 'Requiere consultar todas las conversaciones y permiso para enviar mensajes.'],
             ['modulo' => 'WhatsApp', 'codigo' => 'whatsapp.gestionar_cuentas', 'nombre' => 'Gestionar cuentas de WhatsApp', 'descripcion' => 'Configurar números empresariales y asignarlos a usuarios. Exclusivo del Administrador.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.usar', 'nombre' => 'Usar telefonía', 'descripcion' => 'Acceder al motor WebRTC y a la extensión PBX asignada.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.salientes', 'nombre' => 'Realizar llamadas salientes', 'descripcion' => 'Originar llamadas desde el CRM mediante la extensión PBX asignada.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.recibir', 'nombre' => 'Recibir llamadas', 'descripcion' => 'Mantener la extensión disponible para llamadas entrantes y recibir avisos de llamadas en el CRM.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.transferir', 'nombre' => 'Transferir llamadas', 'descripcion' => 'Transferir una llamada activa a otra extensión o área autorizada.'],
+            ['modulo' => 'Telefonía', 'codigo' => 'telefonia.control_ver', 'nombre' => 'Ver control de llamadas', 'descripcion' => 'Consultar los indicadores y resultados telefónicos del equipo, sin usar la extensión ni administrar la PBX.'],
             ['modulo' => 'Telefonía', 'codigo' => 'telefonia.configurar', 'nombre' => 'Configurar telefonía', 'descripcion' => 'Asignar y administrar extensiones PBX de los usuarios. Exclusivo del Administrador.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.ver', 'nombre' => 'Ver convocatorias', 'descripcion' => 'Consultar convocatorias registradas.'],
             ['modulo' => 'Convocatorias', 'codigo' => 'convocatorias.crear', 'nombre' => 'Crear convocatorias', 'descripcion' => 'Registrar nuevas convocatorias.'],
@@ -1403,7 +1587,7 @@ class RolModel
             ['modulo' => 'Reportes', 'codigo' => 'reportes.seguimiento.institucion', 'nombre' => 'Reporte de institución', 'descripcion' => 'Generar el expediente ejecutivo de una institución dentro del alcance autorizado.'],
             ['modulo' => 'Reportes', 'codigo' => 'reportes.territorial', 'nombre' => 'Reporte de información territorial', 'descripcion' => 'Generar reportes de información territorial sobre territorios autorizados.'],
             ['modulo' => 'Reportes', 'codigo' => 'reportes.convocatorias', 'nombre' => 'Reporte de convocatorias', 'descripcion' => 'Consultar y generar el reporte ejecutivo del módulo de Convocatorias.'],
-            ['modulo' => 'Reportes', 'codigo' => 'reportes.usuarios', 'nombre' => 'Reporte administrativo de usuarios', 'descripcion' => 'Generar el reporte transversal de usuarios. Exclusivo del Administrador.'],
+            ['modulo' => 'Reportes', 'codigo' => 'reportes.usuarios', 'nombre' => 'Reporte administrativo de usuarios', 'descripcion' => 'Generar el reporte transversal de usuarios. Disponible para Administración y Dirección de Operaciones con este permiso.'],
             ['modulo' => 'Reportes', 'codigo' => 'reportes.exportar', 'nombre' => 'Exportar reportes', 'descripcion' => 'Exportar a PDF los reportes que el rol tiene autorizados.'],
             ['modulo' => 'Respaldos', 'codigo' => 'respaldos.generar', 'nombre' => 'Generar respaldos', 'descripcion' => 'Crear respaldos del sistema.'],
             ['modulo' => 'Respaldos', 'codigo' => 'respaldos.restaurar', 'nombre' => 'Restaurar respaldos', 'descripcion' => 'Restaurar información desde respaldo.'],

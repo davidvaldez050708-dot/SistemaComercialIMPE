@@ -18,8 +18,52 @@
             keepalive:true,headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(body)});
         const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.mensaje||'No se pudo guardar el borrador.');return data;
     };
+    const contactosUnificados=new WeakMap();
     window.IMPE_CALL_DRAFTS={
         refs,localSave,
+        unificarContacto(form) {
+            const persona=form?.elements.namedItem('persona_atendio'),contacto=form?.elements.namedItem('nuevo_contacto_nombre');
+            if(!persona||!contacto)return;
+            let state=contactosUnificados.get(form);
+            if(!state){
+                state={referido:'',modo:false,espejo:''};contactosUnificados.set(form,state);
+                if(!form.dataset.contactoUnificadoEventos){
+                    form.dataset.contactoUnificadoEventos='1';
+                    persona.addEventListener('input',()=>window.IMPE_CALL_DRAFTS.unificarContacto(form));
+                    form.addEventListener('reset',()=>{contactosUnificados.delete(form);queueMicrotask(()=>window.IMPE_CALL_DRAFTS.unificarContacto(form));});
+                }
+            }
+            const referido=form.elements.namedItem('resultado')?.value==='CONTACTO_REFERIDO';
+            if(referido){
+                if(!state.modo){
+                    if(contacto.value && contacto.value!==state.espejo)state.referido=contacto.value;
+                    contacto.value=state.referido;
+                }
+            }
+            else {
+                if(state.modo || (contacto.value && contacto.value!==state.espejo && contacto.value!==persona.value))state.referido=contacto.value;
+                contacto.value=persona.value;state.espejo=persona.value;
+            }
+            state.modo=referido;
+            const grupo=contacto.closest('.col-12, .col-md-6');if(grupo)grupo.hidden=!referido;
+            const label=persona.id && form.querySelector('label[for="'+persona.id+'"]');
+            if(label)label.textContent=referido?'Persona que atendió':'Persona de contacto';
+            const labelReferido=contacto.id && form.querySelector('label[for="'+contacto.id+'"]');
+            if(labelReferido)labelReferido.textContent='Otra persona de contacto';
+        },
+        actualizarFicha(datos) {
+            const form=document.querySelector('[data-work-interaction-form]');
+            if(!form || Number(form.elements.namedItem('seguimiento_id')?.value)!==Number(datos.get('seguimiento_id')))return;
+            if(datos.get('actualizar_datos_llamada')!=='1' || !['CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'].includes(datos.get('resultado')))return;
+            const campos=[['nombre_entidad_actualizado','data-work-title',null],['nuevo_telefono_contacto','data-work-phone','telefono_verificado'],['nuevo_correo_contacto','data-work-email','correo_verificado'],['nuevo_contacto_nombre','data-work-contact-name','contacto_nombre'],['nuevo_contacto_cargo','data-work-contact-role','contacto_cargo']];
+            for(const [nombre,selector,inputName] of campos) {
+                const valor=String(datos.get(nombre)||'').trim();if(!valor)continue;
+                const label=document.querySelector('['+selector+']');if(label)label.textContent=valor;
+                const input=inputName && document.querySelector('[data-work-contact-form] [name="'+inputName+'"]');if(input)input.value=valor;
+            }
+            const correo=String(datos.get('nuevo_correo_contacto')||'').trim(),boton=document.querySelector('[data-work-email-button]');
+            if(correo && boton){boton.disabled=false;boton.title='Enviar correo a '+correo;}
+        },
         resultValues(values={}) {
             const out={...values};
             const names={nombre:'nombre_entidad',persona:'persona_atendio',telefono:'telefono_capturado',
@@ -28,6 +72,9 @@
                 if(!(name in out)&&alias in values)out[name]=values[alias];
                 delete out[alias];
             }
+            for(const [source,target] of [['telefono_capturado','nuevo_telefono_contacto'],['correo_capturado','nuevo_correo_contacto'],['nombre_entidad','nombre_entidad_actualizado']]) {
+                if(!(target in out) && out[source])out[target]=out[source];
+            }
             return out;
         },
         captureValues(values={}) {
@@ -35,6 +82,9 @@
             const names={nombre_entidad:'nombre',persona_atendio:'persona',telefono_capturado:'telefono',
                 correo_capturado:'correo',observacion:'notas',nuevo_contacto_nombre:'contacto_nombre',nuevo_contacto_cargo:'contacto_cargo'};
             for(const [name,alias] of Object.entries(names))if(name in values)out[alias]=values[name];
+            for(const [source,target] of [['nuevo_telefono_contacto','telefono'],['nuevo_correo_contacto','correo'],['nombre_entidad_actualizado','nombre']]) {
+                if(source in values)out[target]=values[source];
+            }
             return out;
         },
         async read(user,ids) {
@@ -63,6 +113,7 @@
     document.addEventListener('impe:call-result-form-opened',async event=>{
         const form=event.detail?.form,ids=refs(event.detail?.ids||[]);
         if(!(form instanceof HTMLFormElement)||!ids.length)return;
+        contactosUnificados.delete(form);
         const cycle=(Number(form.dataset.draftCycle)||0)+1;form.dataset.draftCycle=String(cycle);
         let changed=false;const dirty=()=>{changed=true;};form.addEventListener('input',dirty,{once:true});
         const values=await window.IMPE_CALL_DRAFTS.read(Number(window.IMPE_CURRENT_USER_ID||0),ids);
@@ -74,15 +125,20 @@
           for(const [source,target] of [['telefono_capturado','nuevo_telefono_contacto'],['correo_capturado','nuevo_correo_contacto']]){
               if(!form.elements.namedItem(source)&&!normalized[target]&&normalized[source])normalized[target]=normalized[source];
           }
+        const camposCapturados=new Set(['persona_atendio','observacion','telefono_capturado','correo_capturado',
+            'nombre_entidad_actualizado','nuevo_telefono_contacto','nuevo_correo_contacto','nuevo_contacto_nombre','nuevo_contacto_cargo']);
         for(const [name,value] of Object.entries(normalized)) {
-            const input=form.elements.namedItem(name);if(input&&!input.value&&value)input.value=String(value);
+            const input=form.elements.namedItem(name);
+            if(input && value && (!input.value || camposCapturados.has(name)))input.value=String(value);
         }
-        window.IMPE_TELEPHONY_NOTIFY?.('Datos de la llamada recuperados. Revisa el resultado y confirma los datos verificados.');
+        form.querySelector('[name="resultado"]')?.dispatchEvent(new Event('change',{bubbles:true}));
+        window.IMPE_TELEPHONY_NOTIFY?.('Borrador recuperado. Revisa los datos de contacto: se guardarán en la ficha al registrar el resultado.');
     });
     window.IMPE_TELEPHONY_NOTIFY=(message,error=false)=>{
         if(!message||!window.bootstrap?.Toast)return;
-        let container=document.querySelector('.toast-container');
-        if(!container){container=document.createElement('div');container.className='toast-container position-fixed top-0 end-0 p-3';document.body.append(container);}
+        const host=Array.from(document.querySelectorAll('.modal.show')).pop()||document.body;
+        let container=Array.from(host.children).find(el=>el.matches?.('[data-telephony-toasts]'));
+        if(!container){container=document.createElement('div');container.dataset.telephonyToasts='';container.className='toast-container position-fixed top-0 end-0 p-3';host.append(container);}
         container.style.zIndex='1095';
         const el=document.createElement('div');el.className='toast system-toast'+(error?' system-toast-error':'');
         el.setAttribute('role',error?'alert':'status');el.setAttribute('aria-live',error?'assertive':'polite');

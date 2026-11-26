@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/TelefoniaExtensionService.php';
 require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
+require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 
 /**
  * Recepción telefónica de Marketing, independiente de Ventas y Vinculación.
@@ -11,11 +12,11 @@ require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 class TelefoniaRecepcionMarketingService
 {
     private $db;
+    private ?array $operacionesAvisos = null;
 
     public function __construct(?mysqli $connection=null)
     {
         $this->db = $connection??(new Database())->connect();
-        (new ZadarmaWebhookEventStoreService($this->db))->asegurarEstructura();
     }
 
     public static function esMarketing(): bool
@@ -77,6 +78,18 @@ class TelefoniaRecepcionMarketingService
         return (new TelefoniaTransferenciaOperacionService($this->db))->delUsuario($usuarioId);
     }
 
+    protected function condicionLimpieza(): string
+    {
+        return TelefoniaLimpiezaGuard::condicion($this->db,'inicial.pbx_call_id','inicial.internal');
+    }
+
+    /** Reutiliza el lote de la misma petición, sin caché de permisos ni de llamadas entre peticiones. */
+    public function resumenParaAvisos(int $usuarioId,array $operaciones): array
+    {
+        $anterior=$this->operacionesAvisos;$this->operacionesAvisos=$operaciones;
+        try{return $this->resumen($usuarioId);}finally{$this->operacionesAvisos=$anterior;}
+    }
+
     public function resumen(int $usuarioId): array
     {
         $data = [
@@ -107,6 +120,7 @@ class TelefoniaRecepcionMarketingService
         // Inicios PBX firmados de esta extensión dentro del período:
         // NOTIFY_INTERNAL (entrante) o NOTIFY_OUT_START (saliente).
         // Ni números ni ID provienen del navegador; el origen es el webhook.
+        $limpieza=$this->condicionLimpieza();
         $permitirSalientes = !empty($asignacion['permite_salientes']) ? 1 : 0;
         $stmt = $this->db->prepare(
             "SELECT e.evento, e.pbx_call_id, e.internal, e.destination,
@@ -120,7 +134,7 @@ class TelefoniaRecepcionMarketingService
                AND e.pbx_call_id IN (
                    SELECT inicial.pbx_call_id
                    FROM telefonia_zadarma_eventos inicial
-                   WHERE inicial.internal = ?
+                   WHERE $limpieza AND inicial.internal = ?
                      AND (
                         inicial.evento = 'NOTIFY_INTERNAL'
                         OR (inicial.evento = 'NOTIFY_OUT_START' AND ? = 1)
@@ -142,7 +156,7 @@ class TelefoniaRecepcionMarketingService
         $stmt->close();
 
         $llamadas = self::agruparEventos($eventos, $ext, $permitirSalientes === 1);
-        $operaciones=$this->operacionesDelUsuario($usuarioId);
+        $operaciones=$this->operacionesAvisos ?? $this->operacionesDelUsuario($usuarioId);
         foreach($operaciones as $op)foreach($llamadas as &$fila){
             if((int)$op['origen_usuario']!==$usuarioId || $fila['pbx_call_id']!==$op['referencia'])continue;
             if($op['estado']==='ENTREGADA'){
@@ -263,13 +277,25 @@ class TelefoniaRecepcionMarketingService
                 }
             }
 
+            // En salientes Zadarma puede confirmar el último tramo sólo en
+            // OUT_END: no necesariamente emite INTERNAL/transfer_from.
+            // El inicio propio y el mismo PBX ID ya se comprobaron arriba.
+            $ultimoInterno=trim((string)($p['last_internal'] ?? ''));
+            $salienteEntregada=$esSaliente && $tipo==='NOTIFY_OUT_END' &&
+                preg_match('/^\d{3,6}$/D',$ultimoInterno) && $ultimoInterno!==$extension &&
+                in_array(strtolower(trim((string)($row['disposition'] ?? ''))),['answered','completed'],true);
+            if($salienteEntregada){
+                $call['transferida']=true;$call['saliente_transferida']=true;
+                $call['destino_transferencia']=$ultimoInterno;
+            }
+
             if ($esSaliente) {
                 if ($tipo === 'NOTIFY_ANSWER' &&
                     ($interno === $extension || $interno === '')) {
                     $call['contestada'] = true;
                 }
                 if ($tipo === 'NOTIFY_OUT_END' &&
-                    ($interno === $extension || $interno === '')) {
+                    ($interno === $extension || $interno === '' || $salienteEntregada)) {
                     $call['finalizada'] = true;
                     $call['fecha_fin'] = (string)($row['received_at'] ?? '');
                     $call['disposition'] = strtolower(trim(

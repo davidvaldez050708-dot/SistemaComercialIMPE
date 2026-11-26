@@ -144,13 +144,12 @@ foreach ($camposPermitidos as $campo) {
     }
 }
 
+$errorTemporal = null;
 try {
     (new ZadarmaWebhookEventStoreService())->registrar($registro);
 } catch (Throwable $errorPersistencia) {
-    error_log(
-        '[zadarma_webhook_store] ' .
-        $errorPersistencia->getMessage()
-    );
+    $errorTemporal = $errorPersistencia;
+    error_log('[zadarma_webhook_store] ' . get_class($errorPersistencia));
 }
 
 /*
@@ -183,4 +182,5 @@ if ($archivo !== false) {
     fclose($archivo);
 }
 
+if ($errorTemporal && Database::responderFalloTemporal($errorTemporal)) exit;
 responderWebhook(['status' => 'success']);

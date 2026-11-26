@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/VerificacionInstitucionalService.php';
 /** Evidencia por dato. La telefonía pendiente nunca obtiene crédito por texto libre. */
 final class TelefoniaVerificacionEvidenciaService
 {
@@ -54,12 +55,13 @@ final class TelefoniaVerificacionEvidenciaService
         $stmt->bind_param('iis',$interaccion,$usuario,$externo);$stmt->execute();
         $row=$stmt->get_result()->fetch_assoc();$stmt->close();
         if (!$row) return false;
-        $stmt=$this->db->prepare("SELECT id FROM telefonia_verificacion_evidencias
+        $stmt=$this->db->prepare("SELECT campo,accion,valor_confirmado AS valor FROM telefonia_verificacion_evidencias
             WHERE interaccion_id=? AND usuario_id=? AND sdk_session_id=? AND estado='PENDIENTE' FOR UPDATE");
         $stmt->bind_param('iis',$interaccion,$usuario,$sdk);$stmt->execute();
-        $hay=(bool)$stmt->get_result()->fetch_assoc();$stmt->close();
-        if (!$hay) return false;
-        $notas=str_replace('[VERIFICACION_PENDIENTE_PBX]','[VERIFICACION_EFECTIVA]',(string)$row['notas']);
+        $detalles=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
+        if (!$detalles) return false;
+        $parConfirmado=VerificacionInstitucionalService::tienePar($detalles);
+        $notas=str_replace('[VERIFICACION_PENDIENTE_PBX]',$parConfirmado?'[VERIFICACION_EFECTIVA]':'',(string)$row['notas']);
         $inicio=(string)$call['answer_at'];$fin=(string)$call['end_at'];
         $duracion=max(0,strtotime($fin)-strtotime($inicio));
         $stmt=$this->db->prepare("UPDATE interacciones_vinculacion SET proveedor_externo='ZADARMA',
@@ -69,14 +71,15 @@ final class TelefoniaVerificacionEvidenciaService
         $stmt=$this->db->prepare("UPDATE telefonia_verificacion_evidencias SET estado='CONFIRMADA',
             pbx_call_id=?,confirmed_at=NOW() WHERE interaccion_id=? AND usuario_id=? AND estado='PENDIENTE'");
         $stmt->bind_param('sii',$pbx,$interaccion,$usuario);$stmt->execute();$stmt->close();
-        return true;
+        return $parConfirmado;
     }
 
     public function pendientes(int $usuario): array
     {
         try {
             $stmt=$this->db->prepare("SELECT DISTINCT interaccion_id FROM telefonia_verificacion_evidencias
-                WHERE usuario_id=? AND estado='PENDIENTE'");
+                WHERE usuario_id=? AND estado='PENDIENTE' AND accion='CONFIRMADO' AND TRIM(valor_confirmado)<>''
+                GROUP BY interaccion_id HAVING COUNT(DISTINCT CASE WHEN campo IN ('telefono','correo') THEN campo END)=2");
             if (!$stmt) {
                 if ((int)$this->db->errno===1146) return [];
                 throw new RuntimeException('No se pudo consultar la verificación pendiente.');
