@@ -1,0 +1,25 @@
+name: DENUE - circuito sobre base Hostinger
+on:
+  push:
+    branches: [fix/denue-circuito-hostinger-20261126]
+permissions:
+  contents: read
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, openssl
+      - name: Sintaxis y pruebas aisladas
+        run: |
+          php -l app/services/DenueCircuitBreaker.php
+          php -l app/services/DenueCandidatosHttpClient.php
+          php -l app/services/DenueService.php
+          php tests/denue_circuit_breaker_smoke.php
+          python3 tests/denue_http_local.py
+          php tests/denue_candidatos_resiliencia.php
+          php tests/denue_consulta_paginada.php
