@@ -401,6 +401,11 @@ class SeguimientoVinculacionController
             }
 
             if ($resultadoDenue['ok']) {
+                if (!empty($resultadoDenue['cache_respaldo'])) {
+                    $advertencias[] = 'DENUE no está disponible. Se muestran candidatos de la última consulta válida (información no actualizada en tiempo real).';
+                } elseif (!empty($resultadoDenue['consulta_parcial'])) {
+                    $advertencias[] = 'DENUE respondió parcialmente. Los resultados pueden estar incompletos.';
+                }
                 $denue = $this->completarMunicipiosDenue(
                     $modelo,
                     $estadoId,
@@ -415,7 +420,7 @@ class SeguimientoVinculacionController
                     );
                 }
 
-                if ($busquedaAutomatica) {
+                if ($busquedaAutomatica && empty($resultadoDenue['cache_respaldo']) && empty($resultadoDenue['consulta_parcial'])) {
                     $this->guardarCacheDenueCandidatos($estadoId, $municipioId, $denue);
                 }
 
