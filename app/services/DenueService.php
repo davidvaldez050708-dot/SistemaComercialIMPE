@@ -12,8 +12,9 @@ class DenueService
 
     public function __construct(?DenueCandidatosHttpClient $http = null, ?string $cache = null)
     {
-        $this->httpCandidatos = $http ?? new DenueCandidatosHttpClient();
         $this->cacheCandidatos = $cache ?? __DIR__ . '/../../storage/cache/denue';
+        $this->httpCandidatos = $http ?? new DenueCandidatosHttpClient(6500, 25000,
+            new DenueCircuitBreaker($this->cacheCandidatos . '/circuito_v1.json'));
     }
 
     public function obtenerSectoresEstado(string $claveInegi): array
@@ -155,7 +156,7 @@ class DenueService
              * lote, lo dividimos y conservamos cualquier municipio que sí logre
              * responder. El caso base es una sola área.
              */
-            if (count($claves) > 1) {
+            if (count($claves) > 1 && empty($respuesta['transitorio'])) {
                 $mitad = (int)ceil(count($claves) / 2);
                 $subLotes = [
                     array_slice($claves, 0, $mitad),
@@ -782,6 +783,8 @@ class DenueService
             }
         }
 
+        if (!empty($respuestaPorId['transitorio'])) return $respuestaPorId;
+
         $url = rtrim(DENUE_BASE_URL, '/') .
             '/Ficha/' .
             rawurlencode($idEstablecimiento) .
@@ -1245,89 +1248,47 @@ class DenueService
 
     private function consultarUrl(string $url): array
     {
-        if (!function_exists('curl_init')) {
-            return [
-                'ok' => false,
-                'mensaje' => 'No fue posible conectar con DENUE.'
-            ];
+        $circuito = new DenueCircuitBreaker($this->cacheCandidatos . '/circuito_v1.json');
+        $ticket = $circuito->admitir();
+        if ($ticket === null || !function_exists('curl_init')) {
+            return ['ok' => false, 'transitorio' => true,
+                'mensaje' => 'DENUE temporalmente no disponible. Intenta más tarde.'];
         }
-
-        $ultimoResultado = [
-            'ok' => false,
-            'mensaje' => 'No fue posible conectar con DENUE.'
-        ];
-
-        for ($intento = 1; $intento <= 3; $intento++) {
-            $ch = curl_init();
-
-            if ($ch === false) {
-                return $ultimoResultado;
-            }
-
+        $ch = curl_init();
+        if ($ch === false) {
+            $circuito->informar($ticket, true);
+            return ['ok' => false, 'transitorio' => true, 'mensaje' => 'No fue posible conectar con DENUE.'];
+        }
+        $retryAfter = 0;
+        try {
             curl_setopt_array($ch, [
                 CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_CONNECTTIMEOUT => 8,
+                CURLOPT_CONNECTTIMEOUT => 6,
                 CURLOPT_TIMEOUT => 25,
-                CURLOPT_USERAGENT =>
-                    'SistemaComercialIMPE/1.0 DENUE-sync',
-                CURLOPT_HTTPHEADER => [
-                    'Accept: application/json'
-                ]
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_USERAGENT => 'SistemaComercialIMPE/1.0 DENUE-sync',
+                CURLOPT_HTTPHEADER => ['Accept: application/json'],
+                CURLOPT_HEADERFUNCTION => static function ($handle, string $linea) use (&$retryAfter): int {
+                    if (stripos($linea, 'Retry-After:') === 0) {
+                        $valor = trim(substr($linea, 12));
+                        $retryAfter = ctype_digit($valor) ? (int)$valor : max(0, (int)strtotime($valor) - time());
+                    }
+                    return strlen($linea);
+                }
             ] + DenueTlsPolicy::opciones($url));
-
             $contenido = curl_exec($ch);
-            $codigoHttp =
-                (int)curl_getinfo(
-                    $ch,
-                    CURLINFO_HTTP_CODE
-                );
-            $errorCurl = curl_error($ch);
-            $errnoCurl = curl_errno($ch);
-
+            $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $errno = curl_errno($ch);
+            $respuesta = $this->procesarRespuestaDenue($contenido, $http, curl_error($ch));
+            $transitorio = !in_array($errno, [51, 58, 60, 77, 83, 90], true)
+                && DenueCircuitBreaker::falloTransitorio($http, $errno, !empty($respuesta['ok']));
+            $circuito->informar($ticket, $transitorio, $retryAfter);
+            if (!$respuesta['ok']) error_log('[DENUE] http=' . $http . ' curl_errno=' . $errno . ' transitorio=' . (int)$transitorio);
+            return $respuesta + ['transitorio' => $transitorio];
+        } finally {
             curl_close($ch);
-
-            $ultimoResultado =
-                $this->procesarRespuestaDenue(
-                    $contenido,
-                    $codigoHttp,
-                    $errorCurl
-                );
-
-            if (($ultimoResultado['ok'] ?? false) === true) {
-                return $ultimoResultado;
-            }
-
-            $transitorio = !in_array($errnoCurl, [51, 58, 60, 77, 83, 90], true) && (
-                $contenido === false ||
-                $errorCurl !== '' ||
-                $codigoHttp === 0 ||
-                $codigoHttp === 408 ||
-                $codigoHttp === 429 ||
-                $codigoHttp >= 500);
-
-            error_log(
-                '[DENUE] intento=' .
-                $intento .
-                ' http=' .
-                $codigoHttp .
-                ' curl_errno=' . $errnoCurl .
-                ' transitorio=' .
-                ($transitorio ? '1' : '0')
-            );
-
-            if (!$transitorio || $intento >= 3) {
-                break;
-            }
-
-            usleep(
-                $intento === 1
-                    ? 700000
-                    : 1600000
-            );
         }
-
-        return $ultimoResultado;
     }
 
     private function procesarRespuestaDenue($contenido, int $codigoHttp, string $errorCurl): array
