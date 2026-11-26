@@ -81,15 +81,15 @@ final class DenueCircuitBreaker
     }
 
     /** Una respuesta no transitoria acredita conectividad, no validez comercial. */
-    public function informar(array $ticket, bool $transitorio): bool
+    public function informar(array $ticket, bool $transitorio, int $retryAfter = 0): bool
     {
-        return $this->operar(static function (array &$e, int $ahora) use ($ticket, $transitorio): bool {
+        return $this->operar(static function (array &$e, int $ahora) use ($ticket, $transitorio, $retryAfter): bool {
             if (($ticket['generacion'] ?? -1) !== $e['generacion']) {
                 return false;
             }
             if ($transitorio) {
                 $e['fallos'] = min(count(self::PAUSAS), $e['fallos'] + 1);
-                $e['hasta'] = $ahora + self::PAUSAS[$e['fallos'] - 1];
+                $e['hasta'] = $ahora + max(self::PAUSAS[$e['fallos'] - 1], min(86400, max(0, $retryAfter)));
                 $e['sonda_hasta'] = 0;
                 $e['generacion']++;
             } elseif (!empty($ticket['sonda'])) {
