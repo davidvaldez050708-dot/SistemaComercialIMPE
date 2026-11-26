@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/CorreoSalidaInstitucionalService.php';
 
@@ -124,7 +125,6 @@ class SeguimientoCorreoContactoService
 
         try {
             $resultadoEnvio = $this->correoService->enviar([
-                'usuario_id' => $usuarioId,
                 'remitente' => (string)($seguimiento['analista_correo'] ?? ''),
                 'nombre_remitente' => trim(
                     (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
@@ -172,11 +172,11 @@ class SeguimientoCorreoContactoService
                 );
                 $stmtInteraccion->execute();
 
-                $sqlSeguimiento = "UPDATE seguimientos_vinculacion
+                $sqlSeguimiento = 'UPDATE seguimientos_vinculacion
                                    SET ultima_interaccion_at = NOW()
                                    WHERE id = ?
-                                     AND analista_id = ?
-                                     AND activo = 1";
+                                     AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . '
+                                     AND activo = 1';
                 $stmtSeguimiento = $this->connection->prepare($sqlSeguimiento);
                 $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
                 $stmtSeguimiento->execute();
@@ -228,7 +228,7 @@ class SeguimientoCorreoContactoService
 
     private function obtenerSeguimientoAnalista($seguimientoId, $usuarioId)
     {
-        $sql = "SELECT
+        $sql = 'SELECT
                     s.id,
                     s.analista_id,
                     s.nombre_entidad,
@@ -236,20 +236,20 @@ class SeguimientoCorreoContactoService
                     s.contacto_cargo,
                     s.estado_seguimiento,
                     COALESCE(
-                        NULLIF(TRIM(s.correo_verificado), ''),
-                        NULLIF(TRIM(s.correo_fuente), '')
+                        NULLIF(TRIM(s.correo_verificado), \'\'),
+                        NULLIF(TRIM(s.correo_fuente), \'\')
                     ) AS destinatario_correo,
                     u.nombre AS analista_nombre,
                     u.apellidos AS analista_apellidos,
                     u.correo AS analista_correo
                 FROM seguimientos_vinculacion s
-                JOIN usuarios u ON u.id = s.analista_id
+                JOIN usuarios u ON u.id = ?
                 WHERE s.id = ?
-                  AND s.analista_id = ?
+                  AND ' . SeguimientoTerritorialScope::analista('s') . '
                   AND s.activo = 1
-                LIMIT 1";
+                LIMIT 1';
         $stmt = $this->connection->prepare($sql);
-        $stmt->bind_param('ii', $seguimientoId, $usuarioId);
+        $stmt->bind_param('iii', $usuarioId, $seguimientoId, $usuarioId);
         $stmt->execute();
 
         return $stmt->get_result()->fetch_assoc() ?: null;

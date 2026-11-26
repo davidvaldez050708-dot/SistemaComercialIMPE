@@ -41,6 +41,23 @@ class SeguimientoRutaOperativaService
             ?: new SeguimientoHistorialImportadoService();
     }
 
+    private $errorInicializacion;
+
+    private function servicio(string $nombre)
+    {
+        if ($this->$nombre instanceof Closure) {
+            $factory = $this->$nombre;
+            try {
+                $this->$nombre = $factory();
+            } catch (Throwable $error) {
+                // Un fallo de connect conserva el manejador global/errno de v2.
+                $this->errorInicializacion = $error;
+                throw $error;
+            }
+        }
+        return $this->$nombre;
+    }
+
     public function resolver($seguimientoId, $analistaId, $seguimientoBase = [])
     {
         $seguimientoId = (int)$seguimientoId;
@@ -59,9 +76,10 @@ class SeguimientoRutaOperativaService
 
         try {
             $flujo = null;
-            $postEnvio = $this->postEnvioService->obtenerFlujoSiAplica(
+            $postEnvio = $this->servicio('postEnvioService')->obtenerFlujoSiAplica(
                 $seguimientoId,
-                $analistaId
+                $analistaId,
+                true
             );
 
             if (($postEnvio['ok'] ?? false) && ($postEnvio['aplica'] ?? false)) {
@@ -71,35 +89,41 @@ class SeguimientoRutaOperativaService
                  * Paso 11 y puede reflejar correctamente solicitud, cambio o
                  * confirmación de reunión.
                  */
-                $flujo = $this->correoService->ajustarFlujo(
+                $flujo = $this->servicio('correoService')->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $postEnvio['flujo']
+                    $postEnvio['flujo'],
+                    true
                 );
-                $flujo = $this->agendaService->ajustarFlujoAnalista(
+                $flujo = $this->servicio('agendaService')->ajustarFlujoAnalista(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
-                $flujo = $this->fechaGuardService->ajustarFlujo(
+                $flujo = $this->servicio('fechaGuardService')->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
-                $flujo = $this->resultadoService->ajustarFlujo(
+                $flujo = $this->servicio('resultadoService')->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
-                $flujo = $this->convenioDocumentosService->ajustarFlujo(
+                $flujo = $this->servicio('convenioDocumentosService')->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
             } else {
-                $resultado = $this->flujoService->obtenerEstado(
+                $resultado = $this->servicio('flujoService')->obtenerEstado(
                     $seguimientoId,
-                    $analistaId
+                    $analistaId,
+                    true
                 );
 
                 if (
@@ -127,10 +151,11 @@ class SeguimientoRutaOperativaService
              * respuestas anteriores a la migración.
              */
             if ((int)($flujo['paso_actual'] ?? 0) === 13) {
-                $flujo = $this->convenioDocumentosService->ajustarFlujo(
+                $flujo = $this->servicio('convenioDocumentosService')->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
             }
 
@@ -139,6 +164,9 @@ class SeguimientoRutaOperativaService
                 'flujo' => $flujo
             ];
         } catch (Throwable $error) {
+            if ($this->errorInicializacion === $error) {
+                throw $error;
+            }
             error_log(
                 '[SeguimientoRutaOperativaService] ' . $error->getMessage()
             );
