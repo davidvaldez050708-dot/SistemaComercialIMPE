@@ -1,16 +1,19 @@
 <?php
 require_once __DIR__ . '/DenueTlsPolicy.php';
+require_once __DIR__ . '/DenueCircuitBreaker.php';
 
 /** Transporte acotado de las búsquedas de candidatos; nunca registra URLs ni tokens. */
 class DenueCandidatosHttpClient
 {
     private int $timeoutMs;
     private int $presupuestoMs;
+    private DenueCircuitBreaker $circuito;
 
-    public function __construct(int $timeoutMs = 6500, int $presupuestoMs = 25000)
+    public function __construct(int $timeoutMs = 6500, int $presupuestoMs = 25000, ?DenueCircuitBreaker $circuito = null)
     {
         $this->timeoutMs = max(100, min(6500, $timeoutMs));
         $this->presupuestoMs = max(100, min(25000, $presupuestoMs));
+        $this->circuito = $circuito ?? new DenueCircuitBreaker(__DIR__ . '/../../storage/cache/denue/circuito_v1.json');
     }
 
     public function consultar(array $solicitudes, int $concurrencia = 4): array
@@ -39,14 +42,21 @@ class DenueCandidatosHttpClient
         }
         try {
             while (($pendientes || $activos) && microtime(true) < $fin) {
+                $suspendido = false;
                 foreach ($pendientes as $pos => $trabajo) {
                     if (count($activos) >= $concurrencia) break;
                     if ($trabajo['desde'] > microtime(true)) continue;
                     $restante = (int)(($fin - microtime(true)) * 1000);
                     if ($restante < 100) break;
+                    $ticket = $this->circuito->admitir();
+                    if ($ticket === null) { $suspendido = true; break; }
                     unset($pendientes[$pos]);
                     $handle = curl_init();
-                    if ($handle === false) continue;
+                    if ($handle === false) {
+                        $this->circuito->informar($ticket, true);
+                        $suspendido = true;
+                        break;
+                    }
                     $datos = (object)['cuerpo' => '', 'retry_after' => 0, 'exceso' => false];
                     curl_setopt_array($handle, [
                         CURLOPT_URL => $trabajo['solicitud']['url'],
@@ -71,12 +81,27 @@ class DenueCandidatosHttpClient
                             return strlen($linea);
                         }
                     ] + DenueTlsPolicy::opciones($trabajo['solicitud']['url']));
-                    curl_multi_add_handle($multi, $handle);
-                    $activos[spl_object_id($handle)] = $trabajo + ['handle' => $handle, 'datos' => $datos];
+                    if (curl_multi_add_handle($multi, $handle) !== CURLM_OK) {
+                        curl_close($handle);
+                        $this->circuito->informar($ticket, true);
+                        $suspendido = true;
+                        break;
+                    }
+                    $activos[spl_object_id($handle)] = $trabajo + ['handle' => $handle, 'datos' => $datos, 'ticket' => $ticket];
+                }
+                if ($suspendido && !$activos) {
+                    foreach ($pendientes as $trabajo) {
+                        $resultados[$trabajo['id']] = self::fallo('CIRCUITO', 'DENUE temporalmente no disponible. La consulta se podrá recuperar después.', true)
+                            + ['perfil' => $trabajo['solicitud']['perfil'] ?? []];
+                    }
+                    break;
                 }
                 do { $estado = curl_multi_exec($multi, $ejecutando); }
                 while ($estado === CURLM_CALL_MULTI_PERFORM);
-                if ($estado !== CURLM_OK) break;
+                if ($estado !== CURLM_OK) {
+                    foreach ($activos as $trabajo) $this->circuito->informar($trabajo['ticket'], true);
+                    break;
+                }
                 while ($info = curl_multi_info_read($multi)) {
                     $handle = $info['handle'];
                     $clave = spl_object_id($handle);
@@ -96,14 +121,14 @@ class DenueCandidatosHttpClient
                         error_log('[DENUE candidatos] http=' . $http . ' curl_errno=' . $errno
                             . ' codigo=' . $respuesta['codigo'] . ' intento=' . $trabajo['intento']);
                     }
-                    if (!empty($respuesta['reintentable']) && $trabajo['intento'] < 2) {
-                        $espera = max(0.3, $trabajo['datos']->retry_after);
-                        if (microtime(true) + $espera + 0.1 < $fin) {
-                            $pendientes[] = [
-                                'id' => $trabajo['id'], 'solicitud' => $trabajo['solicitud'],
-                                'intento' => $trabajo['intento'] + 1, 'desde' => microtime(true) + $espera
-                            ];
+                    $transitorio = !empty($respuesta['reintentable']);
+                    $this->circuito->informar($trabajo['ticket'], $transitorio, (int)$trabajo['datos']->retry_after);
+                    if ($transitorio) {
+                        foreach (array_merge(array_values($pendientes), array_values($activos)) as $omitido) {
+                            $resultados[$omitido['id']] = self::fallo('CIRCUITO', 'DENUE temporalmente no disponible. La consulta se podrá recuperar después.', true)
+                                + ['perfil' => $omitido['solicitud']['perfil'] ?? []];
                         }
+                        break 2; // finally cancela las transferencias todavía activas.
                     }
                 }
                 if ($activos) {
@@ -113,6 +138,9 @@ class DenueCandidatosHttpClient
                 }
             }
         } finally {
+            if (microtime(true) >= $fin) {
+                foreach ($activos as $trabajo) $this->circuito->informar($trabajo['ticket'], true);
+            }
             foreach ($activos as $trabajo) {
                 curl_multi_remove_handle($multi, $trabajo['handle']);
                 curl_close($trabajo['handle']);
