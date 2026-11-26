@@ -26,8 +26,8 @@ final class DenueCircuitBreaker
             return null;
         }
         try {
-            // No bloquear otra petición web si el estado no está disponible.
-            if (!flock($lock, LOCK_EX | LOCK_NB)) {
+            // Sólo serializa la lectura/escritura local; nunca se conserva durante cURL.
+            if (!flock($lock, LOCK_EX)) {
                 return null;
             }
             $estado = ['generacion' => 0, 'fallos' => 0, 'hasta' => 0, 'sonda_hasta' => 0];
