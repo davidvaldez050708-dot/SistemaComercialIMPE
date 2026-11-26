@@ -203,3 +203,6 @@
         overflow: visible !important;
     }
 }
+
+/* Estado inicial del servidor: sin depender de DOMContentLoaded ni de temporizadores. */
+[data-report-filter-panel][hidden]{display:none!important}

@@ -34,6 +34,7 @@ $errorFiltros = $errorFiltros ?? '';
 $errorExportacionPdf = $errorExportacionPdf ?? '';
 $urlExportarPdf = $urlExportarPdf ?? '';
 $modoModalReporte = (string)($_GET['modal'] ?? '') === '1';
+$ocultarFiltrosInicialmente=$generarReporte && $errorFiltros==='' && $errorExportacionPdf==='' && !$modoModalReporte;
 $tipoReporteActual = (string)($filtrosReporte['tipo_reporte'] ?? 'cartera');
 $analistaSeleccionadoId = (int)($filtrosReporte['responsable_id'] ?? 0);
 $analistaSeleccionadoNombre = $analistaSeleccionadoId > 0
@@ -76,6 +77,7 @@ $modoReporteEtiquetas = [
 $etiquetasModoReporte = $modoReporteEtiquetas[$modoSeguimiento]
     ?? $modoReporteEtiquetas['analista'];
 $analiticaReporte = is_array($analiticaReporte ?? null) ? $analiticaReporte : [];
+$analiticaServidorJson=json_encode(array_intersect_key($analiticaReporte,array_flip(['interacciones','seguimientos_con_actividad','seguimientos_considerados','cobertura_actividad','promedio_por_seguimiento','canales','llamadas','periodo'])),JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_INVALID_UTF8_SUBSTITUTE);
 $detalleInstitucionReporte = is_array($detalleInstitucionReporte ?? null)
     ? $detalleInstitucionReporte
     : [];
@@ -417,7 +419,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
     </div>
 <?php endif; ?>
 
-<section class="<?= $modoModalReporte ? 'mb-0' : 'dashboard-panel mb-4 py-3' ?>">
+<section class="<?= $modoModalReporte ? 'mb-0' : 'dashboard-panel mb-4 py-3' ?>" data-report-filter-panel<?= $ocultarFiltrosInicialmente ? ' hidden aria-hidden="true" style="display:none"' : '' ?>>
     <?php if (!$modoModalReporte): ?>
         <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
             <div>
@@ -926,7 +928,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
                 <div>
                     <strong><?= (int)($llamadasReporte['total'] ?? 0) ?></strong>
                     <span>Llamadas realizadas</span>
-                    <small>Intentos telefónicos registrados</small>
+                    <small>Llamadas acreditadas en el periodo<?= (int)($analiticaReporte['llamadas_sin_expediente']??0)>0 ? ' · '.(int)$analiticaReporte['llamadas_sin_expediente'].' sin expediente' : '' ?></small>
                 </div>
             </article>
             <article class="analyst-activity-kpi">
@@ -2828,6 +2830,7 @@ $etiquetaEstatus = static function ($codigo) use ($estadosSeguimiento) {
 
 <?php endif; ?>
 
+<script type="application/json" data-report-server-analytics><?= $analiticaServidorJson ?></script>
 <script>
 (function () {
     const estado = document.querySelector('[data-report-state]');

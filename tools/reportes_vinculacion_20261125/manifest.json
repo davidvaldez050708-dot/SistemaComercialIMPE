@@ -1,0 +1,81 @@
+{
+  "domain": "fundacionrededumex.org",
+  "release": "reportes_vinculacion_20261125",
+  "files": [
+    {
+      "path": "app/services/SeguimientoReporteAnaliticaService.php",
+      "before_sha256": "60a49504daa70ebddf4322624355561222bcfed70d6644eef736e087d680b362",
+      "after_sha256": "5b4e3b92bdbd1ccb7ff871c5b635b2601029f5f36bc59b10832ebff6ad72c631",
+      "before_bytes": 45830,
+      "after_bytes": 46809
+    },
+    {
+      "path": "app/services/SeguimientoAtencionOperativaService.php",
+      "before_sha256": "918c1cc52bf0d7a9900126585046c61c83a2af6ac665b3d233f4d22bd2b0f734",
+      "after_sha256": "5abbe33019c4a3f2fd16c6fa77fac5eb1dbab2af6b08fa0dc63d215fe2f05338",
+      "before_bytes": 13948,
+      "after_bytes": 13952
+    },
+    {
+      "path": "app/controllers/SeguimientoVinculacionReporteController.php",
+      "before_sha256": "55df15131bbc0cb8278c6739d22474d01c5590be555c080f9ed7ff1310e0fac6",
+      "after_sha256": "e06017b64660796af30369449d6866b83c7cc2006ba6562338bd0538e6cb4826",
+      "before_bytes": 85964,
+      "after_bytes": 87196
+    },
+    {
+      "path": "app/views/seguimiento_vinculacion/reportes.php",
+      "before_sha256": "e702574356e71b54b426b29611e49a476c493e8ad4761c16158baecff3313e3b",
+      "after_sha256": "248a7cc520d369c8a4a04edb9b375e144d1eb7205cf854629464a5348216149d",
+      "before_bytes": 171090,
+      "after_bytes": 171919
+    },
+    {
+      "path": "public/css/seguimiento_reportes_decisiones_v2.css",
+      "before_sha256": "dbba0dfc113b94726aec7506bdd7aa6371a91dd21f14eba879daa17db3b33b11",
+      "after_sha256": "d32e62c7432a02fbf5d033ad2dc7c42821ce136a7a254c716f010398b3e1c4dd",
+      "before_bytes": 5292,
+      "after_bytes": 5442
+    },
+    {
+      "path": "public/javascript/seguimiento_reportes_decisiones_v2.js",
+      "before_sha256": "30c4931cbacedab77adf98630cbeec95574a0d21905a6a199ca2224d61c96f5e",
+      "after_sha256": "f12089ae8b15e97211f62a162d9be050df3f237a39108e5f8272bbc29013c994",
+      "before_bytes": 37436,
+      "after_bytes": 37469
+    },
+    {
+      "path": "public/javascript/seguimiento_reportes_analitica.js",
+      "before_sha256": "ac225d7a0befcb788e895884069bc9d7d21892db2ba1082709b295e7bd690b60",
+      "after_sha256": "fc47a178a4a08dd34dfef0a6a571f14d6b408889f93b42c19b4eb4fedbf7d7ca",
+      "before_bytes": 19000,
+      "after_bytes": 19623
+    },
+    {
+      "path": "app/controllers/SeguimientoReporteAnaliticaController.php",
+      "before_sha256": "adea39fc8ac963acd6f9e6a4a9e7c074063b59b23e18e0062c5550a308a9f368",
+      "after_sha256": "62075a208fccfc22e176fbbcb3d615f9de13cd7bb84f89cfd7f9a499198d7dbe",
+      "before_bytes": 2824,
+      "after_bytes": 3073
+    }
+  ],
+  "read_only_dependencies": [
+    {
+      "path": "app/helpers/TelefoniaFechaHoraHelper.php",
+      "sha256": "627d434276c3efcfed22f7605d68ca0181b7c8a2fed524500f6e2563e52626bc"
+    },
+    {
+      "path": "app/services/TelefoniaVentasLlamadasService.php",
+      "sha256": "8672adc3c47c18278bf3830c1dbe96e6ed7da9712e5055e87ba3a0b9c71a4893"
+    },
+    {
+      "path": "app/services/TelefoniaPbxSegmentosService.php",
+      "sha256": "4d4d4128829add841d434c455ab649bebbcc50b8da11661c04b975a75f14e673"
+    },
+    {
+      "path": "app/helpers/SeguimientoTerritorialScope.php",
+      "sha256": "807d8214bd19a0ec1136a02e8493cb7be19e913cb59e5db143cff2b4bafe2eb6"
+    }
+  ],
+  "hash_basis": "Hostinger connector text; final LF reconstructed only when reported byte size requires it."
+}

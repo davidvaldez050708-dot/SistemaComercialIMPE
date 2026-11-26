@@ -1,16 +1,35 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/SeguimientoAtencionOperativaService.php';
+require_once __DIR__ . '/../helpers/TelefoniaFechaHoraHelper.php';
 
 class SeguimientoReporteAnaliticaService
 {
     private $connection;
+    private $fuenteActividad;
+    private array $contextoFuente=[],$idsAutorizadosCache=[];
 
-    public function __construct()
+    public function __construct($connection = null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection ?: (new Database())->connect();
+    }
+
+    private function fuente(array $ids,string $desde,string $hasta,string $canal,array $actores,int $usuario=0,string $modo='administrador'): array
+    {
+        $contexto=$this->contextoFuente;
+        return ($this->fuenteActividad??=new SeguimientoReporteActividadFuente($this->connection))->obtener(
+            $ids,$desde,$hasta,$canal,$actores,(int)($contexto['usuario']??$usuario),(string)($contexto['modo']??$modo),(bool)($contexto['sin_expediente']??false));
+    }
+
+    public function obtenerIdsConActividad(array $ids,int $usuario,string $modo,string $desde,string $hasta,string $canal,array $actores,bool $sinExpediente=false): array
+    {
+        if($usuario<=0)return [];
+        if($modo==='analista')$actores=[$usuario];
+        $this->contextoFuente=['usuario'=>$usuario,'modo'=>$modo,'sin_expediente'=>$sinExpediente];
+        $ids=$this->filtrarIdsAutorizados($this->normalizarIds($ids),$usuario,$modo);
+        return $this->fuente($ids,$desde,$hasta,$canal,$this->normalizarIds($actores))['ids_actividad'];
     }
 
     public function construir(
@@ -21,18 +40,21 @@ class SeguimientoReporteAnaliticaService
         $fechaFinal = '',
         $canal = '',
         $limiteActividadReciente = 60,
-        array $actorIds = []
+        array $actorIds = [],
+        bool $incluirNoVinculadas = false
     ) {
         $seguimientoIds = $this->normalizarIds($seguimientoIds);
         $usuarioId = (int)$usuarioId;
         $modoAcceso = (string)$modoAcceso;
+        if(!in_array($modoAcceso,['administrador','supervisor','analista'],true))return $this->estructuraVacia();
+        $this->contextoFuente=['usuario'=>$usuarioId,'modo'=>$modoAcceso,'sin_expediente'=>$incluirNoVinculadas];
         $actorIds = $this->normalizarIds($actorIds);
 
         if ($modoAcceso === 'analista') {
             $actorIds = [$usuarioId];
         }
 
-        if (empty($seguimientoIds) || $usuarioId <= 0) {
+        if ((empty($seguimientoIds) && !$incluirNoVinculadas) || $usuarioId <= 0) {
             return $this->estructuraVacia();
         }
 
@@ -42,7 +64,7 @@ class SeguimientoReporteAnaliticaService
             $modoAcceso
         );
 
-        if (empty($autorizados)) {
+        if (empty($autorizados) && !$incluirNoVinculadas) {
             return $this->estructuraVacia();
         }
 
@@ -86,7 +108,7 @@ class SeguimientoReporteAnaliticaService
         $totalSeguimientos = count($autorizados);
         $totalInteracciones = (int)($resumenInteracciones['total_interacciones'] ?? 0);
         $totalConActividad = (int)($resumenInteracciones['seguimientos_con_actividad'] ?? 0);
-        $atenciones = (new SeguimientoAtencionOperativaService())->obtenerPorIds($autorizados);
+        $atenciones = (new SeguimientoAtencionOperativaService($this->connection))->obtenerPorIds($autorizados);
         $totalAtencion = count($atenciones);
         $actividadReciente = $this->obtenerActividadReciente(
             $autorizados,
@@ -147,6 +169,7 @@ class SeguimientoReporteAnaliticaService
         return [
             'seguimientos_considerados' => $totalSeguimientos,
             'interacciones' => $totalInteracciones,
+            'llamadas_sin_expediente' => $this->fuente($autorizados,$fechaInicial,$fechaFinal,$canal,$actorIds)['llamadas_sin_expediente'],
             'seguimientos_con_actividad' => $totalConActividad,
             'cobertura_actividad' => $totalSeguimientos > 0
                 ? round(($totalConActividad / $totalSeguimientos) * 100, 1)
@@ -197,6 +220,8 @@ class SeguimientoReporteAnaliticaService
             return [];
         }
 
+        $clave=json_encode([$ids,(int)$usuarioId,(string)$modoAcceso]);
+        if(isset($this->idsAutorizadosCache[$clave]))return $this->idsAutorizadosCache[$clave];
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $parametros = array_map('intval', $ids);
         $tipos = str_repeat('i', count($parametros));
@@ -207,25 +232,9 @@ class SeguimientoReporteAnaliticaService
                     WHERE s.id IN ($placeholders)
                       AND s.activo = 1";
         } elseif ($modoAcceso === 'supervisor') {
-            $sql = "SELECT DISTINCT s.id
-                    FROM seguimientos_vinculacion s
-                    INNER JOIN asignaciones_territorio analista
-                        ON analista.usuario_id = s.analista_id
-                        AND analista.estado_id = s.estado_id
-                        AND analista.tipo_asignacion = 'ANALISTA_DATOS'
-                        AND analista.activo = 1
-                        AND (analista.fecha_inicio IS NULL OR analista.fecha_inicio <= CURDATE())
-                        AND (analista.fecha_fin IS NULL OR analista.fecha_fin >= CURDATE())
-                    INNER JOIN asignaciones_territorio cuenta
-                        ON cuenta.id = analista.cuenta_clave_asignacion_id
-                        AND cuenta.estado_id = s.estado_id
-                        AND cuenta.tipo_asignacion = 'CUENTA_CLAVE'
-                        AND cuenta.activo = 1
-                        AND (cuenta.fecha_inicio IS NULL OR cuenta.fecha_inicio <= CURDATE())
-                        AND (cuenta.fecha_fin IS NULL OR cuenta.fecha_fin >= CURDATE())
-                    WHERE s.id IN ($placeholders)
-                      AND s.activo = 1
-                      AND cuenta.usuario_id = ?";
+            $sql = "SELECT DISTINCT s.id FROM seguimientos_vinculacion s
+                    WHERE s.id IN ($placeholders) AND s.activo = 1 AND "
+                . SeguimientoTerritorialScope::supervisor('s');
             $parametros[] = $usuarioId;
             $tipos .= 'i';
         } else {
@@ -233,7 +242,7 @@ class SeguimientoReporteAnaliticaService
                     FROM seguimientos_vinculacion s
                     WHERE s.id IN ($placeholders)
                       AND s.activo = 1
-                      AND s.analista_id = ?";
+                      AND " . SeguimientoTerritorialScope::analista('s') . "";
             $parametros[] = $usuarioId;
             $tipos .= 'i';
         }
@@ -251,7 +260,7 @@ class SeguimientoReporteAnaliticaService
             }
         }
 
-        return array_values($autorizados);
+        return $this->idsAutorizadosCache[$clave]=array_values($autorizados);
     }
 
     private function obtenerResumenInteracciones(
@@ -263,121 +272,7 @@ class SeguimientoReporteAnaliticaService
         $canal,
         array $actorIds = []
     ) {
-        if (empty($ids)) {
-            return [
-                'total_interacciones' => 0,
-                'seguimientos_con_actividad' => 0,
-                'llamadas' => 0,
-                'correos' => 0,
-                'whatsapp' => 0,
-                'otros' => 0,
-                'contactadas' => 0,
-                'sin_respuesta' => 0,
-                'numero_incorrecto' => 0,
-                'volver_llamar' => 0,
-                'llamadas_otros' => 0,
-                'verificaciones_efectivas' => 0
-            ];
-        }
-
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "SELECT
-                    COUNT(*) AS total_interacciones,
-                    COUNT(DISTINCT seguimiento_id) AS seguimientos_con_actividad,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
-                        THEN 1 ELSE 0
-                    END) AS llamadas,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(canal, ''))) = 'CORREO'
-                        THEN 1 ELSE 0
-                    END) AS correos,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(canal, ''))) = 'WHATSAPP'
-                        THEN 1 ELSE 0
-                    END) AS whatsapp,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(canal, ''))) NOT IN ('LLAMADA_IP', 'LLAMADA', 'CORREO', 'WHATSAPP')
-                        THEN 1 ELSE 0
-                    END) AS otros,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
-                         AND (
-                            notas LIKE '%[CONTACTO_EFECTIVO]%'
-                            OR UPPER(TRIM(COALESCE(resultado, ''))) IN (
-                                'CONTACTADO',
-                                'CONTACTO_CORRECTO',
-                                'CONTACTO_REFERIDO',
-                                'SOLICITO_INFORMACION',
-                                'SOLICITO_LLAMAR_DESPUES',
-                                'NO_INTERESADO'
-                            )
-                         )
-                         AND notas NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
-                        THEN 1 ELSE 0
-                    END) AS contactadas,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
-                         AND UPPER(TRIM(COALESCE(resultado, ''))) = 'SIN_RESPUESTA'
-                        THEN 1 ELSE 0
-                    END) AS sin_respuesta,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
-                         AND UPPER(TRIM(COALESCE(resultado, ''))) = 'NUMERO_INCORRECTO'
-                        THEN 1 ELSE 0
-                    END) AS numero_incorrecto,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
-                         AND UPPER(TRIM(COALESCE(resultado, ''))) = 'SOLICITO_LLAMAR_DESPUES'
-                        THEN 1 ELSE 0
-                    END) AS volver_llamar,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
-                         AND UPPER(TRIM(COALESCE(resultado, ''))) NOT IN (
-                            'CONTACTADO',
-                            'SIN_RESPUESTA',
-                            'NUMERO_INCORRECTO',
-                            'SOLICITO_LLAMAR_DESPUES'
-                         )
-                        THEN 1 ELSE 0
-                    END) AS llamadas_otros,
-                    COUNT(DISTINCT CASE
-                        WHEN UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA_IP', 'LLAMADA')
-                         AND notas LIKE '%[VERIFICACION_EFECTIVA]%'
-                         AND TRIM(COALESCE(proveedor_externo, '')) <> ''
-                         AND TRIM(COALESCE(id_externo, '')) <> ''
-                         AND COALESCE(duracion_segundos, 0) > 0
-                        THEN CONCAT(usuario_id, '|', seguimiento_id, '|', DATE(fecha_inicio))
-                        ELSE NULL
-                    END) AS verificaciones_efectivas
-                FROM interacciones_vinculacion
-                WHERE seguimiento_id IN ($placeholders)
-                  AND UPPER(TRIM(COALESCE(canal, ''))) <> 'SISTEMA'";
-
-        $parametros = array_map('intval', $ids);
-        $tipos = str_repeat('i', count($parametros));
-
-        $this->agregarFiltroActores($sql, $tipos, $parametros, $actorIds);
-
-        if ($fechaInicial !== '') {
-            $sql .= " AND fecha_inicio >= ?";
-            $parametros[] = $fechaInicial . ' 00:00:00';
-            $tipos .= 's';
-        }
-
-        if ($fechaFinal !== '') {
-            $sql .= " AND fecha_inicio <= ?";
-            $parametros[] = $fechaFinal . ' 23:59:59';
-            $tipos .= 's';
-        }
-
-        $this->agregarFiltroCanal($sql, $tipos, $parametros, $canal);
-
-        $stmt = $this->connection->prepare($sql);
-        $this->vincularParametros($stmt, $tipos, $parametros);
-        $stmt->execute();
-
-        return $stmt->get_result()->fetch_assoc() ?: [];
+        return $this->fuente($ids,$fechaInicial,$fechaFinal,$canal,$actorIds,(int)$usuarioId,(string)$modoAcceso)['resumen'];
     }
 
     private function obtenerActividadReciente(
@@ -390,66 +285,7 @@ class SeguimientoReporteAnaliticaService
         $limite = 60,
         array $actorIds = []
     ) {
-        if (empty($ids)) {
-            return [];
-        }
-
-        $limite = max(1, min(100, (int)$limite));
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "SELECT
-                    i.id,
-                    i.seguimiento_id,
-                    i.usuario_id,
-                    i.canal,
-                    i.resultado,
-                    i.fecha_inicio,
-                    i.notas,
-                    i.telefono_destino,
-                    i.correo_destino,
-                    i.duracion_segundos,
-                    i.proveedor_externo,
-                    i.id_externo,
-                    s.nombre_entidad,
-                    COALESCE(m.nombre, '') AS municipio,
-                    COALESCE(e.nombre, '') AS estado_nombre,
-                    TRIM(CONCAT(COALESCE(u.nombre, ''), ' ', COALESCE(u.apellidos, ''))) AS responsable_nombre
-                FROM interacciones_vinculacion i
-                INNER JOIN seguimientos_vinculacion s
-                    ON s.id = i.seguimiento_id
-                LEFT JOIN municipios m
-                    ON m.id = s.municipio_id
-                LEFT JOIN estados e
-                    ON e.id = s.estado_id
-                LEFT JOIN usuarios u
-                    ON u.id = i.usuario_id
-                WHERE i.seguimiento_id IN ($placeholders)
-                  AND UPPER(TRIM(COALESCE(i.canal, ''))) <> 'SISTEMA'";
-
-        $parametros = array_map('intval', $ids);
-        $tipos = str_repeat('i', count($parametros));
-
-        $this->agregarFiltroActores($sql, $tipos, $parametros, $actorIds, 'i.');
-
-        if ($fechaInicial !== '') {
-            $sql .= " AND i.fecha_inicio >= ?";
-            $parametros[] = $fechaInicial . ' 00:00:00';
-            $tipos .= 's';
-        }
-
-        if ($fechaFinal !== '') {
-            $sql .= " AND i.fecha_inicio <= ?";
-            $parametros[] = $fechaFinal . ' 23:59:59';
-            $tipos .= 's';
-        }
-
-        $this->agregarFiltroCanal($sql, $tipos, $parametros, $canal, 'i.');
-
-        $sql .= " ORDER BY i.fecha_inicio DESC, i.id DESC LIMIT " . $limite;
-        $stmt = $this->connection->prepare($sql);
-        $this->vincularParametros($stmt, $tipos, $parametros);
-        $stmt->execute();
-
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        return array_slice($this->fuente($ids,$fechaInicial,$fechaFinal,$canal,$actorIds,(int)$usuarioId,(string)$modoAcceso)['humanas'],0,max(1,min(100,(int)$limite)));
     }
 
     private function obtenerRendimientoTelefonicoDiario(
@@ -461,72 +297,9 @@ class SeguimientoReporteAnaliticaService
         $canal,
         array $actorIds = []
     ) {
-        $canal = strtoupper(trim((string)$canal));
-        if (
-            empty($ids) ||
-            ($canal !== '' && !in_array($canal, ['LLAMADA', 'LLAMADA_IP'], true))
-        ) {
-            return [];
-        }
-
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "SELECT
-                    DATE(fecha_inicio) AS fecha,
-                    COUNT(*) AS llamadas,
-                    COALESCE(SUM(
-                        CASE
-                            WHEN (
-                                notas LIKE '%[CONTACTO_EFECTIVO]%'
-                                OR UPPER(TRIM(COALESCE(resultado, ''))) IN (
-                                    'CONTACTADO',
-                                    'CONTACTO_CORRECTO',
-                                    'CONTACTO_REFERIDO',
-                                    'SOLICITO_INFORMACION',
-                                    'SOLICITO_LLAMAR_DESPUES',
-                                    'NO_INTERESADO'
-                                )
-                            )
-                            AND notas NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
-                            THEN 1 ELSE 0
-                        END
-                    ), 0) AS con_contacto,
-                    COUNT(DISTINCT CASE
-                        WHEN notas LIKE '%[VERIFICACION_EFECTIVA]%'
-                         AND TRIM(COALESCE(proveedor_externo, '')) <> ''
-                         AND TRIM(COALESCE(id_externo, '')) <> ''
-                         AND COALESCE(duracion_segundos, 0) > 0
-                        THEN CONCAT(usuario_id, '|', seguimiento_id)
-                        ELSE NULL
-                    END) AS efectivas
-                FROM interacciones_vinculacion
-                WHERE seguimiento_id IN ($placeholders)
-                  AND UPPER(TRIM(COALESCE(canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')";
-
-        $parametros = array_map('intval', $ids);
-        $tipos = str_repeat('i', count($parametros));
-
-        $this->agregarFiltroActores($sql, $tipos, $parametros, $actorIds);
-
-        if ($fechaInicial !== '') {
-            $sql .= " AND fecha_inicio >= ?";
-            $parametros[] = $fechaInicial . ' 00:00:00';
-            $tipos .= 's';
-        }
-
-        if ($fechaFinal !== '') {
-            $sql .= " AND fecha_inicio <= ?";
-            $parametros[] = $fechaFinal . ' 23:59:59';
-            $tipos .= 's';
-        }
-
-        $sql .= " GROUP BY DATE(fecha_inicio) ORDER BY fecha ASC";
-        $stmt = $this->connection->prepare($sql);
-        $this->vincularParametros($stmt, $tipos, $parametros);
-        $stmt->execute();
-
-        $porFecha = [];
-        $resultado = $stmt->get_result();
-        while ($fila = $resultado->fetch_assoc()) {
+        if($canal!==''&&!in_array($canal,['LLAMADA','LLAMADA_IP'],true))return [];
+        $porFecha=[];
+        foreach($this->fuente($ids,$fechaInicial,$fechaFinal,$canal,$actorIds,(int)$usuarioId,(string)$modoAcceso)['diario'] as $fila){
             $fecha = (string)($fila['fecha'] ?? '');
             if ($fecha === '') {
                 continue;
@@ -809,89 +582,7 @@ class SeguimientoReporteAnaliticaService
         $limite = 6,
         array $actorIds = []
     ) {
-        if (empty($ids)) {
-            return [];
-        }
-
-        $limite = max(1, min(12, (int)$limite));
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "SELECT
-                    i.seguimiento_id,
-                    s.nombre_entidad,
-                    COALESCE(m.nombre, '') AS municipio,
-                    COALESCE(e.nombre, '') AS estado_nombre,
-                    COUNT(*) AS interacciones,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
-                        THEN 1 ELSE 0
-                    END) AS llamadas,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) = 'CORREO'
-                        THEN 1 ELSE 0
-                    END) AS correos,
-                    SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
-                         AND (
-                            i.notas LIKE '%[CONTACTO_EFECTIVO]%'
-                            OR UPPER(TRIM(COALESCE(i.resultado, ''))) IN (
-                                'CONTACTADO',
-                                'CONTACTO_CORRECTO',
-                                'CONTACTO_REFERIDO',
-                                'SOLICITO_INFORMACION',
-                                'SOLICITO_LLAMAR_DESPUES',
-                                'NO_INTERESADO'
-                            )
-                         )
-                         AND i.notas NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
-                        THEN 1 ELSE 0
-                    END) AS con_contacto,
-                    COUNT(DISTINCT CASE
-                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
-                         AND i.notas LIKE '%[VERIFICACION_EFECTIVA]%'
-                         AND TRIM(COALESCE(i.proveedor_externo, '')) <> ''
-                         AND TRIM(COALESCE(i.id_externo, '')) <> ''
-                         AND COALESCE(i.duracion_segundos, 0) > 0
-                        THEN CONCAT(i.usuario_id, '|', DATE(i.fecha_inicio))
-                        ELSE NULL
-                    END) AS efectivas,
-                    MAX(i.fecha_inicio) AS ultima_actividad
-                FROM interacciones_vinculacion i
-                INNER JOIN seguimientos_vinculacion s
-                    ON s.id = i.seguimiento_id
-                LEFT JOIN municipios m
-                    ON m.id = s.municipio_id
-                LEFT JOIN estados e
-                    ON e.id = s.estado_id
-                WHERE i.seguimiento_id IN ($placeholders)
-                  AND UPPER(TRIM(COALESCE(i.canal, ''))) <> 'SISTEMA'";
-
-        $parametros = array_map('intval', $ids);
-        $tipos = str_repeat('i', count($parametros));
-
-        $this->agregarFiltroActores($sql, $tipos, $parametros, $actorIds, 'i.');
-
-        if ($fechaInicial !== '') {
-            $sql .= " AND i.fecha_inicio >= ?";
-            $parametros[] = $fechaInicial . ' 00:00:00';
-            $tipos .= 's';
-        }
-
-        if ($fechaFinal !== '') {
-            $sql .= " AND i.fecha_inicio <= ?";
-            $parametros[] = $fechaFinal . ' 23:59:59';
-            $tipos .= 's';
-        }
-
-        $this->agregarFiltroCanal($sql, $tipos, $parametros, $canal, 'i.');
-        $sql .= " GROUP BY i.seguimiento_id, s.nombre_entidad, m.nombre, e.nombre
-                  ORDER BY interacciones DESC, ultima_actividad DESC
-                  LIMIT " . $limite;
-
-        $stmt = $this->connection->prepare($sql);
-        $this->vincularParametros($stmt, $tipos, $parametros);
-        $stmt->execute();
-
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        return array_slice($this->fuente($ids,$fechaInicial,$fechaFinal,$canal,$actorIds,(int)$usuarioId,(string)$modoAcceso)['instituciones'],0,max(1,min(12,(int)$limite)));
     }
 
     private function calcularCumplimientoEfectivas(
@@ -961,103 +652,10 @@ class SeguimientoReporteAnaliticaService
         $canal,
         array $actorIds
     ) {
-        $ids = $this->normalizarIds($ids);
-        $actorIds = $this->normalizarIds($actorIds);
-
-        if (empty($ids) || empty($actorIds)) {
-            return [];
-        }
-
-        $seguimientoPlaceholders = implode(',', array_fill(0, count($ids), '?'));
-        $actorPlaceholders = implode(',', array_fill(0, count($actorIds), '?'));
-
-        $sql = "SELECT
-                    u.id AS usuario_id,
-                    TRIM(CONCAT(COALESCE(u.nombre, ''), ' ', COALESCE(u.apellidos, ''))) AS analista_nombre,
-                    COUNT(i.id) AS interacciones,
-                    COUNT(DISTINCT i.seguimiento_id) AS instituciones,
-                    COALESCE(SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
-                        THEN 1 ELSE 0
-                    END), 0) AS llamadas,
-                    COALESCE(SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) = 'CORREO'
-                        THEN 1 ELSE 0
-                    END), 0) AS correos,
-                    COALESCE(SUM(CASE
-                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
-                         AND (
-                            i.notas LIKE '%[CONTACTO_EFECTIVO]%'
-                            OR UPPER(TRIM(COALESCE(i.resultado, ''))) IN (
-                                'CONTACTADO',
-                                'CONTACTO_CORRECTO',
-                                'CONTACTO_REFERIDO',
-                                'SOLICITO_INFORMACION',
-                                'SOLICITO_LLAMAR_DESPUES',
-                                'NO_INTERESADO'
-                            )
-                         )
-                         AND i.notas NOT LIKE '%[SIN_CONTACTO_EFECTIVO]%'
-                        THEN 1 ELSE 0
-                    END), 0) AS con_contacto,
-                    COUNT(DISTINCT CASE
-                        WHEN UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')
-                         AND i.notas LIKE '%[VERIFICACION_EFECTIVA]%'
-                         AND TRIM(COALESCE(i.proveedor_externo, '')) <> ''
-                         AND TRIM(COALESCE(i.id_externo, '')) <> ''
-                         AND COALESCE(i.duracion_segundos, 0) > 0
-                        THEN CONCAT(i.seguimiento_id, '|', DATE(i.fecha_inicio))
-                        ELSE NULL
-                    END) AS efectivas
-                FROM usuarios u
-                LEFT JOIN interacciones_vinculacion i
-                    ON i.usuario_id = u.id
-                    AND i.seguimiento_id IN (" . $seguimientoPlaceholders . ")
-                    AND UPPER(TRIM(COALESCE(i.canal, ''))) <> 'SISTEMA'";
-
-        $parametros = array_map('intval', $ids);
-        $tipos = str_repeat('i', count($parametros));
-
-        if ($fechaInicial !== '') {
-            $sql .= " AND i.fecha_inicio >= ?";
-            $parametros[] = $fechaInicial . ' 00:00:00';
-            $tipos .= 's';
-        }
-
-        if ($fechaFinal !== '') {
-            $sql .= " AND i.fecha_inicio <= ?";
-            $parametros[] = $fechaFinal . ' 23:59:59';
-            $tipos .= 's';
-        }
-
-        $canal = strtoupper(trim((string)$canal));
-        if ($canal !== '') {
-            if (in_array($canal, ['LLAMADA', 'LLAMADA_IP'], true)) {
-                $sql .= " AND UPPER(TRIM(COALESCE(i.canal, ''))) IN ('LLAMADA', 'LLAMADA_IP')";
-            } elseif ($canal === 'NOTA') {
-                $sql .= " AND UPPER(TRIM(COALESCE(i.canal, ''))) NOT IN ('SISTEMA', 'LLAMADA', 'LLAMADA_IP', 'CORREO', 'WHATSAPP')";
-            } else {
-                $sql .= " AND UPPER(TRIM(COALESCE(i.canal, ''))) = ?";
-                $parametros[] = $canal;
-                $tipos .= 's';
-            }
-        }
-
-        $sql .= " WHERE u.id IN (" . $actorPlaceholders . ")
-                  GROUP BY u.id, u.nombre, u.apellidos
-                  ORDER BY u.nombre, u.apellidos";
-
-        foreach ($actorIds as $actorId) {
-            $parametros[] = (int)$actorId;
-            $tipos .= 'i';
-        }
-
-        $stmt = $this->connection->prepare($sql);
-        $this->vincularParametros($stmt, $tipos, $parametros);
-        $stmt->execute();
-
-        $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
+        $actorIds=$this->normalizarIds($actorIds);
+        if(!$actorIds)return [];
+        $permitidos=array_fill_keys($actorIds,true);
+        $filas=array_values(array_filter($this->fuente($ids,$fechaInicial,$fechaFinal,$canal,$actorIds)['actores'],static fn($fila)=>isset($permitidos[(int)$fila['usuario_id']])));
         $diasEvaluados = 1;
         if ($fechaInicial !== '' && $fechaFinal !== '') {
             try {
@@ -1155,9 +753,6 @@ class SeguimientoReporteAnaliticaService
                 $normalizados[$id] = $id;
             }
 
-            if (count($normalizados) >= 200) {
-                break;
-            }
         }
 
         return array_values($normalizados);
@@ -1256,5 +851,189 @@ class SeguimientoReporteAnaliticaService
                 'canal' => ''
             ]
         ];
+    }
+}
+
+/** Lectura compartida de actividad humana y telefonía acreditada. No escribe ni crea interacciones. */
+final class SeguimientoReporteActividadFuente
+{
+    private array $cache=[],$tables=[];
+    public function __construct(private $db) {}
+    private function rows(string $sql,array $args=[]): array
+    {
+        $s=$this->db->prepare($sql);if($args)$s->bind_param(str_repeat('s',count($args)),...$args);
+        $s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $rows;
+    }
+    private function table(string $name): bool
+    {
+        return $this->tables[$name]??=$this->rows('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?',[$name])!==[];
+    }
+    private static function inPeriod(string $date,string $from,string $until): bool
+    {
+        return $date!==''&&($from===''||$date>=$from.' 00:00:00')&&($until===''||$date<=$until.' 23:59:59');
+    }
+    private static function phone(array $row): bool {return in_array(strtoupper(trim((string)($row['canal']??''))),['LLAMADA','LLAMADA_IP'],true);}
+    public static function criteria(array $row): array
+    {
+        $notes=(string)($row['notas']??'');$result=strtoupper(trim((string)($row['resultado']??'')));
+        $contact=(str_contains($notes,'[CONTACTO_EFECTIVO]')||in_array($result,['CONTACTADO','CONTACTO_CORRECTO','CONTACTO_REFERIDO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'],true))&&!str_contains($notes,'[SIN_CONTACTO_EFECTIVO]');
+        // Mantener la regla comercial instalada: marca explícita y vínculo de telefonía confirmado.
+        $effective=str_contains($notes,'[VERIFICACION_EFECTIVA]')&&trim((string)($row['proveedor_externo']??''))!==''&&trim((string)($row['id_externo']??''))!==''&&(int)($row['duracion_segundos']??0)>0;
+        return ['contacto'=>$contact,'efectiva'=>$effective];
+    }
+    private static function callKey(array $row): string
+    {
+        $owner=(int)$row['usuario_id'];$external=trim((string)($row['id_externo']??''));$provider=strtoupper(trim((string)($row['proveedor_externo']??'')));
+        return $external!==''&&$provider!==''?$owner.'|'.$provider.'|'.$external:$owner.'|interaccion|'.(int)$row['id'];
+    }
+    private function owners(array $ids,array $actors,int $user,string $mode): array
+    {
+        if($mode==='analista')$actors=[$user];
+        $sql="SELECT DISTINCT u.id,TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) nombre FROM usuarios u WHERE u.rol_id=4";$args=[];
+        if($mode==='supervisor'){
+            if(!$ids)return [];
+            $sql.=' AND EXISTS(SELECT 1 FROM seguimientos_vinculacion s WHERE s.analista_id=u.id AND s.id IN ('.implode(',',array_fill(0,count($ids),'?')).') AND '.SeguimientoTerritorialScope::supervisor('s').')';
+            $args=array_merge($ids,[$user]);
+        }
+        if($actors){$sql.=' AND u.id IN ('.implode(',',array_fill(0,count($actors),'?')).')';$args=array_merge($args,$actors);}
+        return array_column($this->rows($sql,$args),null,'id');
+    }
+    public function obtener(array $ids,string $from,string $until,string $channel,array $actors,int $user,string $mode,bool $unlinked=false): array
+    {
+        $key=json_encode([$ids,$from,$until,$channel,$actors,$user,$mode,$unlinked]);
+        if(isset($this->cache[$key]))return $this->cache[$key];
+        $allowed=array_fill_keys($ids,true);$human=[];
+        if($ids){
+            $sql="SELECT i.*,s.nombre_entidad,COALESCE(m.nombre,'') municipio,COALESCE(e.nombre,'') estado_nombre,TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) responsable_nombre
+                FROM interacciones_vinculacion i JOIN seguimientos_vinculacion s ON s.id=i.seguimiento_id
+                LEFT JOIN municipios m ON m.id=s.municipio_id LEFT JOIN estados e ON e.id=s.estado_id LEFT JOIN usuarios u ON u.id=i.usuario_id
+                WHERE i.seguimiento_id IN (".implode(',',array_fill(0,count($ids),'?')).") AND UPPER(TRIM(COALESCE(i.canal,'')))<>'SISTEMA'";
+            $args=$ids;
+            if($actors){$sql.=' AND i.usuario_id IN ('.implode(',',array_fill(0,count($actors),'?')).')';$args=array_merge($args,$actors);}
+            if($from!==''){$sql.=' AND i.fecha_inicio>=?';$args[]=$from.' 00:00:00';}
+            if($until!==''){$sql.=' AND i.fecha_inicio<=?';$args[]=(new DateTimeImmutable($until.' 23:59:59',new DateTimeZone('America/Mexico_City')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');}
+            if($channel!==''){
+                if(in_array($channel,['LLAMADA','LLAMADA_IP'],true))$sql.=" AND UPPER(TRIM(COALESCE(i.canal,''))) IN ('LLAMADA','LLAMADA_IP')";
+                elseif($channel==='NOTA')$sql.=" AND UPPER(TRIM(COALESCE(i.canal,''))) NOT IN ('SISTEMA','LLAMADA','LLAMADA_IP','CORREO','WHATSAPP')";
+                else{$sql.=" AND UPPER(TRIM(COALESCE(i.canal,'')))=?";$args[]=$channel;}
+            }
+            foreach($this->rows($sql,$args) as $row){
+                $row=TelefoniaFechaHoraHelper::normalizarInteraccion($row);
+                if(self::inPeriod((string)$row['fecha_inicio'],$from,$until))$human[]=$row;
+            }
+        }
+        // Una transferencia puede guardar un ID SDK en la interacción y otro PBX en
+        // Telefonía. Sólo la operación entregada al mismo destinatario acredita ese alias.
+        $sdkRows=[];$aliases=[];$unresolvedTransfers=[];
+        foreach($human as $row)if(self::phone($row)&&strtoupper(trim((string)($row['proveedor_externo']??'')))==='ZADARMA_WEBRTC'&&str_starts_with((string)($row['id_externo']??''),'WEBRTC-')){
+            $sdk=substr((string)$row['id_externo'],7);$base=str_ends_with($sdk,'-external')?substr($sdk,0,-9):$sdk;
+            $sdkRows[(int)$row['usuario_id'].'|'.$base][]=self::callKey($row);
+        }
+        if($sdkRows&&$this->table('telefonia_transferencia_operaciones')){
+            $uids=[];$sdks=[];
+            foreach(array_keys($sdkRows) as $identity){[$uid,$sdk]=explode('|',$identity,2);$uids[(int)$uid]=true;$sdks[$sdk]=true;}
+            $groups=[];
+            foreach(array_chunk(array_keys($sdks),500) as $chunk){
+                $args=array_merge(array_keys($uids),$chunk);
+                foreach($this->rows("SELECT destino_usuario,destino_extension,sdk_consulta,referencia FROM telefonia_transferencia_operaciones WHERE estado='ENTREGADA' AND destino_usuario IN (".implode(',',array_fill(0,count($uids),'?')).') AND sdk_consulta IN ('.implode(',',array_fill(0,count($chunk),'?')).')',$args) as $op){
+                    $identity=(int)$op['destino_usuario'].'|'.(string)$op['sdk_consulta'];
+                    if(isset($sdkRows[$identity])&&preg_match('/^[0-9]{3,6}$/D',(string)$op['destino_extension'])&&trim((string)$op['referencia'])!=='')$groups[$identity][]=$op;
+                }
+            }
+            foreach($groups as $identity=>$ops){
+                if(count($ops)===1){$op=$ops[0];foreach($sdkRows[$identity] as $aliasKey)$aliases[$aliasKey]=(int)$op['destino_usuario'].'|ZADARMA|'.(string)$op['referencia'];}
+                else foreach($ops as $op)$unresolvedTransfers[(int)$op['destino_usuario'].'|ZADARMA|'.(string)$op['referencia']]=true;
+            }
+        }
+        $calls=[];$interactionCalls=[];
+        foreach($human as $row)if(self::phone($row)){
+            $recordKey=self::callKey($row);$callKey=$aliases[$recordKey]??$recordKey;$interactionCalls[(int)$row['usuario_id'].'|'.(int)$row['id']]=$callKey;
+            if(!isset($calls[$callKey]))$calls[$callKey]=$row+self::criteria($row);
+            else{
+                $criteria=self::criteria($row);$calls[$callKey]['contacto']=$calls[$callKey]['contacto']||$criteria['contacto'];$calls[$callKey]['efectiva']=$calls[$callKey]['efectiva']||$criteria['efectiva'];
+            }
+        }
+        $owners=$this->owners($ids,$actors,$user,$mode);
+        $phoneChannel=$channel===''||in_array($channel,['LLAMADA','LLAMADA_IP'],true);
+        if($phoneChannel&&$owners&&$this->table('telefonia_analista_entrantes')&&($ids||$unlinked)){
+            $ownerIds=array_map('intval',array_keys($owners));
+            $sql="SELECT c.*,s.nombre_entidad,COALESCE(m.nombre,'') municipio,COALESCE(e.nombre,'') estado_nombre FROM telefonia_analista_entrantes c
+                LEFT JOIN seguimientos_vinculacion s ON s.id=c.seguimiento_id LEFT JOIN municipios m ON m.id=s.municipio_id LEFT JOIN estados e ON e.id=s.estado_id
+                WHERE c.usuario_id IN (".implode(',',array_fill(0,count($ownerIds),'?')).')';$args=$ownerIds;
+            if(!$unlinked){$sql.=' AND c.seguimiento_id IN ('.implode(',',array_fill(0,count($ids),'?')).')';$args=array_merge($args,$ids);}
+            if($from!==''){$sql.=' AND c.created_at>=?';$args[]=(new DateTimeImmutable($from.' 00:00:00',new DateTimeZone('America/Mexico_City')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');}
+            if($until!==''){$sql.=' AND c.created_at<=?';$args[]=(new DateTimeImmutable($until.' 23:59:59',new DateTimeZone('America/Mexico_City')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');}
+            $classifications=$this->rows($sql,$args);$refs=[];
+            foreach($classifications as $row){
+                $uid=(int)$row['usuario_id'];$iv=(int)($row['interaccion_id']??0);$ref=(string)($row['pbx_call_id']??'');
+                if($iv>0&&isset($interactionCalls[$uid.'|'.$iv]))continue;
+                if(isset($calls[$uid.'|ZADARMA|'.$ref])||isset($unresolvedTransfers[$uid.'|ZADARMA|'.$ref]))continue;
+                if($iv>0)continue; // Un vínculo que no pertenece al periodo/alcance no se reasocia.
+                if($ref!==''&&!str_starts_with($ref,'sdk-'))$refs[$ref]=true;
+            }
+            $events=[];
+            if($refs&&$this->table('telefonia_zadarma_eventos'))foreach(array_chunk(array_keys($refs),500) as $chunk){
+                foreach($this->rows('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id IN ('.implode(',',array_fill(0,count($chunk),'?')).') ORDER BY id',$chunk) as $event)$events[(string)$event['pbx_call_id']][]=$event;
+            }
+            if($events)require_once __DIR__.'/TelefoniaVentasLlamadasService.php';
+            foreach($classifications as $row){
+                $uid=(int)$row['usuario_id'];$iv=(int)($row['interaccion_id']??0);$sid=(int)($row['seguimiento_id']??0);$ref=(string)($row['pbx_call_id']??'');$ext=(string)($row['extension']??'');$callKey=$uid.'|ZADARMA|'.$ref;
+                if($iv>0||isset($calls[$callKey])||isset($unresolvedTransfers[$callKey])||!isset($owners[$uid])||($sid>0&&!isset($allowed[$sid]))||($sid<=0&&!$unlinked)||!preg_match('/^[0-9]{3,6}$/D',$ext)||empty($events[$ref]))continue;
+                $facts=TelefoniaVentasLlamadasService::hechos($events[$ref],$ext);
+                if(empty($facts['finalizada']))continue;
+                $date=self::fechaPbx($events[$ref],$ext,(string)$row['created_at']);
+                if(!self::inPeriod($date,$from,$until))continue;
+                $calls[$callKey]=['id'=>0,'usuario_id'=>$uid,'seguimiento_id'=>$sid,'canal'=>'LLAMADA_IP','resultado'=>'','notas'=>'','id_externo'=>$ref,'proveedor_externo'=>'ZADARMA','fecha_inicio'=>$date,
+                    'contacto'=>false,'efectiva'=>false,'sin_expediente'=>$sid<=0,'nombre_entidad'=>$row['nombre_entidad']??'','municipio'=>$row['municipio']??'','estado_nombre'=>$row['estado_nombre']??'','responsable_nombre'=>$owners[$uid]['nombre']];
+            }
+        }
+        return $this->cache[$key]=self::reducir($human,array_values($calls),$actors,$owners);
+    }
+    private static function fechaPbx(array $events,string $ext,string $utc): string
+    {
+        foreach(['NOTIFY_OUT_START','NOTIFY_START','NOTIFY_INTERNAL','NOTIFY_ANSWER'] as $type){
+            $dates=[];foreach($events as $e)if(($e['evento']??'')===$type&&(string)($e['internal']??'')===$ext&&preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/D',(string)($e['received_at']??'')))$dates[$e['received_at']]=true;
+            if(count($dates)===1)return (string)array_key_first($dates);if(count($dates)>1)break;
+        }
+        return TelefoniaFechaHoraHelper::aMexico($utc);
+    }
+    public static function reducir(array $human,array $calls,array $actors=[],array $owners=[]): array
+    {
+        $summary=array_fill_keys(['total_interacciones','seguimientos_con_actividad','llamadas','correos','whatsapp','otros','contactadas','sin_respuesta','numero_incorrecto','volver_llamar','llamadas_otros','verificaciones_efectivas'],0);
+        $institutions=[];$byActor=[];$days=[];$effective=[];$worked=[];$unlinked=0;
+        $actorEmpty=static fn($uid,$name)=>['usuario_id'=>$uid,'analista_nombre'=>$name,'interacciones'=>0,'instituciones'=>0,'llamadas'=>0,'correos'=>0,'con_contacto'=>0,'efectivas'=>0];
+        foreach($actors as $uid)$byActor[$uid]=$actorEmpty($uid,(string)($owners[$uid]['nombre']??''));
+        foreach($human as $r){
+            $uid=(int)$r['usuario_id'];$sid=(int)$r['seguimiento_id'];$channel=strtoupper(trim((string)$r['canal']));$summary['total_interacciones']++;$worked[$sid]=true;
+            if(!isset($institutions[$sid]))$institutions[$sid]=['seguimiento_id'=>$sid,'nombre_entidad'=>$r['nombre_entidad']??'','municipio'=>$r['municipio']??'','estado_nombre'=>$r['estado_nombre']??'','interacciones'=>0,'llamadas'=>0,'correos'=>0,'con_contacto'=>0,'efectivas'=>0,'ultima_actividad'=>''];
+            $institutions[$sid]['interacciones']++;$institutions[$sid]['ultima_actividad']=max($institutions[$sid]['ultima_actividad'],(string)$r['fecha_inicio']);
+            $byActor[$uid]??=$actorEmpty($uid,(string)($r['responsable_nombre']??''));$byActor[$uid]['interacciones']++;$byActor[$uid]['_institutions'][$sid]=true;
+            if($channel==='CORREO'){$summary['correos']++;$institutions[$sid]['correos']++;$byActor[$uid]['correos']++;}
+            elseif($channel==='WHATSAPP')$summary['whatsapp']++;
+            elseif(!self::phone($r))$summary['otros']++;
+        }
+        foreach($calls as $r){
+            $uid=(int)$r['usuario_id'];$sid=(int)$r['seguimiento_id'];$day=substr((string)$r['fecha_inicio'],0,10);$contact=!empty($r['contacto']);
+            $days[$day]??=['fecha'=>$day,'llamadas'=>0,'con_contacto'=>0,'efectivas'=>0];$days[$day]['llamadas']++;$summary['llamadas']++;
+            $byActor[$uid]??=$actorEmpty($uid,(string)($r['responsable_nombre']??''));$byActor[$uid]['llamadas']++;
+            if($sid>0&&!isset($institutions[$sid]))$institutions[$sid]=['seguimiento_id'=>$sid,'nombre_entidad'=>$r['nombre_entidad']??'','municipio'=>$r['municipio']??'','estado_nombre'=>$r['estado_nombre']??'','interacciones'=>0,'llamadas'=>0,'correos'=>0,'con_contacto'=>0,'efectivas'=>0,'ultima_actividad'=>(string)$r['fecha_inicio']];
+            if($sid>0){$institutions[$sid]['llamadas']++;$worked[$sid]=true;$byActor[$uid]['_institutions'][$sid]=true;}else $unlinked++;
+            if($contact){$summary['contactadas']++;$days[$day]['con_contacto']++;$byActor[$uid]['con_contacto']++;if($sid>0)$institutions[$sid]['con_contacto']++;}
+            $result=strtoupper(trim((string)($r['resultado']??'')));
+            if($result==='SIN_RESPUESTA')$summary['sin_respuesta']++;
+            elseif($result==='NUMERO_INCORRECTO')$summary['numero_incorrecto']++;
+            elseif($result==='SOLICITO_LLAMAR_DESPUES')$summary['volver_llamar']++;
+            elseif($result!=='CONTACTADO')$summary['llamadas_otros']++;
+            $credit=$uid.'|'.$sid.'|'.$day;
+            if($sid>0&&!empty($r['efectiva'])&&!isset($effective[$credit])){
+                $effective[$credit]=true;$summary['verificaciones_efectivas']++;$days[$day]['efectivas']++;$byActor[$uid]['efectivas']++;$institutions[$sid]['efectivas']++;
+            }
+        }
+        $summary['seguimientos_con_actividad']=count($worked);
+        foreach($byActor as &$r){$r['instituciones']=count($r['_institutions']??[]);unset($r['_institutions']);}unset($r);
+        usort($human,static fn($a,$b)=>strcmp($b['fecha_inicio'],$a['fecha_inicio'])?:((int)$b['id']<=>(int)$a['id']));
+        usort($institutions,static fn($a,$b)=>($b['interacciones']<=>$a['interacciones'])?:strcmp($b['ultima_actividad'],$a['ultima_actividad']));
+        ksort($days);
+        return ['resumen'=>$summary,'humanas'=>$human,'llamadas'=>array_values($calls),'diario'=>array_values($days),'instituciones'=>array_values($institutions),'actores'=>array_values($byActor),'llamadas_sin_expediente'=>$unlinked,'ids_actividad'=>array_map('intval',array_keys($worked))];
     }
 }

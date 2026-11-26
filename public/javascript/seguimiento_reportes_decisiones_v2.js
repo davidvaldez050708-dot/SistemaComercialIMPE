@@ -780,6 +780,7 @@
         const panel = formulario?.closest('section.dashboard-panel');
 
         if (panel) {
+            panel.hidden = true;
             panel.classList.add('d-none');
             panel.setAttribute('aria-hidden', 'true');
         }

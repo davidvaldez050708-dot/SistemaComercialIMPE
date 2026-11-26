@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
 
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
@@ -406,7 +407,7 @@ class SeguimientoVinculacionReporteController
 
             if ($puedeUsarCache) {
                 $claveCache = $cachePdf->crearClave([
-                    'version' => 'seguimiento-pdf-profesional-v24',
+                    'version' => 'seguimiento-pdf-profesional-v25-telefonia-periodo',
                     'usuario_id' => $usuarioId,
                     'rol_id' => (int)($_SESSION['rol_id'] ?? 0),
                     'modo' => $modoSeguimientoCache,
@@ -504,10 +505,12 @@ class SeguimientoVinculacionReporteController
                     : 60,
                 is_array($contexto['actoresActividad'] ?? null)
                     ? $contexto['actoresActividad']
-                    : []
+                    : [],
+                self::incluirTelefoniaSinExpediente($contexto['filtrosReporte'])
             );
         } catch (Throwable $error) {
             error_log('[reporte_analitica_pdf] ' . $error->getMessage());
+            $this->redirigirErrorPdf('No fue posible calcular la actividad para el PDF.',$contexto['filtrosReporte']);
         }
 
         $flujoIndividual = $this->construirFlujoOperativoIndividual(
@@ -624,7 +627,8 @@ class SeguimientoVinculacionReporteController
         try {
             $postEnvio = (new SeguimientoPostEnvioService())->obtenerFlujoSiAplica(
                 $seguimientoId,
-                $analistaId
+                $analistaId,
+                    true
             );
 
             if (($postEnvio['ok'] ?? false) && ($postEnvio['aplica'] ?? false)) {
@@ -635,22 +639,26 @@ class SeguimientoVinculacionReporteController
                 $flujo = (new AgendaReunionService())->ajustarFlujoAnalista(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
                 $flujo = (new SeguimientoCorreoService())->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
                 $flujo = (new ReunionFechaGuardService())->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
                 $flujo = (new ReunionResultadoService())->ajustarFlujo(
                     $seguimientoId,
                     $analistaId,
-                    $flujo
+                    $flujo,
+                    true
                 );
 
                 return is_array($flujo) ? $flujo : [];
@@ -658,7 +666,8 @@ class SeguimientoVinculacionReporteController
 
             $resultado = (new SeguimientoFlujoService())->obtenerEstado(
                 $seguimientoId,
-                $analistaId
+                $analistaId,
+                    true
             );
             $flujo = is_array($resultado['flujo'] ?? null)
                 ? $resultado['flujo']
@@ -940,6 +949,8 @@ class SeguimientoVinculacionReporteController
         }
 
         if ($generarReporte && $errorFiltros === '') {
+            try {
+            $analiticaServicio=new SeguimientoReporteAnaliticaService();
             $seguimientosBaseReporte = $seguimientosDisponibles;
 
             if (
@@ -961,16 +972,17 @@ class SeguimientoVinculacionReporteController
                     static function ($seguimiento) {
                         return (int)($seguimiento['id'] ?? 0);
                     },
-                    $seguimientosDisponibles
+                    $seguimientosComparacionActividad
                 )));
-                $idsConActividad = $modelo->obtenerSeguimientoIdsConActividadPeriodo(
+                $idsConActividad = $analiticaServicio->obtenerIdsConActividad(
                     $idsAccesibles,
                     $usuarioId,
+                    $modoSeguimiento,
                     (string)$filtrosReporte['fecha_inicial'],
                     (string)$filtrosReporte['fecha_final'],
                     (string)$filtrosReporte['tipo_actividad'],
-                    $modoSeguimiento,
-                    $actoresActividad
+                    $actoresActividad,
+                    self::incluirTelefoniaSinExpediente($filtrosReporte)
                 );
                 $mapaActividad = array_fill_keys($idsConActividad, true);
                 $seguimientosBaseReporte = array_values(array_filter(
@@ -1037,7 +1049,7 @@ class SeguimientoVinculacionReporteController
             )));
 
             try {
-                $analiticaReporte = (new SeguimientoReporteAnaliticaService())->construir(
+                $analiticaReporte = $analiticaServicio->construir(
                     $seguimientoIdsReporte,
                     $usuarioId,
                     $modoSeguimiento,
@@ -1047,10 +1059,12 @@ class SeguimientoVinculacionReporteController
                         ? ($filtrosReporte['tipo_actividad'] ?? '')
                         : ''),
                     60,
-                    $actoresActividad
+                    $actoresActividad,
+                    self::incluirTelefoniaSinExpediente($filtrosReporte)
                 );
             } catch (Throwable $error) {
                 error_log('[reporte_analitica_web] ' . $error->getMessage());
+                $errorFiltros='No fue posible calcular la actividad del reporte. Intenta nuevamente.';
             }
 
             if (
@@ -1067,6 +1081,11 @@ class SeguimientoVinculacionReporteController
                 } catch (Throwable $error) {
                     error_log('[reporte_detalle_institucion_web] ' . $error->getMessage());
                 }
+            }
+            } catch (Throwable $error) {
+                error_log('[reporte_actividad_inicial] '.$error->getMessage());
+                $analiticaReporte=[];
+                $errorFiltros='No fue posible calcular la actividad del reporte. Intenta nuevamente.';
             }
         }
 
@@ -1187,10 +1206,11 @@ class SeguimientoVinculacionReporteController
                 ) {
                     $filtros['responsable_id'] = 0;
                 } else {
+                    $estadosResponsable = SeguimientoTerritorialScope::estadosAnalista($responsableId);
                     $coinciden = array_values(array_filter(
                         $actuales,
-                        function ($seguimiento) use ($responsableId) {
-                            return (int)($seguimiento['analista_id'] ?? 0) === $responsableId;
+                        function ($seguimiento) use ($estadosResponsable) {
+                            return in_array((int)($seguimiento['estado_id'] ?? 0), $estadosResponsable, true);
                         }
                     ));
 
@@ -1300,23 +1320,17 @@ class SeguimientoVinculacionReporteController
         if ($modo === 'supervisor') {
             $responsables = $responsablesPermitidos;
         } elseif ($modo !== 'analista') {
-            foreach ($actuales as $seguimiento) {
-                $id = (int)($seguimiento['analista_id'] ?? 0);
-                $nombre = trim(
-                    (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
-                    (string)($seguimiento['analista_apellidos'] ?? '')
-                );
-                if ($id > 0 && $nombre !== '') {
-                    $responsables[$id] = $nombre;
-                }
+            foreach (SeguimientoTerritorialScope::analistasVigentes() as $analista) {
+                $responsables[(int)$analista['id']] = (string)$analista['nombre'];
             }
             natcasesort($responsables);
         }
 
         if ((int)$filtros['responsable_id'] > 0) {
             $responsableId = (int)$filtros['responsable_id'];
-            $actuales = array_values(array_filter($actuales, function ($seguimiento) use ($responsableId) {
-                return (int)($seguimiento['analista_id'] ?? 0) === $responsableId;
+            $estadosResponsable = SeguimientoTerritorialScope::estadosAnalista($responsableId);
+            $actuales = array_values(array_filter($actuales, function ($seguimiento) use ($estadosResponsable) {
+                return in_array((int)($seguimiento['estado_id'] ?? 0), $estadosResponsable, true);
             }));
         }
 
@@ -1479,9 +1493,11 @@ class SeguimientoVinculacionReporteController
 
     private function aplicarFiltrosReporte($seguimientos, $filtros)
     {
+        $estadosResponsable = (int)($filtros['responsable_id'] ?? 0) > 0
+            ? SeguimientoTerritorialScope::estadosAnalista((int)$filtros['responsable_id']) : [];
         return array_values(array_filter(
             $seguimientos,
-            function ($seguimiento) use ($filtros) {
+            function ($seguimiento) use ($filtros, $estadosResponsable) {
                 if (
                     (int)$filtros['estado_id'] > 0 &&
                     (int)($seguimiento['estado_id'] ?? 0) !== (int)$filtros['estado_id']
@@ -1513,7 +1529,7 @@ class SeguimientoVinculacionReporteController
 
                 if (
                     (int)$filtros['responsable_id'] > 0 &&
-                    (int)($seguimiento['analista_id'] ?? 0) !== (int)$filtros['responsable_id']
+                    !in_array((int)($seguimiento['estado_id'] ?? 0), $estadosResponsable, true)
                 ) {
                     return false;
                 }
@@ -2017,10 +2033,6 @@ class SeguimientoVinculacionReporteController
         array $filtros,
         array $responsablesDisponibles
     ) {
-        if ((string)($filtros['tipo_reporte'] ?? '') !== 'actividad') {
-            return [];
-        }
-
         if ($modo === 'analista') {
             return [(int)$usuarioId];
         }
@@ -2039,22 +2051,24 @@ class SeguimientoVinculacionReporteController
         return [];
     }
 
+    public static function incluirTelefoniaSinExpediente(array $filtros): bool
+    {
+        if(($filtros['tipo_reporte']??'')!=='actividad')return false;
+        foreach(['estado_id','municipio_id','institucion_id','dias_sin_actividad'] as $campo)if((int)($filtros[$campo]??0)>0)return false;
+        foreach(['institucion','estado_seguimiento'] as $campo)if(trim((string)($filtros[$campo]??''))!=='')return false;
+        return in_array((string)($filtros['tipo_actividad']??''),['','LLAMADA','LLAMADA_IP'],true);
+    }
+
     private function obtenerResponsablesDisponibles($seguimientos)
     {
+        $estados = array_values(array_unique(array_map('intval', array_column($seguimientos, 'estado_id'))));
         $responsables = [];
-
-        foreach ($seguimientos as $seguimiento) {
-            $id = (int)($seguimiento['analista_id'] ?? 0);
-            $nombre = trim(
-                (string)($seguimiento['analista_nombre'] ?? '') . ' ' .
-                (string)($seguimiento['analista_apellidos'] ?? '')
-            );
-
-            if ($id > 0 && $nombre !== '') {
-                $responsables[$id] = $nombre;
+        foreach (SeguimientoTerritorialScope::analistasVigentes() as $analista) {
+            $id = (int)$analista['id'];
+            if (array_intersect($estados, SeguimientoTerritorialScope::estadosAnalista($id))) {
+                $responsables[$id] = (string)$analista['nombre'];
             }
         }
-
         natcasesort($responsables);
         return $responsables;
     }
@@ -2241,7 +2255,7 @@ class SeguimientoVinculacionReporteController
 
     private function resolverModoSeguimiento()
     {
-        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+        if (esRolSupervisionNacional()) {
             return 'administrador';
         }
 

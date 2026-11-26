@@ -21,7 +21,10 @@ class SeguimientoReporteAnaliticaController
                 $usuarioId,
                 $this->resolverModoAcceso(),
                 $fechaInicial,
-                $fechaFinal
+                $fechaFinal,
+                (string)($_GET['tipo_actividad']??''),
+                60,
+                $this->obtenerIds((string)($_GET['responsable_id']??''))
             );
 
             $this->responder([
@@ -47,8 +50,8 @@ class SeguimientoReporteAnaliticaController
                 $ids[$id] = $id;
             }
 
-            if (count($ids) >= 200) {
-                break;
+            if (count($ids) > 10000) {
+                $this->responder(['ok'=>false,'mensaje'=>'La consulta supera el límite de expedientes permitido.'],422);
             }
         }
 
@@ -57,7 +60,7 @@ class SeguimientoReporteAnaliticaController
 
     private function resolverModoAcceso()
     {
-        if ((int)($_SESSION['rol_id'] ?? 0) === 1) {
+        if (esRolSupervisionNacional()) {
             return 'administrador';
         }
 

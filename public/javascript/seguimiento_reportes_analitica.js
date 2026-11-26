@@ -263,6 +263,10 @@
         if (fechaFinal) {
             url.searchParams.set('fecha_final', fechaFinal);
         }
+        for (const campo of ['responsable_id','tipo_actividad']) {
+            const valor=actual.searchParams.get(campo);
+            if(valor)url.searchParams.set(campo,valor);
+        }
         return url.toString();
     }
 
@@ -324,7 +328,7 @@
         metricas.appendChild(crearMetrica(
             formatearNumero(resumen.llamadas?.total || 0),
             'Llamadas',
-            'Registradas como interacción'
+            'Intentos acreditados en el periodo'
         ));
         metricas.appendChild(crearMetrica(
             formatearNumero(resumen.promedio_por_seguimiento),
@@ -334,7 +338,7 @@
         panel.appendChild(metricas);
 
         const canales = resumen.canales || {};
-        const total = Math.max(1, numero(resumen.interacciones));
+        const total = Math.max(1, numero(canales.llamadas)+numero(canales.correos)+numero(canales.whatsapp)+numero(canales.otros));
         const bloqueCanales = document.createElement('div');
         bloqueCanales.className = 'seguimiento-report-channel-block';
         bloqueCanales.innerHTML = '<strong class="seguimiento-report-insight-label">Canales utilizados</strong>';
@@ -353,7 +357,7 @@
                 '<span>' + item[0] + '</span>' +
                 '<strong>' + formatearNumero(item[1]) + '</strong>' +
                 '<small>' + porcentaje.toFixed(1) + '%</small>';
-            caja.title = porcentaje.toFixed(1) + '% de las interacciones de contacto';
+            caja.title = porcentaje.toFixed(1) + '% de la actividad contabilizada';
             listaCanales.appendChild(caja);
         });
         bloqueCanales.appendChild(listaCanales);
@@ -387,6 +391,13 @@
     }
 
     function cargarActividad(root, columna) {
+        const serializado=document.querySelector('[data-report-server-analytics]');
+        if(serializado){
+            try{
+                const resumen=JSON.parse(serializado.textContent||'{}');
+                if(resumen&&resumen.llamadas){actualizarResumenOperativo(root,resumen);renderizarActividad(columna,resumen);return;}
+            }catch(_){}
+        }
         const ids = Array.isArray(window.IMPE_REPORTE_SEGUIMIENTO_IDS)
             ? window.IMPE_REPORTE_SEGUIMIENTO_IDS
                 .map(function (id) { return Number(id); })

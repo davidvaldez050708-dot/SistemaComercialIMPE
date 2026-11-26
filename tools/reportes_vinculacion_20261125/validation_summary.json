@@ -1,0 +1,11 @@
+{
+  "backend_assertions": 76,
+  "php_view_assertions": 48,
+  "javascript_assertions": 10,
+  "publisher_checks": 38,
+  "syntax": "5 application PHP + 2 tool PHP + 2 JavaScript + 3 Bash scripts passed",
+  "browser": "Initial hidden filter without deferred JS; edit modal retains date and author; synthetic local fixture",
+  "production_candidate_executed": false,
+  "pdf_binary_rendered": false,
+  "database_writes": false
+}
