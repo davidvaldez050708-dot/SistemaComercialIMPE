@@ -7,6 +7,7 @@ require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/models/SeguimientoVinculacionModel.php';
 require_once $root . '/app/services/ZadarmaRecordingService.php';
 require_once $root . '/config/db_connection.php';
+require_once $root . '/app/services/SupervisionPersonalGrabacionPolicy.php';
 
 if (!isset($_SESSION['usuario_id'])) {
     http_response_code(401);
@@ -42,6 +43,7 @@ try {
 }
 $sql = "SELECT
             id,
+            usuario_id,
             seguimiento_id,
             canal,
             resultado,
@@ -70,7 +72,13 @@ $esConsultaGlobal =
     $rolId === 1 ||
     strcasecmp($rolNombre, 'Marketing') === 0;
 
-if ($esConsultaGlobal) {
+try {
+    $audioPersonal=SupervisionPersonalGrabacionPolicy::resolver($connection,$usuarioId,(int)$interaccion['usuario_id'],$interaccionId);
+} catch (DomainException $error) {
+    http_response_code(403);exit('No tienes permiso para esta grabación.');
+}
+if($audioPersonal===false){http_response_code(403);exit('La llamada está fuera de tu alcance de supervisión.');}
+if ($audioPersonal===true || $esConsultaGlobal) {
     $seguimiento = $modelo->obtenerSeguimientoAdministrador($seguimientoId);
 } elseif (tienePermiso('seguimientos_vinculacion.supervisar')) {
     $seguimiento = $modelo->obtenerSeguimientoSupervisor($usuarioId, $seguimientoId);

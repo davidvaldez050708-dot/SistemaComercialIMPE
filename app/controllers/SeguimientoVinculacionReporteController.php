@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
+require_once __DIR__.'/../services/SupervisionPersonalAcceso.php';
 
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
@@ -20,6 +21,17 @@ require_once __DIR__ . '/../services/ReunionResultadoService.php';
 
 class SeguimientoVinculacionReporteController
 {
+    private ?bool $supervisionPersonalActividad = null;
+    private function usarSupervisionPersonalActividad(): bool
+    {
+        if($this->supervisionPersonalActividad!==null)return $this->supervisionPersonalActividad;
+        if((int)($_SESSION['rol_id']??0)!==6 || ($this->obtenerFiltrosReporte()['tipo_reporte']??'')!=='actividad')
+            return $this->supervisionPersonalActividad=false;
+        $acceso=SupervisionPersonalAcceso::crear();
+        if(!$acceso->activa())return $this->supervisionPersonalActividad=false;
+        $acceso->validarConsulta((int)$_SESSION['usuario_id'],'actividad_analistas');
+        return $this->supervisionPersonalActividad=true;
+    }
     private const ESTADOS_SEGUIMIENTO = [
         'NUEVO' => 'Nuevo',
         'CONTACTANDO' => 'Contactando',
@@ -402,8 +414,9 @@ class SeguimientoVinculacionReporteController
 
             sort($territorioIdsCache);
             $estadoSolicitado = (int)($filtrosCache['estado_id'] ?? 0);
-            $puedeUsarCache = $estadoSolicitado <= 0 ||
-                in_array($estadoSolicitado, $territorioIdsCache, true);
+            // No servir PDF preexistentes después de retirar a un colaborador.
+            $puedeUsarCache = !$this->usarSupervisionPersonalActividad() && ($estadoSolicitado <= 0 ||
+                in_array($estadoSolicitado, $territorioIdsCache, true));
 
             if ($puedeUsarCache) {
                 $claveCache = $cachePdf->crearClave([
@@ -491,7 +504,7 @@ class SeguimientoVinculacionReporteController
 
         $analitica = [];
         try {
-            $analitica = (new SeguimientoReporteAnaliticaService())->construir(
+            $analitica = (new SeguimientoReporteAnaliticaService(null,$this->usarSupervisionPersonalActividad()))->construir(
                 $seguimientoIds,
                 $usuarioId,
                 (string)($contexto['modoSeguimiento'] ?? 'analista'),
@@ -950,7 +963,7 @@ class SeguimientoVinculacionReporteController
 
         if ($generarReporte && $errorFiltros === '') {
             try {
-            $analiticaServicio=new SeguimientoReporteAnaliticaService();
+            $analiticaServicio=new SeguimientoReporteAnaliticaService(null,$this->usarSupervisionPersonalActividad());
             $seguimientosBaseReporte = $seguimientosDisponibles;
 
             if (
@@ -1206,7 +1219,9 @@ class SeguimientoVinculacionReporteController
                 ) {
                     $filtros['responsable_id'] = 0;
                 } else {
-                    $estadosResponsable = SeguimientoTerritorialScope::estadosAnalista($responsableId);
+                    $estadosResponsable = $this->usarSupervisionPersonalActividad()
+                        ? array_values(array_unique(array_map('intval',array_column($actuales,'estado_id'))))
+                        : SeguimientoTerritorialScope::estadosAnalista($responsableId);
                     $coinciden = array_values(array_filter(
                         $actuales,
                         function ($seguimiento) use ($estadosResponsable) {
@@ -1328,7 +1343,9 @@ class SeguimientoVinculacionReporteController
 
         if ((int)$filtros['responsable_id'] > 0) {
             $responsableId = (int)$filtros['responsable_id'];
-            $estadosResponsable = SeguimientoTerritorialScope::estadosAnalista($responsableId);
+            $estadosResponsable = $this->usarSupervisionPersonalActividad()
+                ? array_values(array_unique(array_map('intval',array_column($actuales,'estado_id'))))
+                : SeguimientoTerritorialScope::estadosAnalista($responsableId);
             $actuales = array_values(array_filter($actuales, function ($seguimiento) use ($estadosResponsable) {
                 return in_array((int)($seguimiento['estado_id'] ?? 0), $estadosResponsable, true);
             }));
@@ -1493,8 +1510,10 @@ class SeguimientoVinculacionReporteController
 
     private function aplicarFiltrosReporte($seguimientos, $filtros)
     {
-        $estadosResponsable = (int)($filtros['responsable_id'] ?? 0) > 0
-            ? SeguimientoTerritorialScope::estadosAnalista((int)$filtros['responsable_id']) : [];
+        $estadosResponsable = $this->usarSupervisionPersonalActividad()
+            ? array_values(array_unique(array_map('intval',array_column($seguimientos,'estado_id'))))
+            : ((int)($filtros['responsable_id'] ?? 0) > 0
+            ? SeguimientoTerritorialScope::estadosAnalista((int)$filtros['responsable_id']) : []);
         return array_values(array_filter(
             $seguimientos,
             function ($seguimiento) use ($filtros, $estadosResponsable) {
@@ -2006,7 +2025,9 @@ return false;
         }
 
         $responsables = [];
-        $analistas = $modelo->obtenerAnalistasSupervisadosCuentaClave(
+        $analistas = $this->usarSupervisionPersonalActividad()
+            ? (SupervisionPersonalAcceso::crear()->personas((int)$usuarioId,'actividad_analistas',4)??[])
+            : $modelo->obtenerAnalistasSupervisadosCuentaClave(
             (int)$usuarioId,
             (int)$estadoId
         );
@@ -2268,6 +2289,7 @@ return false;
 
     private function obtenerTerritoriosPorModo($modelo, $usuarioId, $modo)
     {
+        if($modo==='supervisor' && $this->usarSupervisionPersonalActividad())return $modelo->obtenerEstadosPersonal((int)$usuarioId);
         if ($modo === 'administrador') {
             return $modelo->obtenerEstadosAdministrador();
         }
@@ -2281,6 +2303,7 @@ return false;
 
     private function obtenerSeguimientosPorModo($modelo, $usuarioId, $estadoId, $modo, $filtros)
     {
+        if($modo==='supervisor' && $this->usarSupervisionPersonalActividad())return $modelo->obtenerSeguimientosPersonalEstado((int)$usuarioId,(int)$estadoId,$filtros);
         if ($modo === 'administrador') {
             return $modelo->obtenerSeguimientosAdministradorEstado($estadoId, $filtros);
         }

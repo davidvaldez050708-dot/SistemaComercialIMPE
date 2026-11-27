@@ -392,6 +392,12 @@ switch ($controller) {
         break;
 
 
+    case 'supervisionPersonal':
+        require_once __DIR__.'/app/controllers/SupervisionPersonalController.php';
+        (new SupervisionPersonalController())->ejecutar((string)$action);
+        $impePerfilPeticion?->marca('accion');
+        exit;
+
     case 'territorio':
 
         require_once __DIR__ .

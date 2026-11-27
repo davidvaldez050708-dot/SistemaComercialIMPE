@@ -2,11 +2,13 @@
 
 require_once __DIR__ . '/../models/DesempenoModel.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
+require_once __DIR__.'/SupervisionPersonalAcceso.php';
 
 class DesempenoService
 {
     private $modelo;
     private $seguimientos;
+    protected function accesoPersonal(): SupervisionPersonalAcceso {return SupervisionPersonalAcceso::crear();}
 
     public function __construct()
     {
@@ -286,6 +288,10 @@ class DesempenoService
 
     private function obtenerTerritorios($vista, $usuarioId, $rolNombre)
     {
+        if($vista==='equipo'){
+            $estados=$this->accesoPersonal()->estados((int)$usuarioId,'desempeno',4);
+            if($estados!==null)return $estados;
+        }
         if ($vista === 'global') {
             return $this->seguimientos->obtenerEstadosAdministrador();
         }
@@ -321,6 +327,8 @@ class DesempenoService
         }
 
         if ($vista === 'equipo') {
+            $personal=$this->accesoPersonal()->personas((int)$usuarioId,'desempeno',4);
+            if($personal!==null)return $this->modelo->obtenerUsuariosPorIds(array_column($personal,'id'));
             $equipo = $this->seguimientos
                 ->obtenerAnalistasSupervisadosCuentaClave(
                     $usuarioId

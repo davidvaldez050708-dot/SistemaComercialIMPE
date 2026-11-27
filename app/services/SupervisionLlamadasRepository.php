@@ -6,6 +6,7 @@ require_once __DIR__.'/TelefoniaVentasEvidenciaService.php';
 require_once __DIR__.'/TelefoniaResultadoVentasCatalogo.php';
 require_once __DIR__.'/SupervisionVentasAudioCdrPolicy.php';
 require_once __DIR__.'/../helpers/TelefoniaFechaHoraHelper.php';
+require_once __DIR__.'/SupervisionPersonalAcceso.php';
 
 /** Sólo lectura. La identidad histórica procede del autor/propietario persistido,
  * nunca del teléfono, de la hora o del usuario actual de una extensión. */
@@ -39,6 +40,8 @@ final class SupervisionLlamadasRepository
         $scope=$this->acceso($uid,$audio);$role=$area==='asesores'?3:4;$type=$role===3?'ASESOR':'ANALISTA_DATOS';
         $where='u.rol_id=?';$args=[$role];
         if($scope==='equipo'){
+            $personal=SupervisionPersonalAcceso::crear($this->db)->sql('u.id',$uid,$audio?'grabaciones':'llamadas',$role);
+            if($personal!==null)return $this->rows("SELECT u.id,CONCAT_WS(' ',u.nombre,u.apellidos) nombre,u.foto_perfil,u.estado activo FROM usuarios u WHERE u.rol_id=? AND $personal ORDER BY u.nombre,u.apellidos,u.id",[$role]);
             $where.=" AND EXISTS(SELECT 1 FROM asignaciones_territorio a
                 JOIN asignaciones_territorio c ON c.id=a.cuenta_clave_asignacion_id AND c.estado_id=a.estado_id
                 JOIN estados e ON e.id=a.estado_id AND e.estado=1

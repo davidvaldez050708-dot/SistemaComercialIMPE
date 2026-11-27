@@ -10,6 +10,7 @@ final class VentasActividadService
     public function preparar(array $f, bool $desempeno, bool $generar = true): array
     {
         $scope=VentasActividadAccess::alcance($desempeno);
+        $this->repo->usarDesempeno($desempeno);
         if ($scope==='') throw new DomainException('No tienes permiso para consultar esta actividad.');
         foreach (['periodo','fecha_desde','fecha_hasta','persona_id','direccion','resultado','pagina','estado_id'] as $key)
             if (isset($f[$key]) && !is_scalar($f[$key])) throw new InvalidArgumentException('Los filtros deben contener valores individuales.');

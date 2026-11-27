@@ -6,11 +6,14 @@ require_once __DIR__.'/TelefoniaVentasEvidenciaService.php';
 require_once __DIR__.'/TelefoniaResultadoVentasCatalogo.php';
 require_once __DIR__.'/TelefoniaMarcacionesVentasService.php';
 require_once __DIR__.'/../helpers/VentasPendientesPolicy.php';
+require_once __DIR__.'/SupervisionPersonalAcceso.php';
 
 /** Lectura sin conciliaciones, escrituras, descargas ni consultas al proveedor. */
 final class VentasActividadRepository
 {
     private mysqli $db;
+    private bool $desempeno=false;
+    public function usarDesempeno(bool $valor): void {$this->desempeno=$valor;}
     public function __construct(?mysqli $db = null) { $this->db = $db ?? (new Database())->connect(); }
     private function rows(string $sql, array $args = []): array
     {
@@ -32,6 +35,11 @@ final class VentasActividadRepository
         $where = 'u.rol_id=3'; $args = [];
         if ($scope==='propio') { $where .= ' AND u.id=?'; $args[]=$uid; }
         if ($scope==='equipo') {
+            $personal=SupervisionPersonalAcceso::crear($this->db)->sql('u.id',$uid,$this->desempeno?'desempeno':'actividad_asesores',3);
+            if($personal!==null){
+                $filtroEstado=$estadoId>0?" AND EXISTS(SELECT 1 FROM asignaciones_territorio a WHERE a.usuario_id=u.id AND a.estado_id=".(int)$estadoId." AND a.tipo_asignacion='ASESOR' AND ".self::vigente('a').')':'';
+                return $this->rows("SELECT u.id,CONCAT_WS(' ',u.nombre,u.apellidos) nombre_completo,u.foto_perfil,u.estado activo FROM usuarios u WHERE u.rol_id=3 AND $personal $filtroEstado ORDER BY u.nombre,u.apellidos,u.id");
+            }
             // Exigir la relación explícita con SU Cuenta Clave, no compartir estado solamente.
             $where .= ' AND EXISTS(SELECT 1 FROM asignaciones_territorio a JOIN asignaciones_territorio c
                 ON c.id=a.cuenta_clave_asignacion_id AND c.estado_id=a.estado_id
@@ -55,6 +63,8 @@ final class VentasActividadRepository
         if ($scope==='global') return $this->rows('SELECT id,nombre FROM estados WHERE estado=1 ORDER BY nombre');
         $join='';$condition='a.usuario_id=?';
         if ($scope==='equipo') {
+            $estados=SupervisionPersonalAcceso::crear($this->db)->estados($uid,$this->desempeno?'desempeno':'actividad_asesores',3);
+            if($estados!==null)return $estados;
             $join=" JOIN asignaciones_territorio c ON c.id=a.cuenta_clave_asignacion_id AND c.estado_id=a.estado_id";
             $condition="c.usuario_id=? AND c.tipo_asignacion='CUENTA_CLAVE' AND ".self::vigente('c');
         }

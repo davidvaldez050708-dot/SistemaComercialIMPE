@@ -1008,6 +1008,29 @@ class SeguimientoVinculacionModel
         return $this->convertirResultadoEnArreglo($stmt->get_result());
     }
 
+    /** Exclusivo de reportes de actividad; no concede consulta o trabajo operativo del expediente. */
+    public function obtenerSeguimientosPersonalEstado(int $usuarioId,int $estadoId,array $filtros=[]): array
+    {
+        require_once __DIR__.'/../services/SupervisionPersonalAcceso.php';
+        $scope=SupervisionPersonalAcceso::crear($this->connection)->sqlSeguimiento('seguimientos',$usuarioId);
+        if($scope===null)throw new DomainException('La supervisión de personal no está activa.');
+        $sql=$this->consultaSeguimientosBase()." WHERE seguimientos.activo=1 AND seguimientos.estado_id=? AND $scope";
+        $parametros=[$estadoId];$tipos='i';
+        $this->agregarFiltrosSeguimiento($sql,$parametros,$tipos,$filtros,'seguimientos');
+        $sql.=$this->ordenSeguimientos();$stmt=$this->connection->prepare($sql);
+        $this->vincularParametros($stmt,$tipos,$parametros);$stmt->execute();
+        return $this->convertirResultadoEnArreglo($stmt->get_result());
+    }
+    public function obtenerEstadosPersonal(int $usuarioId): array
+    {
+        require_once __DIR__.'/../services/SupervisionPersonalAcceso.php';
+        $scope=SupervisionPersonalAcceso::crear($this->connection)->sqlSeguimiento('s',$usuarioId);
+        if($scope===null)throw new DomainException('La supervisión de personal no está activa.');
+        return $this->connection->query("SELECT DISTINCT e.id,e.nombre,e.nombre_corto,e.clave_inegi,0 es_principal
+            FROM estados e JOIN seguimientos_vinculacion s ON s.estado_id=e.id
+            WHERE e.estado=1 AND s.activo=1 AND $scope ORDER BY e.nombre")->fetch_all(MYSQLI_ASSOC);
+    }
+
     public function obtenerSeguimientosSupervisorEstado($usuarioId, $estadoId, $filtros = [])
     {
         $sql = $this->consultaSeguimientosBase() . "

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../helpers/SeguimientoTerritorialScope.php';
+require_once __DIR__.'/SupervisionPersonalAcceso.php';
 
 require_once __DIR__ . '/../../config/db_connection.php';
 require_once __DIR__ . '/SeguimientoAtencionOperativaService.php';
@@ -11,7 +12,7 @@ class SeguimientoReporteAnaliticaService
     private $fuenteActividad;
     private array $contextoFuente=[],$idsAutorizadosCache=[];
 
-    public function __construct($connection = null)
+    public function __construct($connection = null, private bool $supervisionPersonal = true)
     {
         $this->connection = $connection ?: (new Database())->connect();
     }
@@ -19,7 +20,7 @@ class SeguimientoReporteAnaliticaService
     private function fuente(array $ids,string $desde,string $hasta,string $canal,array $actores,int $usuario=0,string $modo='administrador'): array
     {
         $contexto=$this->contextoFuente;
-        return ($this->fuenteActividad??=new SeguimientoReporteActividadFuente($this->connection))->obtener(
+        return ($this->fuenteActividad??=new SeguimientoReporteActividadFuente($this->connection,$this->supervisionPersonal))->obtener(
             $ids,$desde,$hasta,$canal,$actores,(int)($contexto['usuario']??$usuario),(string)($contexto['modo']??$modo),(bool)($contexto['sin_expediente']??false));
     }
 
@@ -232,11 +233,11 @@ class SeguimientoReporteAnaliticaService
                     WHERE s.id IN ($placeholders)
                       AND s.activo = 1";
         } elseif ($modoAcceso === 'supervisor') {
+            $personal=$this->supervisionPersonal?SupervisionPersonalAcceso::crear($this->connection)->sqlSeguimiento('s',(int)$usuarioId):null;
             $sql = "SELECT DISTINCT s.id FROM seguimientos_vinculacion s
                     WHERE s.id IN ($placeholders) AND s.activo = 1 AND "
-                . SeguimientoTerritorialScope::supervisor('s');
-            $parametros[] = $usuarioId;
-            $tipos .= 'i';
+                . ($personal??SeguimientoTerritorialScope::supervisor('s'));
+            if($personal===null){$parametros[] = $usuarioId;$tipos .= 'i';}
         } else {
             $sql = "SELECT DISTINCT s.id
                     FROM seguimientos_vinculacion s
@@ -858,7 +859,7 @@ class SeguimientoReporteAnaliticaService
 final class SeguimientoReporteActividadFuente
 {
     private array $cache=[],$tables=[];
-    public function __construct(private $db) {}
+    public function __construct(private $db,private bool $supervisionPersonal=true) {}
     private function rows(string $sql,array $args=[]): array
     {
         $s=$this->db->prepare($sql);if($args)$s->bind_param(str_repeat('s',count($args)),...$args);
@@ -891,6 +892,12 @@ final class SeguimientoReporteActividadFuente
         if($mode==='analista')$actors=[$user];
         $sql="SELECT DISTINCT u.id,TRIM(CONCAT_WS(' ',u.nombre,u.apellidos)) nombre FROM usuarios u WHERE u.rol_id=4";$args=[];
         if($mode==='supervisor'){
+            $personal=$this->supervisionPersonal?SupervisionPersonalAcceso::crear($this->db)->sql('u.id',$user,'actividad_analistas',4):null;
+            if($personal!==null){
+                $sql.=' AND '.$personal;
+                if($actors){$sql.=' AND u.id IN ('.implode(',',array_fill(0,count($actors),'?')).')';$args=$actors;}
+                return array_column($this->rows($sql,$args),null,'id');
+            }
             if(!$ids)return [];
             $sql.=' AND EXISTS(SELECT 1 FROM seguimientos_vinculacion s WHERE s.analista_id=u.id AND s.id IN ('.implode(',',array_fill(0,count($ids),'?')).') AND '.SeguimientoTerritorialScope::supervisor('s').')';
             $args=array_merge($ids,[$user]);
@@ -909,6 +916,10 @@ final class SeguimientoReporteActividadFuente
                 LEFT JOIN municipios m ON m.id=s.municipio_id LEFT JOIN estados e ON e.id=s.estado_id LEFT JOIN usuarios u ON u.id=i.usuario_id
                 WHERE i.seguimiento_id IN (".implode(',',array_fill(0,count($ids),'?')).") AND UPPER(TRIM(COALESCE(i.canal,'')))<>'SISTEMA'";
             $args=$ids;
+            if($mode==='supervisor'){
+                $personal=$this->supervisionPersonal?SupervisionPersonalAcceso::crear($this->db)->sql('i.usuario_id',$user,'actividad_analistas',4):null;
+                if($personal!==null)$sql.=' AND '.$personal;
+            }
             if($actors){$sql.=' AND i.usuario_id IN ('.implode(',',array_fill(0,count($actors),'?')).')';$args=array_merge($args,$actors);}
             if($from!==''){$sql.=' AND i.fecha_inicio>=?';$args[]=$from.' 00:00:00';}
             if($until!==''){$sql.=' AND i.fecha_inicio<=?';$args[]=(new DateTimeImmutable($until.' 23:59:59',new DateTimeZone('America/Mexico_City')))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');}

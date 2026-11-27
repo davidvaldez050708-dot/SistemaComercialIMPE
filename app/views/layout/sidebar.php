@@ -11,6 +11,7 @@ $opcionActiva = $opcionActiva ?? 'inicio';
 $mostrarUsuarios = tienePermiso('usuarios.ver');
 $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
+$mostrarSupervisionPersonal = (int)($_SESSION['rol_id']??0)===1 && tienePermiso('personal.supervision.gestionar');
 $mostrarTelefoniaConfiguracion =
     (int)($_SESSION['rol_id'] ?? 0) === 1
     && tienePermiso('telefonia.configurar');
@@ -152,7 +153,7 @@ $claseFormularios =
             $mostrarUsuarios ||
             $mostrarRoles ||
             $mostrarTerritorios ||
-             $mostrarTelefoniaControl
+             $mostrarTelefoniaControl || $mostrarSupervisionPersonal
         ): ?>
 
             <div class="sidebar-section">
@@ -191,6 +192,13 @@ $claseFormularios =
                         Territorios
                     </a>
 
+                <?php endif; ?>
+
+                <?php if ($mostrarSupervisionPersonal): ?>
+                    <a href="<?= BASE_URL ?>index.php?controller=supervisionPersonal&amp;action=index"
+                       class="sidebar-link <?= $opcionActiva==='supervision_personal'?'active':'' ?>">
+                        <i class="bi bi-people"></i> Supervisión de personal
+                    </a>
                 <?php endif; ?>
 
                 <?php if ($mostrarTelefoniaControl): ?>
@@ -510,7 +518,7 @@ $claseFormularios =
                 $mostrarUsuarios ||
                 $mostrarRoles ||
                 $mostrarTerritorios ||
-                 $mostrarTelefoniaControl
+                 $mostrarTelefoniaControl || $mostrarSupervisionPersonal
             ): ?>
 
                 <div class="sidebar-section">
@@ -559,6 +567,13 @@ $claseFormularios =
 
                         </a>
 
+                    <?php endif; ?>
+
+                    <?php if ($mostrarSupervisionPersonal): ?>
+                        <a href="<?= BASE_URL ?>index.php?controller=supervisionPersonal&amp;action=index"
+                           class="sidebar-link <?= $opcionActiva==='supervision_personal'?'active':'' ?>">
+                            <i class="bi bi-people"></i> Supervisión de personal
+                        </a>
                     <?php endif; ?>
 
                     <?php if ($mostrarTelefoniaControl): ?>
