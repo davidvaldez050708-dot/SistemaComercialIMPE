@@ -87,6 +87,48 @@
         if (previous === null) view.localStorage.setItem(key, raw);
         return {session_id:event.session_id, secuencia:event.secuencia};
     }
+    // Una observación por diálogo SDK. No interpreta estados PBX ni formularios.
+    function createSessionRecorder(context) {
+        const owner=userId(),id=String(context?.session_id||''),direction=context?.direccion;
+        if(owner<1||!/^sdk-[a-z0-9-]{12,94}$/.test(id)||!['ENTRANTE','SALIENTE'].includes(direction))
+            throw new Error('Contexto local de sesión inválido.');
+        const number=String(context.numero||''),name=String(context.caller_name||'');
+        let sequence=0,started=false,answered=false,closed=false,sdkId='',answeredAt=0;
+        const emit=(event,extra={})=>{
+            if(owner!==userId())throw new Error('La observación pertenece a otro usuario.');
+            const data={session_id:id,secuencia:sequence+1,evento:event,direccion:direction,
+                numero:number,caller_name:name,...extra};
+            if(sdkId)data.sdk_id=sdkId;
+            enqueueSession(data);sequence++;
+        };
+        const start=()=>{
+            if(closed)return;
+            if(!started){emit(direction==='SALIENTE'?'dialed':'ringing');started=true;}
+        };
+        return Object.freeze({
+            session_id:id,
+            bind(value){
+                const next=String(value||'');
+                if(!/^[A-Za-z0-9@._:+-]{1,180}$/.test(next)||(sdkId||closed)&&sdkId!==next)
+                    throw new Error('El diálogo SDK no corresponde a esta observación.');
+                sdkId=next;
+            },
+            start,
+            answered(){
+                if(closed||answered)return;
+                start();emit('answered');answered=true;answeredAt=Date.now();
+            },
+            end(reason='ended'){
+                if(closed)return;
+                if(!['ended','failed','declined','missed'].includes(reason))throw new Error('Cierre local inválido.');
+                // Fallar antes de existir un diálogo no acredita un marcado SDK.
+                if(started||direction!=='SALIENTE'||reason!=='failed')start();
+                emit(reason,answered?{duracion_observada_segundos:Math.min(86400,Math.max(0,Math.floor((Date.now()-answeredAt)/1000)))}:{});
+                closed=true;
+            },
+            snapshot:()=>({session_id:id,secuencia:sequence,started,answered,closed,sdk_id:sdkId})
+        });
+    }
     function flushSessions(endpoint) {
         const broker = parentBroker();
         if (broker) return broker.flushSessions(endpoint);
@@ -267,7 +309,7 @@
         };
     }
     api = Object.freeze({request, cancelScope, get userId() {return userId();},
-        createSnapshotGate, csrfToken, enqueueSession, flushSessions,
+        createSnapshotGate, csrfToken, enqueueSession, flushSessions, createSessionRecorder,
         snapshot() {const broker = parentBroker();return broker ? broker.snapshot() : {...totals, pending: pending.size};}});
     return api;
 });

@@ -26,7 +26,8 @@ contra un laboratorio sintético. No deben ejecutarse en producción.
   actuales; una respuesta tardía no reemplaza cambios del usuario.
 - Adaptador común de sesiones SDK sobre la tabla histórica existente.
 - Cola durable de observaciones SDK, con reintento ordenado y ACK exacto.
-  **Aún no está conectada al ciclo completo del host.**
+  La preparación saliente y sus eventos SDK ya usan esa cola en el host.
+  **La migración del escritor entrante del Analista todavía está pendiente.**
 - Transporte PHP del proveedor con plazos, TLS, caché exacta y presupuesto
   compartido. No modifica el SDK ni crea sondeos.
 - El login se difiere durante una sesión local viva y el cierre se notifica
@@ -44,8 +45,9 @@ Las pruebas unitarias portables se ejecutan con Node.js, sin dependencias:
 node tools/telefonia_universal_20261126/run_unit.cjs
 ```
 
-Cubren nueve suites de capturas, alias, ACK, sincronización, restauración,
-pendientes y carreras al marcar/colgar. No abren conexiones ni llamadas.
+Cubren diez suites de capturas, alias, ACK, sincronización, restauración,
+pendientes, carreras al marcar/colgar y registro saliente del host.
+No abren conexiones ni llamadas.
 El laboratorio HTTP/SQL y las pruebas de navegador se mantienen separados.
 
 Se ejecutan pruebas sintéticas puras, HTTP y SQL con tres perfiles, además

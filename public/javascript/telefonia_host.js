@@ -1539,19 +1539,33 @@
      * Sin esto, una devolución rápida al mismo número podría heredar
      * la finalización de la llamada anterior.
      */
+    let outgoingJournal = null;
+    const journalWarnings = new WeakSet();
+    const writeLocalJournal = function (recorder, action, ...args) {
+        if(!recorder||!ownsTransport)return;
+        try {
+            const before=recorder.snapshot().secuencia;
+            recorder[action](...args);
+            if(recorder.snapshot().secuencia!==before)
+                void window.IMPE_PHONE_HTTP.flushSessions(config.sesionLocalUrl).catch(()=>{});
+        } catch (_) {
+            if(journalWarnings.has(recorder))return;
+            journalWarnings.add(recorder);
+            if(state.callToken===recorder.session_id)publish({message:'No se pudo conservar una observación local. Mantén abierto el teléfono y revisa el registro antes de salir.'});
+        }
+    };
     const fetchDialCheckpoint = async function (destination) {
-        const params = new URLSearchParams({
-            destination: destination,
-            checkpoint: '1'
-        });
         const response = await hostRequest(
-            String(config.estadoUrl || '') + '?' + params.toString(),
+            String(config.sesionLocalUrl || ''),
             {
-                method: 'GET',
+                method: 'POST',
                 credentials: 'same-origin',
                 cache: 'no-store',
+                body:JSON.stringify({accion:'preparar_saliente',destino:destination,
+                    csrf_token:window.IMPE_PHONE_HTTP.csrfToken()}),
                 headers: {
                     Accept: 'application/json',
+                    'Content-Type':'application/json',
                     'X-Requested-With': 'fetch'
                 }
             }
@@ -1563,7 +1577,12 @@
                 'No fue posible preparar el seguimiento de esta llamada.'
             );
         }
-        return Math.max(0, Number(data.after_id || 0));
+        const prepared=data.sesion;
+        if(!/^sdk-[a-z0-9-]{12,94}$/.test(String(prepared?.session_id||''))||
+            String(prepared.extension)!==extension||!Number.isInteger(prepared.after_id)||prepared.after_id<0||
+            !Number.isInteger(prepared.server_time)||prepared.server_time<1)
+            throw Error('El servidor no confirmó la preparación de esta llamada.');
+        return prepared;
     };
 
     const fetchCallState = async function (
@@ -1848,19 +1867,6 @@
         pollInterval = setInterval(poll, 800);
     };
 
-    const randomToken = function () {
-        if (
-            window.crypto &&
-            typeof window.crypto.randomUUID === 'function'
-        ) {
-            return window.crypto.randomUUID();
-        }
-
-        return Date.now().toString(36) +
-            '-' +
-            Math.random().toString(36).slice(2);
-    };
-
     /**
      * Esta PBX utiliza 10 dígitos nacionales para destinos de México.
      * Los números se mantienen con +52 para identificar y correlacionar
@@ -1901,18 +1907,25 @@
         try {
             await ensureWidget();
             if(!preparing())return;
-            const afterEventId = await fetchDialCheckpoint(destination);
-            if(!preparing())return;
+            const prepared = await fetchDialCheckpoint(destination);
+            if(!preparing()){
+                // Una entrante puede ganar mientras responde la preparación.
+                // Cerrar sólo esa intención no emitida; nunca tocar la entrante.
+                const abandoned=window.IMPE_PHONE_HTTP.createSessionRecorder({session_id:prepared.session_id,direccion:'SALIENTE',numero:destination});
+                writeLocalJournal(abandoned,'end','failed');return;
+            }
 
             muted = false;
             answeredAtMs = 0;
             lastCall = null;
             hangingUp = false;
 
-            const requestedAt = Math.floor(Date.now() / 1000);
-            const callToken = randomToken();
+            const requestedAt = prepared.server_time;
+            const callToken = prepared.session_id;
             reservation.startedToken=callToken;
             reservation.priorSession=window.zdrmWebPhone?.webCallSession;
+            outgoingJournal={token:callToken,priorSession:reservation.priorSession,
+                recorder:window.IMPE_PHONE_HTTP.createSessionRecorder({session_id:callToken,direccion:'SALIENTE',numero:destination})};
 
             publish({
                 phase: 'dialing',
@@ -1925,12 +1938,12 @@
                 status: 'dialing',
                 duration: 0,
                 requestedAt: requestedAt,
-                afterEventId: afterEventId,
+                afterEventId: prepared.after_id,
                 checkpointReady: true,
                 answeredAtMs: 0,
                 pbxCallId: '',
                 callToken: callToken,
-                context: payload.context || null,
+                context: {...(payload.context||{}),sdkSessionId:callToken},
                 finalMetadata: null,
                 message: ''
             });
@@ -1946,8 +1959,8 @@
             if (typeof result === 'string' && result.trim() !== '') {
                 throw new Error(result.trim());
             }
-
-            startPolling();
+            observeOutgoingSession();
+            if(state.active&&state.callToken===callToken)startPolling();
         } catch (error) {
             if(reservation.startedToken){
                 if(!state.active||String(state.callToken||'')!==reservation.startedToken)return;
@@ -1957,6 +1970,8 @@
                     startPolling();return;
                 }
             }else if(!preparing())return;
+            if(reservation.startedToken&&outgoingJournal?.token===reservation.startedToken)
+                writeLocalJournal(outgoingJournal.recorder,'end','failed');
             stopPolling();
 
             publish({
@@ -1973,10 +1988,12 @@
     // JsSIP confirma el progreso antes del siguiente sondeo de la centralita.
     // Escuchar sin sustituir los manejadores del proveedor.
     const observedOutgoingSessions = new WeakMap();
-    window.setInterval(function () {
-        if(!state.active || state.direction!=='outgoing')return;
+    const observeOutgoingSession = function () {
         const session=window.zdrmWebPhone?.webCallSession;
         if(!session || session.direction!=='outgoing' || typeof session.on!=='function')return;
+        const previous=observedOutgoingSessions.get(session);
+        if(previous&&session.isEnded?.()===true){previous.ended();return;}
+        if(!state.active || state.direction!=='outgoing')return;
         const pilot = seguimientoPilot;
         if (pilot?.token === state.callToken && session !== pilot.anterior &&
             !session.isEnded?.() && ['dialing','ringing'].includes(state.phase)) {
@@ -1987,32 +2004,50 @@
                 publish({phase:'in-progress',status:'in-progress',answeredAtMs,message:''});
             }
         }
-        const previous=observedOutgoingSessions.get(session);
         if(previous){
+            if(!session.isEnded?.()&&session.isEstablished?.()===true)
+                writeLocalJournal(previous.recorder,'answered');
             // Si el SDK perdió el callback END, detectar también isEnded().
             // La sesión debió observarse VIVA con el token de esta llamada:
             // no atribuir al nuevo marcado un objeto SDK anterior ya cerrado.
-            if(previous.token===state.callToken && session.isEnded?.()===true)
+            if(session.isEnded?.()===true)
                 previous.ended();
             return;
         }
-        if(session.isEnded?.()===true)return; // SDK viejo: no vincular al siguiente intento.
         const token=state.callToken;
+        const journal=outgoingJournal?.token===token&&outgoingJournal.priorSession!==session?outgoingJournal:null;
+        if(outgoingJournal?.token===token&&!journal)return;
+        // Un diálogo nuevo que ya terminó al volver regToCall pertenece a esta
+        // preparación. Un objeto anterior jamás se atribuye al siguiente marcado.
+        if(session.isEnded?.()===true&&!journal)return;
+        const recorder=journal?.recorder;
+        if(recorder){
+            writeLocalJournal(recorder,'bind',String(session.id||''));
+            writeLocalJournal(recorder,'start');
+            if(session.isEstablished?.()===true)writeLocalJournal(recorder,'answered');
+        }
+        const answered=function(){
+            if(session.isEstablished?.()===true)writeLocalJournal(recorder,'answered');
+        };
+        session.on('accepted',answered);session.on('confirmed',answered);
         session.on('progress',function(event){
             const code=Number(event?.response?.status_code||0);
             if(state.active && state.callToken===token && state.phase==='dialing' && [180,183].includes(code))
                 publish({phase:'ringing',status:'ringing'});
         });
-        const ended=function(){
+        const ended=function(reason='ended'){
+            writeLocalJournal(recorder,'end',reason);
             if(!state.active||state.direction!=='outgoing'||state.callToken!==token)return;
             finishCall(lastCall, 'ended-unconfirmed', true);
             // Conciliar la entrega por separado; una petición lenta no retiene
             // la sesión local ni puede finalizar otra llamada por su token.
             void transferFlow?.tick();
         };
-        observedOutgoingSessions.set(session,{token,ended});
-        session.on('ended',ended);session.on('failed',ended);
-    },100);
+        observedOutgoingSessions.set(session,{token,ended,recorder});
+        session.on('ended',()=>ended());session.on('failed',()=>ended('failed'));
+        if(session.isEnded?.()===true)ended();
+    };
+    window.setInterval(observeOutgoingSession,100);
 
     const hangup = async function () {
         if (!state.active || hangingUp) {

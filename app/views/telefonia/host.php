@@ -99,6 +99,7 @@ $audioDispositivosPilot = tienePermiso('telefonia.usar') &&
             'validarTransferenciaUrl' => BASE_URL . 'index.php?controller=telefonia&action=validarOrdenTransferencia',
             'transferenciaCsrf' => (string)$_SESSION['csrf_token'],
             'estadoUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_estado_llamada.php',
+            'sesionLocalUrl' => BASE_URL . 'prueba_telefonia/api/sesion_local.php',
             'entradaUrl' => BASE_URL . 'prueba_telefonia/api/zadarma_entrada_activa.php',
             'operacionUrl' => BASE_URL . 'prueba_telefonia/api/transferencia_operacion.php',
             'permiteSalientes' => !empty($asignacionTelefonica['permite_salientes']),

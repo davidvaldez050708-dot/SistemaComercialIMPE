@@ -408,6 +408,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'callbackUrl' => BASE_URL . 'index.php?controller=telefonia&action=misLlamadas&vista=devoluciones',
             'availabilityUrl' => BASE_URL . 'index.php?controller=telefonia&action=disponibilidad',
             'routingCsrf' => (string)$_SESSION['csrf_token'],
+            'sesionLocalUrl' => BASE_URL . 'prueba_telefonia/api/sesion_local.php',
             'homeUrl' => BASE_URL . 'index.php?controller=home&action=index'
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>

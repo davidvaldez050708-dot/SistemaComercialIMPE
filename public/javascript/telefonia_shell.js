@@ -1198,11 +1198,12 @@
         try {void hostFrame?.contentWindow.IMPE_PHONE_CONNECTION?.check();} catch (_) {}
         readState(false);
         render();
-        // Reenviar únicamente borradores pendientes en el pulso ya existente.
-        // No consulta PBX ni guarda resultados comerciales ni añade intervalos.
+        // Reenviar capturas y observaciones SDK en el pulso ya existente.
+        // Las colas vacías no hacen HTTP; no consulta PBX ni aplica resultados.
         if(owned)try{
             const drafts=window.IMPE_CALL_DRAFTS,csrf=window.IMPE_PHONE_HTTP.csrfToken();
-            if(csrf&&drafts?.pending(userId).length)void drafts.sync(userId,csrf).catch(()=>{});
+            try{if(csrf&&drafts?.pending(userId).length)void drafts.sync(userId,csrf).catch(()=>{});}catch(_){}
+            if(csrf&&cfg.sesionLocalUrl)void window.IMPE_PHONE_HTTP.flushSessions(cfg.sesionLocalUrl).catch(()=>{});
         }catch(_){}
     };
     window.setInterval(synchronize, 10000);
