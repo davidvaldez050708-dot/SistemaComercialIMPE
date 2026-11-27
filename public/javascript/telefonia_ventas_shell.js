@@ -49,8 +49,19 @@
   if(!acceptedBound)acceptedBound={id:op.id,token};
   return op;
  };
- try{const data=JSON.parse(localStorage.getItem(key)||sessionStorage.getItem(key)||'[]');if(Array.isArray(data))pending=data.filter(x=>pbx(x.ref)&&Date.now()-x.at<7*86400000).slice(-40);}catch(_){}
- const persist=()=>{try{localStorage.setItem(key,JSON.stringify(pending.slice(-40)));sessionStorage.removeItem(key);}catch(_){}};
+ // Un aviso sin resultado no caduca por antigüedad ni por la llegada de otras
+ // llamadas. Sólo una confirmación propia puede retirarlo de esta lista.
+ try{
+  const data=JSON.parse(localStorage.getItem(key)||sessionStorage.getItem(key)||'[]'),seen=new Set();
+  if(Array.isArray(data))pending=data.filter(x=>{
+   if(!x||!pbx(x.ref)||String(x.extension)!==String(cfg.extension)||seen.has(x.ref))return false;
+   seen.add(x.ref);return true;
+  });
+ }catch(_){}
+ const persist=()=>{
+  try{localStorage.setItem(key,JSON.stringify(pending));sessionStorage.removeItem(key);}
+  catch(_){window.IMPE_TELEPHONY_NOTIFY?.('No se pudo conservar la lista de atenciones pendientes. Mantén abierto el teléfono y reintenta.',true);}
+ };
  const card=document.createElement('div');card.className='impe-availability-source';card.hidden=true;
  const name=document.createElement('strong'),hint=document.createElement('p');card.append(name,hint);
  panel.querySelector('.persistent-phone-origin').after(card);

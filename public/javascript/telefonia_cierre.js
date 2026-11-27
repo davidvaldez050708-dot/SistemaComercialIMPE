@@ -14,17 +14,51 @@
     try{const data=JSON.parse(localStorage.getItem(key)||'null');if(data && Array.isArray(data.pending)&&Array.isArray(data.seen))saved=data;}catch(_){}
     const persist=()=>{try{localStorage.setItem(key,JSON.stringify(saved));}catch(_){}};
     saved.forms ||= {};
-    let calls=[], current=null, busy=false, saving=false, initial=true, openId='', transition=null;
+    let calls=[], current=null, busy=false, saving=false, initial=true, openId='';
     let scanSince=Date.now(), statusBefore=null,draftTimer=null;
-    transition=saved.waiting||null;
+    const user=Number(cfg.userId),drafts=window.IMPE_CALL_DRAFTS;
+    const valid=id=>/^[a-zA-Z0-9_-]{6,100}$/.test(String(id||''));
+    if(saved.waiting&&valid(saved.waiting.id))try{
+        const legacy=saved.waiting;
+        const existing=drafts.localRead(user,legacy.id);
+        drafts.localSave(user,[legacy.id],existing?{}:(saved.forms[legacy.id]||{}),{adaptador:'RECEPCION',
+            cierre_local:existing?.contexto?.cierre_local||{at:Number(legacy.at)||Date.now(),transferencia:Boolean(legacy.transfer),conciliado:false}});
+        delete saved.waiting;persist();
+    }catch(_){/* Conservar el aviso anterior si no pudo migrarse al almacén común. */}
+    const waitingEntries=()=>{
+        let entries=[];
+        try{entries=(drafts?.list(user)||[]).filter(d=>d.contexto?.adaptador==='RECEPCION'&&
+            d.contexto?.cierre_local&&!d.contexto.cierre_local.conciliado&&!d.pending_close)
+            .map(d=>({id:d.ids[0],ids:d.ids,at:d.contexto.cierre_local.at,transfer:d.contexto.cierre_local.transferencia}));}catch(_){}
+        if(saved.waiting&&valid(saved.waiting.id)&&!entries.some(e=>e.ids.includes(saved.waiting.id)))
+            entries.push({...saved.waiting,ids:[saved.waiting.id],legacy:true});
+        return entries;
+    };
     const completed=new Set(), observed=new Set();
-    const matches=(call,id)=>call.id===id||call.aliases.includes(id);
+    const matches=(call,id)=>call.id===id||(call.aliases||[]).includes(id);
+    const matchesEntry=(call,entry)=>entry.ids.some(id=>matches(call,id));
+    const resolveWaiting=(entry,requiresResult)=>{
+        const capture=drafts?.localRead(user,entry.id);
+        if(capture)try{
+            const resolved=drafts.localSave(user,entry.ids,{}, {adaptador:'RECEPCION',
+                cierre_local:{at:entry.at,transferencia:Boolean(entry.transfer),conciliado:true}});
+            // Sólo cerrar automáticamente un aviso vacío cuando la respuesta
+            // autenticada acredita que esa llamada no necesita resultado.
+            // Cualquier dato humano permanece en el almacén común.
+            if(!requiresResult&&Object.keys(resolved.valores||{}).length===0){
+                const csrf=window.IMPE_PHONE_HTTP.csrfToken?.()||cfg.routingCsrf;
+                void drafts.remove(user,entry.ids,csrf,resolved.saved_at).catch(()=>{});
+            }
+            if(entry.legacy)delete saved.waiting;
+        }catch(_){}
+    };
     const refreshView=()=>{
         const missed=calls.filter(c=>c.perdida && c.fecha_ts>Date.now()-30*86400000 &&
             !saved.seen.includes(c.id) && !c.aliases.some(id=>saved.seen.includes(id)));
         if(notices){
-            notices.hidden=!missed.length && !transition;
-            notices.querySelector('span').textContent=!missed.length && transition?
+            const waiting=waitingEntries();
+            notices.hidden=!missed.length && !waiting.length;
+            notices.querySelector('span').textContent=!missed.length && waiting.length?
                 'Actualizando llamada · revisar':missed.length===1?
                 '1 llamada perdida · revisar':missed.length+' llamadas perdidas · revisar';
         }
@@ -53,25 +87,27 @@
             if(!response.ok||!data.ok)return;
             if(String(data.extension)!==String(cfg.extension))return;
             calls=data.llamadas||[];
-            if(transition){
-                const exact=calls.filter(c=>matches(c,transition.id));
+            const waiting=waitingEntries();
+            for(const entry of waiting){
+                const exact=calls.filter(c=>matchesEntry(c,entry));
                 // El número y la cercanía temporal no identifican una llamada.
                 // Sin una referencia o alias acreditado, conservar el pendiente.
                 const candidates=exact;
                 // Una transferencia puede aparecer inicialmente como saliente atendida:
                 // esperar la conciliación PBX antes de abrir resultado obligatorio.
-                const transferGrace=transition.transfer && Date.now()-transition.at<12000;
+                const transferGrace=entry.transfer && Date.now()-entry.at<12000;
                 if(candidates.length===1 && (candidates[0].finalizada||candidates[0].transferida) &&
                     (!transferGrace || candidates[0].transferida)) {
                     const call=candidates[0];
                     if(call.requiere_resultado&&!saved.pending.includes(call.id))saved.pending.push(call.id);
                     if(call.transferida)notify('Llamada transferida'+(call.destino?' a extensión '+call.destino:'')+'.');
-                    transition=null;saved.waiting=null;
+                    resolveWaiting(entry,Boolean(call.requiere_resultado));
                 }
             }
             for(const call of calls){
                 if(!call.finalizada){observed.add(call.id);continue;}
-                const isTransition=transition && matches(call,transition.id);
+                const transition=waiting.find(entry=>matchesEntry(call,entry));
+                const isTransition=Boolean(transition);
                 // La llamada puede haberse observado viva antes del cierre:
                 // tampoco encolar por observed ni por !initial mientras
                 // la transferencia espera su confirmación PBX.
@@ -152,8 +188,13 @@
                 const transferStage=String(value.context?.transferRequest?.stage||statusBefore.context?.transferRequest?.stage||'');
                 const transfer=Boolean(value.status==='transferred'||
                     ['ENVIADA','ENTREGADA','ENTREGANDO','SIN_CONFIRMAR','SIN_RESPUESTA'].includes(transferStage));
-                transition={id:String(value.pbxCallId||statusBefore.pbxCallId||value.callToken||''),at:Date.now(),number:String(value.destination||statusBefore.destination||'').replace(/\D/g,'').slice(-10),transfer};
-                saved.waiting=transition;
+                const id=String(value.pbxCallId||statusBefore.pbxCallId||value.callToken||'');
+                const ids=[...new Set([id,value.callToken,value.context?.sdkSessionId].filter(valid))];
+                if(ids.length)try{
+                    const existing=ids.some(ref=>drafts.localRead(user,ref));
+                    drafts.localSave(user,ids,existing?{}:(saved.forms[id]||{}), {adaptador:'RECEPCION',
+                        cierre_local:{at:Date.now(),transferencia:transfer,conciliado:false}});
+                }catch(_){notify('No se pudo conservar el aviso de esta llamada. Revisa el historial de recepción.',true);}
                 persist();void load();
             }
             refreshView();

@@ -8,7 +8,7 @@ final class TelefoniaAudioTransferidoService
 {
     public function __construct(private mysqli $db) {}
     public function resolver(string $pbx,string $ext,string $desde,callable $record,?callable $stats=null,array $cachedRows=[]): array {
-        $q=$this->db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
+        $q=$this->db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=BINARY ? ORDER BY id');
         $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
         $proof=TelefoniaPbxSegmentosService::transferencia($events,$ext);
         $ownArrival=(bool)array_filter($events,static fn($e)=>$e['evento']==='NOTIFY_INTERNAL'&&(string)$e['internal']===$ext);
@@ -37,7 +37,7 @@ final class TelefoniaAudioTransferidoService
         }
         $ids=array_values($ids);$info=array_values($info);
         // Ordenar sólo si todos los segmentos tienen inicio oficial. La misma
-        // evidencia se conserva en sesión privada para Range y reproducción.
+        // evidencia se conserva en caché privada para Range y reproducción.
         if($ids&&!array_filter($info,static fn($i)=>empty($i['inicio']))){$order=array_keys($ids);usort($order,static fn($a,$b)=>strcmp($info[$a]['inicio'],$info[$b]['inicio']));$ids=array_map(static fn($i)=>$ids[$i],$order);$info=array_map(static fn($i)=>$info[$i],$order);}
         if(count($ids)>8)throw new DomainException('TRAMO_PENDIENTE_VINCULACION');
         $reply['ids']=$ids;

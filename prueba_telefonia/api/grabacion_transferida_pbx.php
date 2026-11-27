@@ -6,6 +6,8 @@
 declare(strict_types=1);
 session_start();
 $root = dirname(__DIR__, 2);
+require_once $root.'/app/helpers/TelefoniaPeticionContexto.php';
+TelefoniaPeticionContexto::actualizar(false);
 require_once $root . '/config/db_connection.php';
 require_once $root . '/app/helpers/PermissionHelper.php';
 require_once $root . '/app/models/RolModel.php';
@@ -21,16 +23,13 @@ $userId = (int)($_SESSION['usuario_id'] ?? 0);
 $pbx = trim((string)($_GET['pbx_call_id'] ?? ''));
 if ($userId < 1) { http_response_code(401); exit; }
 if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $pbx)) { http_response_code(422); exit; }
-$rol = new RolModel();
-$rol->inicializarPermisosSistema();
-$_SESSION['permisos'] = $rol->obtenerCodigosPermisosPorRol((int)($_SESSION['rol_id'] ?? 0));
 $analista = strcasecmp(trim((string)($_SESSION['rol'] ?? '')), 'Analista de Datos') === 0
     && tienePermiso('telefonia.usar') && tienePermiso('telefonia.recibir')
     && tienePermiso('seguimientos_vinculacion.operar_propios');
 $recepcion = TelefoniaRecepcionMarketingService::tienePermisos();
 if (!$analista && !$recepcion) { http_response_code(403); exit; }
 try {
-    $db = (new Database())->connect();
+    $db = Database::compartida();
     $q = $db->prepare("SELECT extension, GREATEST(created_at,updated_at) AS desde
         FROM telefonia_extensiones WHERE usuario_id=? AND proveedor='ZADARMA'
           AND activo=1 AND permite_entrantes=1 LIMIT 1");
@@ -40,12 +39,14 @@ try {
     $q->close();
     if (!$assignment) { http_response_code(404); exit; }
     $ext = (string)$assignment['extension'];
+    require_once $root.'/app/helpers/TelefoniaAsignacionFechaHelper.php';
+    $asignadaMexico=TelefoniaAsignacionFechaHelper::aMexico((string)$assignment['desde']);
     $service = new ZadarmaRecordingService(false);
     // Recepción conserva su autorización histórica. El destinatario sólo
     // obtiene el origen y su tramo tras acreditar la transferencia exacta.
     if ($recepcion) {
         $allowed=false;
-        foreach ((new TelefoniaRecepcionMarketingService())->resumen($userId)['llamadas'] as $call) {
+        foreach ((new TelefoniaRecepcionMarketingService($db))->resumen($userId)['llamadas'] as $call) {
             if ($call['pbx_call_id']===$pbx && $call['estado']==='Transferida' && !empty($call['finalizada']) && empty($call['excluir_grabacion'])) {$allowed=true;break;}
         }
         if (!$allowed || (($call['tipo']??'')==='Saliente'&&!tienePermiso('telefonia.salientes')))
@@ -62,7 +63,7 @@ try {
             // Conservar íntegra la política anterior para transferencias al
             // Analista y demás destinos no comerciales.
             $receiver=(string)($call['destino_transferencia']??'');
-            $q=$db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');
+            $q=$db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=BINARY ? ORDER BY id');
             $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
             $parts=TelefoniaPbxSegmentosService::deEventos($events,$ext,[$receiver]);
             $records=[];$info=[];
@@ -70,13 +71,19 @@ try {
             $result=['ok'=>true,'estado'=>$records?'DISPONIBLE':'GRABACION_EN_PREPARACION','disponible'=>(bool)$records,'segmentos'=>count($records),'segmentos_info'=>$info];
         }
     } else {
-        $cacheKey=$ext.'|'.$pbx;$cache=$_SESSION['impe_audio_transferido'][$cacheKey]??[];
+        $cacheKey=$ext.'|'.$pbx;$cache=[];
+        try{$cache=$service->cacheTramosTransferidos($userId,$ext,(string)$assignment['desde'],$pbx)??[];}
+        catch(Throwable $cacheError){error_log('[audio_transferido_cache] READ_TEMPORARY');}
+        // Migración de lectura: conservar evidencia vigente de sesiones antiguas,
+        // sin volver a bloquear ni escribir el archivo de sesión PHP.
+        if(!$cache)$cache=$_SESSION['impe_audio_transferido'][$cacheKey]??[];
         $cached=time()-(int)($cache['at']??0)<3600?($cache['rows']??[]):[];
         $stats=isset($_GET['verificar'])&&(!$cached||time()-(int)$cache['at']>=60)?[$service,'estadisticasPbx']:null;
-        $result=(new TelefoniaAudioTransferidoService($db))->resolver($pbx,$ext,(string)$assignment['desde'],[$service,'obtenerGrabacionPorCallId'],$stats,$cached);
+        $result=(new TelefoniaAudioTransferidoService($db))->resolver($pbx,$ext,$asignadaMexico,[$service,'obtenerGrabacionPorCallId'],$stats,$cached);
         if($result['cache_tramos']){
-            $_SESSION['impe_audio_transferido'][$cacheKey]=['at'=>$stats?time():(int)$cache['at'],'rows'=>$result['cache_tramos']];
-            $_SESSION['impe_audio_transferido']=array_slice($_SESSION['impe_audio_transferido'],-20,null,true);
+            try{$service->cacheTramosTransferidos($userId,$ext,(string)$assignment['desde'],$pbx,
+                ['at'=>$stats?time():(int)($cache['at']??0),'rows'=>$result['cache_tramos']]);}
+            catch(Throwable $cacheError){error_log('[audio_transferido_cache] WRITE_TEMPORARY');}
         }
         $records=$result['records'];
     }

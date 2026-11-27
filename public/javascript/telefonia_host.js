@@ -176,6 +176,7 @@
     let incomingFinishedTimer = null;
     let sdkIncomingObserver = null;
     let hangingUp = false;
+    let dialReservation = null;
     let muted = false;
     let answeredAtMs = 0;
     let lastCall = null;
@@ -1872,18 +1873,13 @@
 
     const startCall = async function (payload) {
         window.IMPE_CALL_AUDIO?.unlock();
+        if(state.active){publish({message:'Ya existe una llamada activa en esta extensión.'});return;}
+        if(dialReservation){publish({message:'Se está preparando el marcado solicitado.'});return;}
         if (!permiteSalientes) {
             publish({
                 phase: 'error',
                 message:
                     'Esta extensión no tiene habilitadas llamadas salientes.'
-            });
-            return;
-        }
-
-        if (state.active) {
-            publish({
-                message: 'Ya existe una llamada activa en esta extensión.'
             });
             return;
         }
@@ -1899,13 +1895,14 @@
             return;
         }
 
+        const reservation={initialToken:String(state.callToken||''),startedToken:'',priorSession:null};
+        dialReservation=reservation;
+        const preparing=()=>dialReservation===reservation&&!state.active&&String(state.callToken||'')===reservation.initialToken;
         try {
             await ensureWidget();
+            if(!preparing())return;
             const afterEventId = await fetchDialCheckpoint(destination);
-
-            if (state.active) {
-                throw new Error('Ya existe una llamada activa en esta extensión.');
-            }
+            if(!preparing())return;
 
             muted = false;
             answeredAtMs = 0;
@@ -1914,6 +1911,8 @@
 
             const requestedAt = Math.floor(Date.now() / 1000);
             const callToken = randomToken();
+            reservation.startedToken=callToken;
+            reservation.priorSession=window.zdrmWebPhone?.webCallSession;
 
             publish({
                 phase: 'dialing',
@@ -1950,6 +1949,14 @@
 
             startPolling();
         } catch (error) {
+            if(reservation.startedToken){
+                if(!state.active||String(state.callToken||'')!==reservation.startedToken)return;
+                const session=window.zdrmWebPhone?.webCallSession;
+                if(session&&session!==reservation.priorSession&&session.direction==='outgoing'&&!session.isEnded?.()){
+                    publish({phase:'recovering',status:'recovering',message:'El SDK inició una sesión. Comprobando su estado.'});
+                    startPolling();return;
+                }
+            }else if(!preparing())return;
             stopPolling();
 
             publish({
@@ -1960,7 +1967,7 @@
                     error.message ||
                     'No fue posible iniciar la llamada.'
             });
-        }
+        } finally {if(dialReservation===reservation)dialReservation=null;}
     };
 
     // JsSIP confirma el progreso antes del siguiente sondeo de la centralita.
@@ -2011,7 +2018,11 @@
         if (!state.active || hangingUp) {
             return;
         }
-
+        const token=String(state.callToken||'');
+        const belongs=()=>state.active&&state.direction==='outgoing'&&String(state.callToken||'')===token;
+        if(!belongs())return;
+        const cancelEarly=state.status!=='in-progress'&&Number(state.answeredAtMs||0)<=0&&
+            window.zdrmWebPhone?.webCallSession?.isEstablished?.()!==true;
         hangingUp = true;
 
         publish({
@@ -2021,15 +2032,12 @@
 
         // Al hablar (incluido el buzón) se finaliza la sesión de audio;
         // si aún marca, también se cancela el intento pendiente.
-        endOutgoingWebrtc(
-            String(state.status || '') !== 'in-progress' &&
-            Number(state.answeredAtMs || 0) <= 0
-        );
+        endOutgoingWebrtc(cancelEarly);
 
         for (let attempt = 0; attempt < 6; attempt += 1) {
             await sleep(attempt === 0 ? 900 : 700);
 
-            if (!state.active) {
+            if (!belongs()) {
                 return;
             }
 
@@ -2038,6 +2046,7 @@
                     true,
                     attempt === 2
                 );
+                if(!belongs())return;
 
                 if (call) {
                     lastCall = call;
@@ -2048,11 +2057,13 @@
                     }
                 }
             } catch (error) {
+                if(!belongs())return;
                 console.warn(error);
             }
         }
 
         // Agotar la espera no acredita un cierre PBX ni una conversación.
+        if(!belongs())return;
         hangingUp=false;
         publish({phase:'finishing',status:'ending',message:'Cierre sin confirmar. Puedes volver a comprobar el estado.'});
     };

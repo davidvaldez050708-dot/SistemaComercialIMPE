@@ -18,6 +18,12 @@ contra un laboratorio sintético. No deben ejecutarse en producción.
 - Reductor de segmentos PBX común para transferencias y llamadas comerciales.
 - Borradores durables con revisiones, fusión de campos y protección ante ACK
   antiguo; los formularios conservan la captura si falta evidencia.
+- La unión local de alias conserva los campos aportados por ambos formularios,
+  detecta conflictos de revisión y conserva los recibos de aplicación.
+- Recepción conserva varias llamadas pendientes de PBX en el almacén común.
+  Ventas no descarta avisos por superar siete días o cuarenta llamadas.
+- Analista restaura las confirmaciones sólo después de consultar las reglas
+  actuales; una respuesta tardía no reemplaza cambios del usuario.
 - Adaptador común de sesiones SDK sobre la tabla histórica existente.
 - Cola durable de observaciones SDK, con reintento ordenado y ACK exacto.
   **Aún no está conectada al ciclo completo del host.**
@@ -31,6 +37,16 @@ contra un laboratorio sintético. No deben ejecutarse en producción.
   fallback más débil para resolver la ambigüedad.
 
 ## Validación y límites
+
+Las pruebas unitarias portables se ejecutan con Node.js, sin dependencias:
+
+```bash
+node tools/telefonia_universal_20261126/run_unit.cjs
+```
+
+Cubren nueve suites de capturas, alias, ACK, sincronización, restauración,
+pendientes y carreras al marcar/colgar. No abren conexiones ni llamadas.
+El laboratorio HTTP/SQL y las pruebas de navegador se mantienen separados.
 
 Se ejecutan pruebas sintéticas puras, HTTP y SQL con tres perfiles, además
 de la reproducción de eventos de las transferencias 87, 88 y 89 facilitados

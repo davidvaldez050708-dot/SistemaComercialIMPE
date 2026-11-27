@@ -1198,6 +1198,12 @@
         try {void hostFrame?.contentWindow.IMPE_PHONE_CONNECTION?.check();} catch (_) {}
         readState(false);
         render();
+        // Reenviar únicamente borradores pendientes en el pulso ya existente.
+        // No consulta PBX ni guarda resultados comerciales ni añade intervalos.
+        if(owned)try{
+            const drafts=window.IMPE_CALL_DRAFTS,csrf=window.IMPE_PHONE_HTTP.csrfToken();
+            if(csrf&&drafts?.pending(userId).length)void drafts.sync(userId,csrf).catch(()=>{});
+        }catch(_){}
     };
     window.setInterval(synchronize, 10000);
     window.addEventListener('focus', synchronize);

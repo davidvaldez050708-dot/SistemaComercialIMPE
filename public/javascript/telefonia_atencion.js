@@ -11,6 +11,15 @@
     const key=(user,id)=>'impe:crm:call-draft:'+Number(user)+':'+id;
     const actor=()=>Number(window.IMPE_CURRENT_USER_ID||window.IMPE_PHONE_SHELL_CONFIG?.userId||0);
     const own=user=>{if(Number(user)!==actor()||actor()<1)throw new Error('La captura pertenece a otra sesión de usuario.');};
+    const synchronizations=new Map();
+    const parentDrafts=()=>{
+        try{
+            const parent=window.parent;
+            if(parent&&parent!==window&&parent.location.origin===window.location.origin&&
+                Number(parent.IMPE_PHONE_HTTP?.userId)===actor())return parent.IMPE_CALL_DRAFTS||null;
+        }catch(_){}
+        return null;
+    };
     const localRead=(user,id)=>{
         let latest=null;
         for(const name of ['localStorage','sessionStorage'])try {
@@ -23,14 +32,38 @@
     const localSave=(user,ids,values,contexto)=>{
         own(user);ids=refs(ids);
         if(!ids.length)throw new Error('La captura necesita una referencia exacta de llamada.');
-        const snapshots=ids.map(id=>localRead(user,id)).filter(fresh).sort((a,b)=>b.saved_at-a.saved_at);
-        const latest=snapshots[0],previous=Number(latest?.saved_at||0);
-        const clean={...(latest?.valores||{}),...values};delete clean.csrf_token;
-        const context=contexto?{adaptador:contexto.adaptador}:latest?.contexto;
+        const snapshots=ids.map(id=>localRead(user,id)).filter(fresh).sort((a,b)=>a.saved_at-b.saved_at);
+        const latest=snapshots[snapshots.length-1],previous=Number(latest?.saved_at||0);
+        const merged={},revisions=new Map(),receipts={};
+        for(const snapshot of snapshots){
+            const revision=Number(snapshot.saved_at),prior=revisions.get(revision)||{};
+            for(const [field,value]of Object.entries(snapshot.valores||{})){
+                if(Object.prototype.hasOwnProperty.call(prior,field)&&prior[field]!==value&&
+                    !Object.prototype.hasOwnProperty.call(values,field))
+                    throw new Error('Dos capturas de la misma revisión difieren. Revisa los datos antes de unir sus referencias.');
+                prior[field]=value;merged[field]=value;
+            }
+            revisions.set(revision,prior);
+            for(const [request,receipt]of Object.entries(snapshot.aplicaciones||{})){
+                if(Object.prototype.hasOwnProperty.call(receipts,request)&&JSON.stringify(receipts[request])!==JSON.stringify(receipt))
+                    throw new Error('Las referencias contienen confirmaciones distintas. No se fusionaron.');
+                receipts[request]=receipt;
+            }
+        }
+        const clean={...merged,...values};delete clean.csrf_token;
+        const context=contexto?{...(latest?.contexto||{}),adaptador:contexto.adaptador}:latest?.contexto;
+        if(contexto?.cierre_local){
+            const observed=contexto.cierre_local;
+            if(!Number.isSafeInteger(observed.at)||observed.at<1||typeof observed.transferencia!=='boolean'||
+                (observed.conciliado!==undefined&&typeof observed.conciliado!=='boolean'))throw new Error('Observación local de captura inválida.');
+            context.cierre_local={at:observed.at,transferencia:observed.transferencia,conciliado:observed.conciliado||false};
+        }
         if(latest&&JSON.stringify(latest.valores)===JSON.stringify(clean)&&
-            JSON.stringify(latest.ids)===JSON.stringify(ids)&&JSON.stringify(latest.contexto)===JSON.stringify(context))return latest;
+            JSON.stringify(latest.ids)===JSON.stringify(ids)&&JSON.stringify(latest.contexto)===JSON.stringify(context)&&
+            JSON.stringify(latest.aplicaciones||{})===JSON.stringify(receipts))return latest;
         const d={saved_at:Math.max(Date.now(),previous+1),valores:clean,ids,pending_sync:true};
         if(context)d.contexto=context;
+        if(Object.keys(receipts).length)d.aplicaciones=receipts;
         try{for(const id of ids)localStorage.setItem(key(user,id),JSON.stringify({...d,call_id:id}));}
         catch(error){
             window.IMPE_TELEPHONY_NOTIFY?.('No se pudo conservar la captura en este navegador. Mantén abierto el formulario y reintenta guardar.',true);
@@ -43,6 +76,22 @@
             try{localStorage.setItem(key(user,id),JSON.stringify({...current,pending_sync:false}));}catch(_){}
         }}
     };
+    const markClosePending=(user,ids,revision)=>{
+        for(const id of ids){
+            const current=localRead(user,id);
+            if(!fresh(current)||Number(current.saved_at)>revision)continue;
+            try{localStorage.setItem(key(user,id),JSON.stringify({...current,pending_close:{revision},pending_sync:true}));}
+            catch(_){/* El resultado nativo ya se confirmó; intentar cerrar en servidor igualmente. */}
+        }
+    };
+    const clearClosed=(user,ids,revision,seen)=>{
+        for(const id of ids){
+            const current=localRead(user,id);
+            if(!current||Number(current.saved_at)>revision||current.pending_close?.revision!==revision)continue;
+            if(seen&&current.saved_at!==seen.get(id))continue;
+            for(const name of ['localStorage','sessionStorage'])try{globalThis[name].removeItem(key(user,id));}catch(_){}
+        }
+    };
     const formValues=form=>{
         const values=Object.fromEntries(new FormData(form));
         for(const input of form.querySelectorAll('input[type="checkbox"][name]')){
@@ -53,13 +102,25 @@
         return values;
     };
     const request=async body=>{
+        const payload=JSON.stringify(body);
         const res=await window.IMPE_PHONE_HTTP.request(endpoint,{method:'POST',credentials:'same-origin',cache:'no-store',
-            headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(body)});
+            headers:{'Content-Type':'application/json',Accept:'application/json'},body:payload,coalesceKey:payload});
         const data=await res.json();
         if(!res.ok||!data.ok){const error=new Error(data.mensaje||'No se pudo guardar la captura.');error.status=res.status;throw error;}
         return data;
     };
     const contactosUnificados=new WeakMap();
+    const localCaptures=(user,onlyPending)=>{
+        own(user);const found=new Map(),prefix=key(user,'');
+        for(let i=0;i<localStorage.length;i++){
+            const storageKey=localStorage.key(i);if(!storageKey?.startsWith(prefix))continue;
+            const id=storageKey.slice(prefix.length),data=localRead(user,id);
+            if(!fresh(data)||(onlyPending&&!data.pending_sync&&!data.pending_close))continue;
+            const ids=refs(data.ids||[id]),identity=[...ids].sort().join('|');
+            if(!found.has(identity)||found.get(identity).saved_at<data.saved_at)found.set(identity,{...data,ids});
+        }
+        return [...found.values()];
+    };
     window.IMPE_CALL_DRAFTS={
         refs,localSave,localRead,formValues,
         unificarContacto(form) {
@@ -154,26 +215,50 @@
             const data=await request({csrf_token:csrf,ids:local.ids,valores:local.valores,capturado_at:local.saved_at,...(contexto?{contexto}:{})});
             own(user);markSynced(user,local.ids,local.saved_at);return data;
         },
-        pending(user) {
-            own(user);const found=new Map(),prefix=key(user,'');
-            for(let i=0;i<localStorage.length;i++){
-                const storageKey=localStorage.key(i);if(!storageKey?.startsWith(prefix))continue;
-                const id=storageKey.slice(prefix.length),data=localRead(user,id);
-                if(!fresh(data)||!data.pending_sync)continue;
-                const ids=refs(data.ids||[id]),identity=[...ids].sort().join('|');
-                if(!found.has(identity)||found.get(identity).saved_at<data.saved_at)found.set(identity,{...data,ids});
-            }
-            return [...found.values()];
-        },
-        async sync(user,csrf) {
-            const result={saved:0,pending:0};
-            for(const draft of this.pending(user).slice(0,8)){
-                try{
-                    await request({csrf_token:csrf,ids:draft.ids,valores:draft.valores,capturado_at:draft.saved_at,...(draft.contexto?{contexto:draft.contexto}:{})});
-                    own(user);markSynced(user,draft.ids,draft.saved_at);result.saved++;
-                }catch(error){result.pending++;if(error.status===401||error.status===403)break;}
-            }
-            return result;
+        pending(user) {return localCaptures(user,true);},
+        list(user) {return localCaptures(user,false);},
+        sync(user,csrf) {
+            try{own(user);}catch(error){return Promise.reject(error);}
+            const parent=parentDrafts();if(parent)return parent.sync(user,csrf);
+            let state=synchronizations.get(Number(user));
+            if(!state){state={flight:null,pauseUntil:0,failures:0,authToken:null,retries:new Map()};synchronizations.set(Number(user),state);}
+            if(state.flight)return state.flight;
+            if(state.authToken!==null&&csrf&&state.authToken!==csrf){state.pauseUntil=0;state.authToken=null;state.retries.clear();}
+            const result={saved:0,closed:0,pending:0};
+            if(!csrf||Date.now()<state.pauseUntil||window.navigator?.onLine===false)return Promise.resolve(result);
+            state.flight=Promise.resolve().then(async()=>{
+                const waiting=this.pending(user),identities=new Set(waiting.map(d=>[...d.ids].sort().join('|')));
+                for(const identity of state.retries.keys())if(!identities.has(identity))state.retries.delete(identity);
+                let attempted=0;
+                for(const draft of waiting){
+                    if(Number(user)!==actor())break;
+                    const identity=[...draft.ids].sort().join('|'),prior=state.retries.get(identity);
+                    if(prior?.revision===draft.saved_at&&prior.retryAt>Date.now())continue;
+                    if(attempted++>=8)break;
+                    try{
+                        if(draft.pending_close){
+                            await request({csrf_token:csrf,ids:draft.ids,accion:'eliminar',revision:draft.pending_close.revision});
+                            own(user);clearClosed(user,draft.ids,draft.pending_close.revision);result.closed++;
+                        }else{
+                            await request({csrf_token:csrf,ids:draft.ids,valores:draft.valores,capturado_at:draft.saved_at,...(draft.contexto?{contexto:draft.contexto}:{})});
+                            own(user);markSynced(user,draft.ids,draft.saved_at);result.saved++;
+                        }
+                        state.retries.delete(identity);state.failures=0;state.authToken=null;
+                    }catch(error){
+                        state.retries.set(identity,{revision:draft.saved_at,retryAt:Date.now()+60000});
+                        if(Number(user)!==actor())break;
+                        if(error.status===401||error.status===403){state.authToken=csrf;state.pauseUntil=Date.now()+60000;break;}
+                        state.authToken=null;
+                        if(!error.status||error.status===429||error.status>=500){
+                            state.failures++;state.pauseUntil=Date.now()+Math.min(60000,1000*2**Math.min(state.failures,6));
+                            state.retries.set(identity,{revision:draft.saved_at,retryAt:state.pauseUntil});break;
+                        }
+                    }
+                }
+                if(Number(user)===actor())result.pending=this.pending(user).length;
+                return result;
+            }).finally(()=>{state.flight=null;});
+            return state.flight;
         },
         beginSave(user,ids,form,contexto) {
             const values=Object.fromEntries(new FormData(form)),draft=localSave(user,ids,formValues(form),contexto);
@@ -185,14 +270,10 @@
             own(user);ids=refs(ids);
             const previous=new Map(ids.map(id=>[id,localRead(user,id)?.saved_at]));
             const expected=revision??(Math.max(0,...[...previous.values()].map(value=>Number(value||0)))||null);
+            if(expected!==null)markClosePending(user,ids,expected);
             await request({csrf_token:csrf,ids,accion:'eliminar',...(expected?{revision:expected}:{})});
             own(user);
-            for(const id of ids){
-                // Nunca borrar una edición nueva por el ACK de otra revisión.
-                if(localRead(user,id)?.saved_at!==previous.get(id))continue;
-                if(expected!==null && Number(localRead(user,id)?.saved_at||0)>expected)continue;
-                for(const name of ['localStorage','sessionStorage'])try{globalThis[name].removeItem(key(user,id));}catch(_){}
-            }
+            if(expected!==null)clearClosed(user,ids,expected,previous);
         }
 
     };

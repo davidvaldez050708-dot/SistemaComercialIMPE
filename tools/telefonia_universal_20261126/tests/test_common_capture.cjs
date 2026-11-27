@@ -1,0 +1,36 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(__dirname+'/../../../public/javascript/telefonia_atencion.js','utf8');
+const storage=()=>{const data=new Map();return {get length(){return data.size;},key:i=>[...data.keys()][i]??null,getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,String(v)),removeItem:k=>data.delete(k)};};
+function create(persistent=storage()){
+ let time=1800000000000,reply=async()=>({ok:true,status:200,json:async()=>({ok:true,borrador:null})});
+ const window={IMPE_CURRENT_USER_ID:42,IMPE_PHONE_HTTP:{request:(...args)=>reply(...args)}};
+ const context={window,document:{baseURI:'http://fixture.test/',readyState:'loading',addEventListener(){}},URL,WeakMap,Set,Map,Date:{now:()=>time},localStorage:persistent,sessionStorage:storage()};
+ vm.runInNewContext(source,context);
+ return {api:window.IMPE_CALL_DRAFTS,window,persistent,advance:ms=>time+=ms,reply:fn=>reply=fn};
+}
+const deferred=()=>{let resolve;return {promise:new Promise(r=>resolve=r),resolve};};
+const ok=()=>({ok:true,status:200,json:async()=>({ok:true})});
+(async()=>{
+ const first=create(),ids=['sdk-fixture-abc','pbx-fixture-abc'];
+ first.reply(async()=>{throw Error('offline');});
+ await assert.rejects(first.api.save(42,ids,{resultado:'CONTACTO_CORRECTO',notas:'Preservar',csrf_token:'secret'},'csrf',{adaptador:'ANALISTA'}),/offline/);
+ assert.equal(first.api.pending(42).length,1);assert.equal(first.api.pending(42)[0].valores.csrf_token,undefined);
+ const reload=create(first.persistent);reload.advance(48*3600000);
+ assert.equal((await reload.api.read(42,ids)).notas,'Preservar','Browser restart and48h cannot erase pending capture');
+ let sent;
+ reload.reply(async(_,settings)=>{sent=JSON.parse(settings.body);return ok();});
+ assert.equal((await reload.api.sync(42,'new-csrf')).saved,1);assert.equal(sent.contexto.adaptador,'ANALISTA');assert.equal(reload.api.pending(42).length,0);
+ reload.reply(async()=>({ok:false,status:500,json:async()=>({ok:false,mensaje:'retry'})}));
+ await assert.rejects(reload.api.remove(42,ids,'csrf'),/retry/);assert.equal((await reload.api.read(42,ids)).notas,'Preservar');
+ const late=deferred();reload.reply(()=>late.promise);
+ const removing=reload.api.remove(42,ids,'csrf');
+ reload.api.localSave(42,ids,{notas:'Edición posterior'});late.resolve(ok());await removing;
+ reload.reply(async()=>ok());assert.equal((await reload.api.read(42,ids)).notas,'Edición posterior','Late delete ACK preserves new editing');
+ assert.throws(()=>reload.api.localSave(41,ids,{notas:'Foreign'}),/otra sesión/);
+ assert.throws(()=>reload.api.localSave(42,['aaaaaa','bbbbbb','cccccc','dddddd'],{}),/demasiadas/);
+ const queued=deferred();reload.reply(()=>queued.promise);
+ const saving=reload.api.save(42,ids,{notas:'RevisionA'},'csrf');
+ reload.api.localSave(42,ids,{notas:'RevisionB'});queued.resolve(ok());await saving;
+ assert.equal(reload.api.pending(42)[0].valores.notas,'RevisionB','ACK only marks its own revision synced');
+ console.log('PASS common capture: offline preservation, restart/48h, user guards, exact aliases, context replay, failed removal retention, late ACK isolation. No SDK or provider requests.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

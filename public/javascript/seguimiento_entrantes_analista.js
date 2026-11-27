@@ -16,13 +16,10 @@
     const preparingResult=outgoingMode && addressParams.get('impe_prepare_result')==='1' && window.parent!==window;
     let outgoingReady=!preparingResult, preparedToken=addressParams.get('impe_prepare_token')||'', readyRef=preparingResult && /^out_[a-fA-F0-9]{32,64}$/.test(addressParams.get('saliente_ref')||'') ? addressParams.get('saliente_ref') : '', readyBusy=false;
     let readyTimer=null, readyAttempts=0;
+    const phoneRequest=(url,options={})=>window.IMPE_PHONE_HTTP.request(url,options);
     const fetchBounded = async (url, options={}, format='json', timeout=10000) => {
-        const controller=new AbortController();
-        const timer=setTimeout(()=>controller.abort(),timeout);
-        try {
-            const response=await fetch(url,{...options,signal:controller.signal});
-            return {response,data:await response[format]()};
-        } finally { clearTimeout(timer); }
+        const response=await phoneRequest(url,{...options,timeoutMs:timeout});
+        return {response,data:await response[format]()};
     };
     const acknowledgeReady = () => {
         if(preparingResult && outgoingReady && readyRef){
@@ -76,7 +73,7 @@
         if(municipalityStatus)municipalityStatus.textContent='Cargando municipios…';
         try{
             const url=new URL(municipality.dataset.municipalityUrl,document.baseURI);url.searchParams.set('estado_id',state);
-            const response=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+            const response=await phoneRequest(url,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
             const data=await response.json();
             if(seq!==municipalitySequence||state!==stateInput.value||decision.value!=='nueva')return;
             if(!response.ok||!data.ok)throw Error(data.mensaje||'No se pudo cargar el catálogo de municipios.');
@@ -197,6 +194,7 @@
     modalEl.addEventListener('hidden.bs.modal',clearError);
 
     const verificationContexts = new Map();
+    const verificationRequests = new Map();
     const normalizarDato = (campo, valor) => {
         let texto = String(valor || '').trim();
         if (campo === 'telefono') {
@@ -207,10 +205,12 @@
         }
         return texto.replace(/\s+/g, ' ').toLocaleLowerCase('es');
     };
-    const loadVerificationContext = async id => {
-        if (!id || verificationContexts.has(id)) return;
+    const loadVerificationContext = id => {
+        if(verificationRequests.has(id))return verificationRequests.get(id);
+        if (!id || verificationContexts.has(id)) return Promise.resolve();
         const cycle = modalCycle;
         verificationContexts.set(id, null);
+        const request=(async()=>{
         try {
             const uri = new URL(searchUrl, window.location.href);
             uri.searchParams.set('seguimiento_id', id);
@@ -225,6 +225,9 @@
         } catch (error) {
             if (cycle === modalCycle && decision.value === 'existente' && followup.value === id && !isSubmitting) showError(error.message);
         }
+        })().finally(()=>{if(verificationRequests.get(id)===request)verificationRequests.delete(id);});
+        verificationRequests.set(id,request);
+        return request;
     };
     const verificationApplicable = result => {
         if (decision.value === 'nueva') return true;
@@ -315,7 +318,7 @@
         }
         const uri = new URL(searchUrl, window.location.href);
         uri.searchParams.set('q', query.trim());
-        const res = await fetch(uri, {
+        const res = await phoneRequest(uri, {
             credentials: 'same-origin', cache: 'no-store',
             headers: {Accept: 'application/json'}
         });
@@ -350,6 +353,7 @@
         interrupted=false;resultTrigger=button;const cycle=++modalCycle;formDirty=false;draftStatus.hidden=true;
         form.reset();
         verificationContexts.clear();
+        verificationRequests.clear();
         ++municipalitySequence;
         if(municipality){municipality.replaceChildren(new Option('Selecciona primero un estado',''));municipality.disabled=true;}
         clearError();
@@ -440,9 +444,11 @@
             const values=await drafts?.read(userId,callRefs);
             if(!values||cycle!==modalCycle||formDirty)return;
             const normalized=drafts?.resultValues?.(values)||values;
+            const confirmationNames=['verificacion_telefono_confirmado','verificacion_correo_confirmado','verificacion_contacto_confirmado'];
             for(const [key,value] of Object.entries(normalized)) {
                 const el=form.elements.namedItem(key);
                 if(!el||['csrf_token','pbx_call_id','sdk_session_id','sdk_reference','confirmacion_manual_sdk'].includes(el.name))continue;
+                if(confirmationNames.includes(el.name))continue;
                 if(el.type==='checkbox')el.checked=value==='1';
                 else if(el.name==='seguimiento_id'&&value) {
                     // Recuperar el ID elegido conserva el borrador; el servidor revalida su cartera.
@@ -453,7 +459,19 @@
             if(values.telefono && !form.elements.nuevo_telefono_contacto.value)form.elements.nuevo_telefono_contacto.value=values.telefono;
             if(values.correo && !form.elements.nuevo_correo_contacto.value)form.elements.nuevo_correo_contacto.value=values.correo;
             if(preparingResult&&outgoingReady&&!hasAnswer)decision.value='sin_identificar';
-            renderDecision();void loadMunicipalities(values.municipio_id||'');draftStatus.hidden=false;draftStatus.textContent='Borrador recuperado. Revisa el contacto: al guardar se actualizará la ficha del expediente seleccionado.';
+            const selectedId=String(followup.value),selectedDecision=decision.value,selectedResult=resultInput.value;
+            if(selectedDecision==='existente'&&selectedId&&confirmationNames.some(name=>normalized[name]==='1'))
+                await loadVerificationContext(selectedId);
+            if(cycle!==modalCycle||formDirty||followup.value!==selectedId||decision.value!==selectedDecision||resultInput.value!==selectedResult)return;
+            renderDecision();
+            // La carga del contexto puede desmarcar por seguridad mientras aún
+            // no hay datos. Restaurar la intención sólo después de comprobar
+            // que sigue siendo aplicable a ESTE expediente y esta llamada.
+            for(const name of confirmationNames){
+                const el=form.elements.namedItem(name);
+                if(el&&!el.disabled&&!evidence.hidden)el.checked=normalized[name]==='1';
+            }
+            void loadMunicipalities(values.municipio_id||'');draftStatus.hidden=false;draftStatus.textContent='Borrador recuperado. Revisa el contacto: al guardar se actualizará la ficha del expediente seleccionado.';
         };
         void restore();
         modal.show();
@@ -564,7 +582,7 @@
         try {
             const body=new FormData();body.set('csrf_token',csrf());body.set('pbx_call_id',button.dataset.confirmVerification);
             body.set('sdk_reference',button.dataset.sdkReference);body.set('confirmar_verificacion','1');
-            const res=await fetch(saveUrl,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json'},body});
+            const res=await phoneRequest(saveUrl,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json'},body});
             const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.mensaje||'No se pudo confirmar la verificación.');
             if(!data.resultado?.verificacion_confirmada)throw new Error('La verificación ya fue confirmada o todavía no tiene evidencia pendiente. Actualiza el historial.');
             sessionStorage.setItem('impe:call-result-flash','Verificación confirmada. Se contabiliza como máximo una institución por día.');
@@ -597,7 +615,7 @@
         url.searchParams.set('verificar', '1');
         button.disabled = true;
         try {
-            const response = await fetch(url.toString(), {credentials:'same-origin', cache:'no-store'});
+            const response = await phoneRequest(url.toString(), {credentials:'same-origin', cache:'no-store'});
             const info = await response.json().catch(()=>({}));
             const message=window.IMPE_TELEPHONY_SEGMENTS.message(info,response.status);
             if (!response.ok) throw new Error(message);
@@ -669,7 +687,7 @@
                 csrf_token: String(form.querySelector('[name="csrf_token"]')?.value || ''),
                 session_id: sessionId
             });
-            const res = await fetch(endpoint, {
+            const res = await phoneRequest(endpoint, {
                 method: 'POST',
                 credentials: 'same-origin',
                 cache: 'no-store',
@@ -713,9 +731,12 @@
         clearTimeout(draftTimer);
         const requestBody=new FormData(form);
         if(callbackMode)requestBody.set('accion','RESULTADO');
-        const disabledState=Array.from(form.elements).map(e=>[e,e.disabled]);
+        const savedCaptureIds=[...callRefs];
+        const dismissState=Array.from(modalEl.querySelectorAll('[data-bs-dismiss="modal"]')).map(e=>[e,e.disabled]);
+        let capture;
+        try{capture=drafts.beginSave(userId,savedCaptureIds,form,{adaptador:outgoingMode?'SEGUIMIENTO':'ANALISTA'});}
+        catch(error){showError('No se pudo conservar la captura. Mantén abierto el formulario.');return;}
         isSubmitting = true;
-        disabledState.forEach(([e])=>e.disabled=true);
         modalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(e=>e.disabled=true);
         submit.disabled = true;
         const original = submit.innerHTML;
@@ -734,7 +755,7 @@
             const result=data.resultado||{};
             const message=result.verificacion_confirmada ? 'Atención guardada con verificación efectiva. Máximo una institución por día.' :
                 result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : result.verificacion_parcial ? 'Llamada guardada con confirmación parcial. Para la meta y el avance faltan teléfono y correo confirmados en la misma llamada.' : 'Resultado de llamada registrado correctamente.';
-            for(const id of callRefs) {
+            for(const id of savedCaptureIds) {
                 try {
                     for(const prefix of ['call-draft','call-summary','transfer-context']) {
                         sessionStorage.removeItem('impe:crm:'+prefix+':'+userId+':'+id);
@@ -742,7 +763,7 @@
                 }catch(_){}
                 if(!callbackMode&&window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_RESULT_SAVED',callId:id,message},window.location.origin);
             }
-            void drafts?.remove(userId,callRefs,requestBody.get('csrf_token')).catch(()=>{});
+            void drafts.remove(userId,savedCaptureIds,requestBody.get('csrf_token'),capture.revision).catch(()=>{});
             if(callbackMode){
                 modalEl.dispatchEvent(new CustomEvent('impe:callback-result-saved',{detail:data.intento}));
                 modal.hide();return;
@@ -765,14 +786,14 @@
             modalEl.addEventListener('hidden.bs.modal',()=>window.location.assign(new URL(target,window.location.href).toString()),{once:true});
             modal.hide();
         } catch (error) {
-            if(outgoingMode && window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_OUTGOING_SAVE_UNCERTAIN',callId:form.querySelector('[data-incoming-pbx]').value},window.location.origin);
+            if(outgoingMode && window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_OUTGOING_SAVE_UNCERTAIN',callId:requestBody.get('pbx_call_id')},window.location.origin);
             showError(error.name==='AbortError' ? 'No se recibió la confirmación del guardado. Conservamos tu captura y estamos comprobando si el resultado quedó registrado; no repitas la llamada.' : (error.message || 'No fue posible guardar. Intenta nuevamente.'));
         } finally {
             if (!closingAfterSave) {
                 submit.innerHTML = original;
                 isSubmitting = false;
-                disabledState.forEach(([e,disabled])=>e.disabled=disabled);
-                modalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(e=>e.disabled=false);
+                capture.release();
+                dismissState.forEach(([e,disabled])=>e.disabled=disabled);
             }
         }
     });

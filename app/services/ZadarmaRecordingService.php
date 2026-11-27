@@ -52,6 +52,14 @@ class ZadarmaRecordingService
         }
     }
 
+    public function cacheTramosTransferidos(int $usuario,string $extension,string $asignadaDesde,string $pbx,?array $value=null):?array
+    {
+        if($usuario<1||!preg_match('/^[0-9]{3,6}$/D',$extension)||
+            !preg_match('/^[a-zA-Z0-9_-]{6,100}$/D',$pbx))throw new InvalidArgumentException('Ámbito de audio inválido.');
+        $identity=hash('sha256',json_encode([$usuario,$extension,$asignadaDesde,$pbx],JSON_THROW_ON_ERROR));
+        return $this->api->cachePrivada('audio-transferido',$identity,$value);
+    }
+
     public function obtenerGrabacionParaLlamada(string $pbxCallId): ?array
     {
         $pbxCallId = trim($pbxCallId);
