@@ -722,7 +722,7 @@
 
     form.addEventListener('submit', async event => {
         event.preventDefault();
-        if (isSubmitting) return;
+        if (isSubmitting||window.IMPE_CALL_RESULTS.busy(form)) return;
         if(!outgoingReady){showError('Puedes seguir capturando. El guardado se habilitará al confirmar esta llamada.');return;}
         clearError();
         renderEvidence();
@@ -732,27 +732,12 @@
         const requestBody=new FormData(form);
         if(callbackMode)requestBody.set('accion','RESULTADO');
         const savedCaptureIds=[...callRefs];
-        const dismissState=Array.from(modalEl.querySelectorAll('[data-bs-dismiss="modal"]')).map(e=>[e,e.disabled]);
-        let capture;
-        try{capture=drafts.beginSave(userId,savedCaptureIds,form,{adaptador:outgoingMode?'SEGUIMIENTO':'ANALISTA'});}
-        catch(error){showError('No se pudo conservar la captura. Mantén abierto el formulario.');return;}
-        requestBody.set('captura_confirmacion',capture.values.captura_confirmacion);
-        isSubmitting = true;
-        modalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(e=>e.disabled=true);
-        submit.disabled = true;
-        const original = submit.innerHTML;
-        submit.textContent = 'Guardando…';
-        try {
-            const {response:res,data} = await fetchBounded(saveUrl, {
-                method: 'POST', credentials: 'same-origin',
-                headers: {'Accept': 'application/json', 'X-Requested-With': 'fetch'},
-                body: requestBody
-            },'json',20000);
-            if (!res.ok || !data.ok) {
-                throw new Error(data.mensaje || 'No fue posible registrar la llamada.');
-            }
-            closingAfterSave=true;
-            ++modalCycle;
+        const savedCycle=modalCycle,original=submit.innerHTML;
+        await window.IMPE_CALL_RESULTS.submit({form,user:userId,ids:savedCaptureIds,
+            context:{adaptador:outgoingMode?'SEGUIMIENTO':'ANALISTA'},values:Object.fromEntries(requestBody),endpoint:saveUrl,
+            controls:[...modalEl.querySelectorAll('[data-bs-dismiss="modal"]')],isCurrent:()=>modalCycle===savedCycle,
+            onStart(){isSubmitting=true;submit.textContent='Guardando…';},
+            onCommitted:async({payload:data,current})=>{
             const result=data.resultado||{};
             const message=result.verificacion_confirmada ? 'Atención guardada con verificación efectiva. Máximo una institución por día.' :
                 result.verificacion_pendiente ? 'Atención guardada. La verificación queda pendiente de confirmar la llamada.' : result.verificacion_parcial ? 'Llamada guardada con confirmación parcial. Para la meta y el avance faltan teléfono y correo confirmados en la misma llamada.' : 'Resultado de llamada registrado correctamente.';
@@ -764,7 +749,8 @@
                 }catch(_){}
                 if(!callbackMode&&window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_RESULT_SAVED',callId:id,message},window.location.origin);
             }
-            void drafts.remove(userId,savedCaptureIds,requestBody.get('csrf_token'),capture.revision).catch(()=>{});
+            if(!current)return;
+            closingAfterSave=true;isSubmitting=false;++modalCycle;
             if(callbackMode){
                 modalEl.dispatchEvent(new CustomEvent('impe:callback-result-saved',{detail:data.intento}));
                 modal.hide();return;
@@ -786,17 +772,13 @@
                  'index.php?controller=seguimientoVinculacion&action=llamadasEntrantes');
             modalEl.addEventListener('hidden.bs.modal',()=>window.location.assign(new URL(target,window.location.href).toString()),{once:true});
             modal.hide();
-        } catch (error) {
-            if(outgoingMode && window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_OUTGOING_SAVE_UNCERTAIN',callId:requestBody.get('pbx_call_id')},window.location.origin);
-            showError(error.name==='AbortError' ? 'No se recibió la confirmación del guardado. Conservamos tu captura y estamos comprobando si el resultado quedó registrado; no repitas la llamada.' : (error.message || 'No fue posible guardar. Intenta nuevamente.'));
-        } finally {
-            if (!closingAfterSave) {
-                submit.innerHTML = original;
-                isSubmitting = false;
-                capture.release();
-                dismissState.forEach(([e,disabled])=>e.disabled=disabled);
-            }
-        }
+            },
+            onError(error){
+                if(outgoingMode&&window.parent!==window)window.parent.postMessage({type:'IMPE_ANALYST_OUTGOING_SAVE_UNCERTAIN',callId:requestBody.get('pbx_call_id')},window.location.origin);
+                showError(['AbortError','TimeoutError'].includes(error.name)?'No se recibió la confirmación del guardado. Conservamos tu captura; comprueba el resultado antes de repetir la llamada.':(error.message||'No fue posible guardar. Intenta nuevamente.'));
+            },
+            onFinally(){if(!closingAfterSave){submit.innerHTML=original;isSubmitting=false;}}
+        });
     });
 
     if(callbackMode){window.addEventListener('impe:callback-result-open',e=>openRegistration(e.detail));window.addEventListener('impe:callback-result-interrupt',()=>{interrupted=true;modal.hide();});}

@@ -198,3 +198,44 @@ Laboratorio vivo de esta sesión (fuera del repo, NO publicar credenciales):
 JSON privado del laboratorio. Nunca copiarlas a Git ni imprimirlas.
 Supervisión independiente sigue en `../impe-supervision-personal`, commit
 76ed8c0c440caf54b90485442d64f975e8fdd58e; no se ha fusionado ni sobrescrito.
+
+### Segundo checkpoint: controlador de resultados y HTTP real
+
+- Las interfaces de Ventas, Analista/Seguimiento y Recepción delegan su envío a
+  `IMPE_CALL_RESULTS.submit`. Los adaptadores mantienen los campos y avisos
+  institucionales; un solo controlador administra aprobación durable, doble clic,
+  CSRF fresco, controles, transporte, lectura única del recibo ante respuesta
+  perdida, cierre y aislamiento de formularios antiguos. No autoenvía borradores.
+- Una casilla restaurada ya no cambia su value a 0: restaura checked y conserva
+  value=1. Una casilla desmarcada queda explícita en el snapshot confirmado.
+- `lab/start_http.py` y `lab/router.php`: tres workers loopback, autenticación y
+  rutas nativas de permisos/sesión/CSRF/guardado. El router tiene clave sintética
+  privada y es exclusivamente un harness local, nunca un archivo del publicador.
+  HTTP externo/SMTP bloqueados en workers. Composer instala composer.lock sin
+  scripts ni plugins dentro de la copia; nunca se copia configuración real.
+- 15 ciclos salientes completos SDK observado -> HTTP -> PBX sintético -> borrador
+  -> resultado nativo -> recibo -> replay, con pérdida de ACK SDK/resultado y
+  relogin/CSRF fresco, pasaron por el controlador común. NO son todavía las 1,000
+  llamadas universales ni incluyen transferencias/audio/prueba visual completa.
+- 18 suites JS y 13 checks nativos del embudo V3: futura llamada/agenda legacy,
+  Potencial, No interesado, tercera llamada acreditada y rollback de acciones.
+  No se activó V3 fuera del proceso CLI del fixture.
+- Se restauran sin cambios dos dependencias COMMITTEADAS existentes ausentes
+  de la captura parcial: IntentosPbxRepository y PoliticaPropuesta. Procedencia
+  y SHA en DEPENDENCIES.json. El publicador deberá comprobar la copia instalada,
+  no reemplazar una personalizada desconocida. No reconstruir sus políticas.
+- El controlador Analista libera sesión tras CSRF antes del guardado; la carga
+  DENUE se difiere a las tres funciones que la usan, para que su cliente ajeno
+  a telefonía no sea dependencia de inicialización del registro de llamadas.
+
+Quedan la cobertura HTTP entrante/transferencias/Recepción con audio y recuperación,
+concurrencia, todos los endpoints de Seguimiento/devoluciones con recibo atómico,
+regresión visual de los tres adaptadores, integración selectiva de Supervisión y
+preflight/publicador/reversión. Después: 1,000 llamadas completas y ocho horas reales
+continuas sobre código estable. Ambas aceptaciones siguen pendientes.
+
+IMPORTANTE Supervisión: NO fusionar toda su rama (base muy divergente). Su delta
+funcional seguro es `git diff 0d5387d..76ed8c0` (22 archivos de runtime); aplicarlo
+selectivamente conservando el motor universal y los ajustes personalizados.
+Los HTTP workers vivos figuran en http.json del laboratorio; detener sólo PIDs
+cuyo comando verificado corresponde a ese router y raíz privada.

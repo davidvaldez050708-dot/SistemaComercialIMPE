@@ -6,7 +6,6 @@ require_once __DIR__ . '/../services/InteraccionProximaAccion.php';
 require_once __DIR__ . '/../models/SeguimientoVinculacionModel.php';
 require_once __DIR__ . '/../models/DataTerritorialModel.php';
 require_once __DIR__ . '/../helpers/PermissionHelper.php';
-require_once __DIR__ . '/../services/DenueService.php';
 require_once __DIR__ . '/../services/SeguimientoRutaOperativaService.php';
 require_once __DIR__ . '/../services/SeguimientoCorreoContactoService.php';
 require_once __DIR__ . '/../services/SeguimientoCorreoService.php';
@@ -339,6 +338,8 @@ class SeguimientoVinculacionController
             $this->responderJson(['ok' => false, 'mensaje' => 'La sesión expiró. Actualiza el CRM.'], 403);
         }
 
+        require_once __DIR__.'/../helpers/TelefoniaPeticionContexto.php';
+        TelefoniaPeticionContexto::liberarSesion();
         require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
         try {
             require_once __DIR__.'/../services/TelefoniaResultadoConfirmacion.php';
@@ -584,6 +585,7 @@ class SeguimientoVinculacionController
         }
 
         if ($denueSolicitado) {
+            require_once __DIR__.'/../services/DenueService.php';
             $servicioDenue = new DenueService();
 
             if ($busquedaAutomatica) {
@@ -694,6 +696,7 @@ class SeguimientoVinculacionController
         }
 
         $claveEstado = str_pad((string)($estado['clave_inegi'] ?? ''), 2, '0', STR_PAD_LEFT);
+        require_once __DIR__.'/../services/DenueService.php';
         $servicioDenue = new DenueService();
         $resultadoDenue = $servicioDenue->buscarDenuePorNombre(
             $claveEstado,
@@ -2676,6 +2679,7 @@ class SeguimientoVinculacionController
             return null;
         }
 
+        require_once __DIR__.'/../services/DenueService.php';
         $servicioDenue = new DenueService();
         $resultado = $servicioDenue->obtenerEstablecimientoPorId($partes[1]);
 

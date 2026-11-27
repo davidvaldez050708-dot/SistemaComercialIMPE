@@ -1,0 +1,12 @@
+{
+  "app/services/EmbudoComercialIntentosPbxRepository.php": {
+    "source_commit": "cb987672df5d1d05af7e58afc9cf0ed8ce018e32",
+    "sha256": "81516cbc4dff4d8284851c737a40768aa55e0e3f16e9bfc1d2f9d8e4aed2606c",
+    "reason": "Existing native V3 services require this committed dependency; absent from partial personalized baseline. Restored unchanged, no policy rewrite."
+  },
+  "app/services/EmbudoComercialPoliticaPropuesta.php": {
+    "source_commit": "cb987672df5d1d05af7e58afc9cf0ed8ce018e32",
+    "sha256": "1e8bd874aa192108b537d0104f33a6f520b391ae5d6c72dee12c8f0add5faddd",
+    "reason": "Existing native V3 services require this committed dependency; absent from partial personalized baseline. Restored unchanged, no policy rewrite."
+  }
+}

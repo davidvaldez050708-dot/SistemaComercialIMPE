@@ -166,6 +166,7 @@ final class TelefoniaTransferenciaOperacionService
     }
     private function recuperarDiario(array $r):array {
         $key=$r['id'].':'.$r['intento'];
+        if(array_key_exists('diario_pbx',$r)&&$r['diario_pbx']===$r['referencia'])return $r;
         if($r['estado']==='ENTREGADA'&&(int)($r['protocolo']??1)>=2&&!empty($r['sdk_consulta'])&&!isset($this->conciliadas[$key])){
             require_once __DIR__.'/TelefoniaSesionLocalService.php';
             $this->conciliadas[$key]=true;
@@ -220,7 +221,7 @@ final class TelefoniaTransferenciaOperacionService
         }catch(Throwable $e){$this->db->rollback();throw $e;}
     }
     public function delUsuario(int $user): array {
-        $s=$this->db->prepare('SELECT * FROM telefonia_transferencia_operaciones WHERE (origen_usuario=? OR destino_usuario=?) AND created_at>=? ORDER BY id DESC LIMIT 100');
+        $s=$this->db->prepare('SELECT o.*,d.pbx_call_id AS diario_pbx FROM telefonia_transferencia_operaciones o LEFT JOIN telefonia_analista_webrtc_sesiones d ON d.usuario_id=o.destino_usuario AND d.session_id=BINARY o.sdk_consulta WHERE (o.origen_usuario=? OR o.destino_usuario=?) AND o.created_at>=? ORDER BY o.id DESC LIMIT 100');
         $since=gmdate('Y-m-d H:i:s',time()-30*86400);$s->bind_param('iis',$user,$user,$since);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
         return array_map(fn($r)=>$this->actualizar($r,$user),$rows);
     }

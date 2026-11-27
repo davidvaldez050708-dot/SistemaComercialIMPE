@@ -24,6 +24,12 @@ foreach(['sdk_dialogo_json'=>'TEXT NULL','predecesora_session_id'=>'VARCHAR(100)
  if(!in_array($name,$columns,true))$db->query('ALTER TABLE telefonia_analista_webrtc_sesiones ADD COLUMN '.$name.' '.$type);
 // Explicit synthetic commercial fixture. No schema is inferred from personal data.
 $definitions=[
+ "ALTER TABLE prospecto_embudo_subetapas ADD COLUMN IF NOT EXISTS actualizado_por INT, ADD COLUMN IF NOT EXISTS actualizado_at DATETIME, ADD COLUMN IF NOT EXISTS version INT DEFAULT 1",
+ "CREATE TABLE IF NOT EXISTS prospecto_embudo_subetapas_historial(id INT AUTO_INCREMENT PRIMARY KEY,asignacion_id INT,etapa_en_evento VARCHAR(40),subetapa_anterior VARCHAR(40),subetapa_nueva VARCHAR(40),motivo VARCHAR(500),origen VARCHAR(40),usuario_id INT,creado_at DATETIME) ENGINE=InnoDB",
+ "CREATE TABLE IF NOT EXISTS prospecto_embudo_actividad_v3(id INT AUTO_INCREMENT PRIMARY KEY,asignacion_id INT,usuario_id INT,etapa VARCHAR(40),accion VARCHAR(40),motivo VARCHAR(500),fecha_anterior DATETIME NULL,fecha_pendiente DATETIME NULL,tipo_actividad VARCHAR(40),detalle_actividad TEXT,completada_at DATETIME NULL,subetapa_anterior VARCHAR(40),subetapa_nueva VARCHAR(40),creado_at DATETIME,KEY idx_asignacion(asignacion_id,id)) ENGINE=InnoDB",
+
+ "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefono VARCHAR(40) DEFAULT '', ADD COLUMN IF NOT EXISTS password VARCHAR(255) DEFAULT '', ADD COLUMN IF NOT EXISTS ultimo_acceso DATETIME NULL, ADD COLUMN IF NOT EXISTS created_at DATETIME DEFAULT CURRENT_TIMESTAMP, ADD COLUMN IF NOT EXISTS updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, ADD COLUMN IF NOT EXISTS requiere_cambio_password TINYINT DEFAULT 0, ADD COLUMN IF NOT EXISTS password_temporal_expira DATETIME NULL",
+
  "ALTER TABLE prospectos_comerciales ADD COLUMN IF NOT EXISTS pais_nombre VARCHAR(80) DEFAULT 'México'",
  "ALTER TABLE prospecto_asignaciones ADD COLUMN IF NOT EXISTS asesor_id INT, ADD COLUMN IF NOT EXISTS vigente TINYINT DEFAULT 1",
  "CREATE TABLE IF NOT EXISTS prospecto_embudo_llamadas(id BIGINT AUTO_INCREMENT PRIMARY KEY,asignacion_id INT NOT NULL,usuario_id INT NOT NULL,extension VARCHAR(12) NOT NULL,pbx_call_id VARCHAR(100) NOT NULL,resultado VARCHAR(40),creado_at DATETIME,UNIQUE KEY uk_tramo(extension,pbx_call_id)) ENGINE=InnoDB",
@@ -33,4 +39,5 @@ $definitions=[
  "CREATE TABLE IF NOT EXISTS municipios(id INT PRIMARY KEY,estado_id INT,nombre VARCHAR(100),estado TINYINT DEFAULT 1) ENGINE=InnoDB"
 ];
 foreach($definitions as $sql)$db->query($sql);
+if($db->query("SHOW INDEX FROM prospecto_embudo_subetapas WHERE Key_name='uk_fixture_assignment'")->num_rows===0)$db->query('ALTER TABLE prospecto_embudo_subetapas ADD UNIQUE KEY uk_fixture_assignment(asignacion_id)');
 echo "ATTENTION_SCHEMA_OK: synthetic schemas only, no dump rows or production access.\n";

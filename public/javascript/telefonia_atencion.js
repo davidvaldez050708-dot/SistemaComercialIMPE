@@ -308,7 +308,7 @@
             }).finally(()=>{state.flight=null;});
             return state.flight;
         },
-        prepareSubmission(user,ids,values,contexto={}) {
+        prepareSubmission(user,ids,values,contexto={},capturedValues=null) {
             own(user);ids=expandRefs(user,ids);
             const clean={...values};delete clean.csrf_token;delete clean.captura_confirmacion;
             const canonical=JSON.stringify([contexto.adaptador||'',Object.keys(clean).sort().map(k=>[k,clean[k]])]);
@@ -320,7 +320,7 @@
                 }catch(_){}
             }
             if(!approved){
-                const draft=localSave(user,ids,clean,contexto);
+                const draft=localSave(user,ids,capturedValues?{...clean,...capturedValues}:clean,contexto);
                 const random=new Uint8Array(24);window.crypto.getRandomValues(random);
                 approved={canonical,ids:draft.ids,revision:draft.saved_at,
                     request_id:Array.from(random,n=>n.toString(16).padStart(2,'0')).join('')};
@@ -331,7 +331,7 @@
             return {values:{...values,captura_confirmacion:JSON.stringify(meta)},revision:approved.revision,ids:approved.ids};
         },
         beginSave(user,ids,form,contexto) {
-            const capture=this.prepareSubmission(user,ids,Object.fromEntries(new FormData(form)),contexto);
+            const capture=this.prepareSubmission(user,ids,Object.fromEntries(new FormData(form)),contexto,formValues(form));
             const controls=[...form.querySelectorAll('button,input,select,textarea')].map(el=>[el,el.disabled]);
             for(const [el]of controls)el.disabled=true;
             return {...capture,release(){for(const[el,disabled]of controls)el.disabled=disabled;}};
@@ -353,6 +353,81 @@
         }
 
     };
+    // Un solo ciclo de envío para las tres interfaces institucionales.
+    // Los adaptadores sólo aportan campos, validaciones y la presentación final.
+    const recoverResultReceipt=async(user,capture,adapter)=>{
+        if(!capture)return null;
+        const meta=JSON.parse(capture.values.captura_confirmacion),url=new URL(endpoint);
+        url.searchParams.set('id',capture.ids[0]);
+        try{
+            const response=await window.IMPE_PHONE_HTTP.request(url,{credentials:'same-origin',cache:'no-store',timeoutMs:8000,headers:{Accept:'application/json'}});
+            const data=await response.json(),receipt=data?.borrador?.aplicaciones?.[meta.request_id];
+            if(!response.ok||data.ok!==true||receipt?.request_id!==meta.request_id||
+                receipt.revision!==meta.revision||receipt.adaptador!==adapter||!receipt.respuesta)return null;
+            own(user);
+            const field=['VENTAS','RECEPCION'].includes(adapter)?'registro':'resultado';
+            return {ok:true,[field]:receipt.respuesta,recibo_recuperado:true};
+        }catch(_){return null;}
+    };
+    const resultFlights=new WeakMap();
+    window.IMPE_CALL_RESULTS=Object.freeze({
+        busy:form=>resultFlights.has(form),
+        async submit(adapter){
+            const form=adapter.form;
+            if(!form||resultFlights.has(form))return {ok:false,busy:true};
+            const owner=Number(adapter.user||actor()),current=()=>actor()===owner&&(!adapter.isCurrent||adapter.isCurrent());
+            const flight={};resultFlights.set(form,flight);
+            let capture,committed=false,payload,released=false;
+            const controls=[...new Set([...(form.querySelectorAll?.('button,input,select,textarea')||[]),...(adapter.controls||[])])].map(el=>[el,el.disabled]);
+            const release=()=>{if(released||!current())return;released=true;for(const [el,disabled]of controls)el.disabled=disabled;};
+            try{
+                own(owner);
+                const supplied=adapter.values||Object.fromEntries(new FormData(form));
+                const values={...supplied};
+                const csrf=window.IMPE_PHONE_HTTP.csrfToken?.();if(csrf)values.csrf_token=csrf;
+                capture=window.IMPE_CALL_DRAFTS.prepareSubmission(owner,adapter.ids,values,adapter.context||{},
+                    adapter.captureValues||{...formValues(form),...values});
+                for(const [el]of controls)el.disabled=true;
+                adapter.onStart?.({capture});
+                let response;
+                try{
+                    response=await window.IMPE_PHONE_HTTP.request(adapter.endpoint,{
+                        method:'POST',credentials:'same-origin',cache:'no-store',timeoutMs:20000,
+                        headers:{Accept:'application/json','X-Requested-With':'fetch'},body:new URLSearchParams(capture.values)
+                    });
+                    try{payload=await response.json();}catch(_){const error=new Error('No se recibió la confirmación del guardado. Conservamos la captura; vuelve a comprobar el resultado.');error.incomplete=true;throw error;}
+                    if(!response.ok||payload?.ok!==true){const error=new Error(payload?.mensaje||'No fue posible registrar el resultado. Conservamos la captura.');error.status=response.status;throw error;}
+                }catch(error){
+                    // Consultar una vez el recibo; jamás reenviar un resultado sin
+                    // aprobación ni iniciar otro ciclo de reintentos en segundo plano.
+                    if(!response||response.status>=500||error.incomplete)payload=await recoverResultReceipt(owner,capture,adapter.context?.adaptador);
+                    else payload=null;
+                    if(!payload)throw error;
+                }
+                committed=true;
+                // El recibo real ya existe. El cierre local es recuperable si su ACK falla.
+                void window.IMPE_CALL_DRAFTS.remove(owner,capture.ids,String(window.IMPE_PHONE_HTTP.csrfToken?.()||capture.values.csrf_token||''),capture.revision).catch(()=>{});
+                release();
+                await adapter.onCommitted?.({payload,capture,current:current()});
+                return {ok:true,payload,capture};
+            }catch(error){
+                if(committed){
+                    if(current())window.IMPE_TELEPHONY_NOTIFY?.('El resultado quedó guardado. Actualiza la vista para ver los cambios.',true);
+                    return {ok:true,payload,capture,presentationError:true};
+                }
+                release();
+                if(current())adapter.onError?.(error,{capture});
+                return {ok:false,error,capture};
+            }finally{
+                if(resultFlights.get(form)===flight)resultFlights.delete(form);
+                if(current()){
+                    release();
+                    adapter.onFinally?.({committed});
+                }
+            }
+        }
+    });
+
     // El formulario institucional se abre después de recibir la metadata exacta.
     // Recuperar sólo campos vacíos; una captura ya iniciada tiene prioridad.
     document.addEventListener('impe:call-result-form-opened',async event=>{
@@ -365,7 +440,7 @@
         try{values=await window.IMPE_CALL_DRAFTS.read(Number(window.IMPE_CURRENT_USER_ID||0),ids);}
         catch(error){window.IMPE_TELEPHONY_NOTIFY?.(error.message,true);form.removeEventListener('input',dirty);return;}
         form.removeEventListener('input',dirty);
-        if(!values||changed||form.dataset.draftCycle!==String(cycle))return;
+        if(!values||changed||window.IMPE_CALL_RESULTS.busy(form)||form.dataset.draftCycle!==String(cycle))return;
         const institutional=!event.detail?.adaptador||['ANALISTA','SEGUIMIENTO'].includes(event.detail.adaptador);
         const normalized=institutional?window.IMPE_CALL_DRAFTS.resultValues(values):values;
           // El formulario original de salientes sólo dispone del contacto referido.
@@ -378,6 +453,10 @@
         for(const [name,value] of Object.entries(normalized)) {
             if(['csrf_token','pbx_call_id','sdk_session_id','sdk_reference','llamada_pbx_id','extension','catalogo_version'].includes(name))continue;
             const input=form.elements.namedItem(name);
+            if(input?.type==='checkbox'){
+                if(!input.disabled&&['1','0'].includes(String(value)))input.checked=String(value)==='1';
+                continue; // Nunca cambiar value: marcar una casilla siempre debe enviar 1.
+            }
             if(input && value && (!input.value || camposCapturados.has(name)))input.value=String(value);
         }
         form.querySelector('[name="resultado"]')?.dispatchEvent(new Event('change',{bubbles:true}));

@@ -3,7 +3,7 @@
   "status": "autonomous_continuation_in_progress",
   "installed_baseline": "1d8f7da23907fabce398c13d924ef5996d839473",
   "portable_unit_suites": {
-    "passed": 17,
+    "passed": 18,
     "failed": 0,
     "runner": "run_unit.cjs"
   },
@@ -43,6 +43,19 @@
     "persisted_outgoing_intents": 7,
     "transfer_successor_canonical_combined": 31,
     "provider_fake_transport": 8,
-    "note": "Combined transfer count includes 14 transfer +9 successor/recovery +8 canonical assertions, not 68 distinct checks. No complete-call acceptance claimed."
+    "note": "Combined transfer count includes 14 transfer +9 successor/recovery +8 canonical assertions, not 68 distinct checks. No complete-call acceptance claimed.",
+    "funnel_v3_native": 13
+  },
+  "http_native_cycles": {
+    "completed": 15,
+    "roles": [
+      "VENTAS",
+      "ANALISTA",
+      "RECEPCION"
+    ],
+    "native_routes": true,
+    "shared_result_controller": true,
+    "lost_sdk_and_result_ack": true,
+    "scope": "Synthetic outgoing cycles. Transfers, audio, whole-page browser and 1000-call acceptance not yet complete."
   }
 }

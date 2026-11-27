@@ -64,6 +64,16 @@ def main():
             name=source.relative_to(SOURCE)
             if 'config' in name.parts or source.name in ('zadarma_config.php','db_connection.php'):continue
             dest=site/name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,dest)
+    # Instalar exactamente las dependencias bloqueadas, sin scripts ni plugins.
+    # El vendor parcial versionado no basta para cargar los controladores reales.
+    for name in ['composer.json','composer.lock']:shutil.copyfile(SOURCE/name,site/name)
+    composer=shutil.which('composer')
+    phar=Path(composer).with_name('composer.phar') if composer else None
+    if phar and phar.is_file():composer_command=[args.php,str(phar)]
+    elif composer:composer_command=[composer]
+    else:raise RuntimeError('Composer es un requisito del laboratorio; no se omiten dependencias.')
+    deps=subprocess.run(composer_command+['install','--no-dev','--no-interaction','--prefer-dist','--no-scripts','--no-plugins','--working-dir='+str(site)],capture_output=True,text=True)
+    if deps.returncode:raise RuntimeError('No se pudo instalar composer.lock en el laboratorio: '+deps.stderr)
     config=site/'config';config.mkdir()
     encoded=json.dumps(str(root/'credentials.json').replace('\\','/'))
     (config/'db_connection.php').write_text("""<?php
@@ -84,6 +94,8 @@ class Database {
 """.replace('CREDENTIAL_PATH',encoded),encoding='utf-8')
     (config/'db_connection.php').chmod(0o600)
     (config/'zadarma_config.php').write_text("<?php throw new RuntimeException('El laboratorio no permite credenciales o llamadas de proveedor reales.');\n",encoding='utf-8')
+    (config/'private_config.php').write_text("<?php\nfunction impeLeerConfigPrivada($name):array {throw new RuntimeException('External integrations are disabled in the synthetic laboratory.');}\nfunction impeRutaConfigPrivada($name):?string {return null;}\n",encoding='utf-8')
+    (config/'api_keys.php').write_text("<?php // Synthetic lab: no external API keys.\n",encoding='utf-8')
     env=os.environ.copy();env['IMPE_PHONE_LAB_ROOT']=str(root)
     setup=subprocess.run([args.php,str(Path(__file__).with_name('bootstrap.php'))],env=env,cwd=SOURCE,capture_output=True,text=True)
     if setup.returncode:raise RuntimeError('Falló el fixture SQL: '+setup.stdout+setup.stderr)

@@ -404,6 +404,7 @@
  };
  form.addEventListener('submit',async e=>{
   e.preventDefault();
+  if(window.IMPE_CALL_RESULTS.busy(form))return;
   if(picker&&(selections.length<1||selections.length>2)){feedback.textContent='Selecciona uno o hasta dos resultados.';pickerButton.focus();return;}
   if(picker&&call?.finalizada&&!call.conectada&&Array.from(picker.querySelectorAll('[data-sales-result-choice]')).some(c=>c.checked&&c.dataset.requiresConnection==='1')){feedback.textContent='Esta llamada no acredita respuesta. Revisa los resultados seleccionados.';pickerButton.focus();return;}
   if(!callRef||!call||call?.registro||submit.disabled||!form.reportValidity())return;
@@ -416,18 +417,11 @@
   if(campo)campo.value=/^[1-9][0-9]*$/.test(vinculo)?vinculo:'';
   const savedContext={...openContext},savedRef=callRef,savedExt=call.extension,savedDrafts=[draftKey(callRef),...draftAliases],savedCaptureIds=captureIds();
   const sameForm=()=>callRef===savedRef&&callExt===String(savedExt)&&openContext.sessionKey===savedContext.sessionKey;
-  let capture;
-  try{capture=window.IMPE_CALL_DRAFTS.beginSave(Number(window.IMPE_CURRENT_USER_ID),savedCaptureIds,form,{adaptador:'VENTAS'});}
-  catch(error){feedback.textContent='No se pudo conservar la captura. Mantén abierto el formulario.';return;}
-  submit.disabled=true;submit.innerHTML='Guardando…';feedback.textContent='Guardando resultado…';
-  try{
-   const r=await window.IMPE_PHONE_HTTP.request(root.dataset.saveUrl,{method:'POST',credentials:'same-origin',body:new URLSearchParams(capture.values)}),j=await r.json();
-   if(!r.ok||!j.ok){
-    // Una negativa de autorización se muestra inmediatamente; nunca
-    // prometer un guardado automático condicionado a un evento ausente.
-    throw Error(j.mensaje||'No se pudo guardar el resultado.');
-   }
-   void window.IMPE_CALL_DRAFTS.remove(Number(window.IMPE_CURRENT_USER_ID),savedCaptureIds,String(capture.values.csrf_token||''),capture.revision).catch(()=>{});
+  clearTimeout(draftTimer);
+  await window.IMPE_CALL_RESULTS.submit({form,user:Number(window.IMPE_CURRENT_USER_ID),ids:savedCaptureIds,
+   context:{adaptador:'VENTAS'},endpoint:root.dataset.saveUrl,isCurrent:()=>sameForm()&&!disposed,
+   onStart(){submit.innerHTML='Guardando…';feedback.textContent='Guardando resultado…';},
+   onCommitted:async({payload:j,capture})=>{
    try{
     for(const key of savedDrafts)sessionStorage.removeItem(key);
     if(vinculo)sessionStorage.removeItem('impe:embudo:llamada-pendiente');
@@ -436,7 +430,7 @@
    // Después del OK real del servidor, notificar a cualquier tablero abierto
    // de este mismo asesor para que relea la etapa desde MySQL. No mover
    // tarjetas ni inferir etapas en el navegador; no afecta al host WebRTC.
-   const asignacionGuardada=String(campo?.value||'');
+   const asignacionGuardada=String(capture.values.prospecto_asignacion_id||'');
    const usuarioGuardado=Number(window.IMPE_CURRENT_USER_ID||0);
    if(usuarioGuardado>0&&/^[1-9][0-9]*$/.test(asignacionGuardada)){
     try{localStorage.setItem('impe:embudo:resultado-guardado:'+usuarioGuardado,
@@ -462,8 +456,10 @@
    const mostrarConfirmacion=j.registro?.pbx_pendiente || window.dispatchEvent(confirmacion);
    if(mostrarConfirmacion)notify(j.registro?.pbx_pendiente?'Resultado guardado. La confirmación de la llamada y la grabación continúan pendientes.':'Resultado comercial guardado.');
    if(!openContext.prepared&&root.dataset.salesGlobalResult!=='1'){const url=new URL(location.href);for(const key of ['pbx_call_id','extension','detalle','esperando_pbx'])url.searchParams.delete(key);location.replace(url.href);}
-  }catch(error){if(sameForm()&&!disposed){capture.release();queued=false;storeDraft();feedback.textContent=error.message;notify(error.message,true);}}
-  finally{if(sameForm()&&!disposed){capture.release();submit.disabled=false;submit.innerHTML=saveLabel;}}
+   },
+   onError(error){queued=false;feedback.textContent=error.message;notify(error.message,true);},
+   onFinally(){submit.disabled=false;submit.innerHTML=saveLabel;}
+  });
  });
  const closingSnapshot=()=>({context:{...openContext},ref:callRef,extension:callExt,reason:closeReason});
  modal.addEventListener('hide.bs.modal',event=>{

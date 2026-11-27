@@ -40,11 +40,14 @@ final class TelefoniaResultadoConfirmacion
             return $receipt['respuesta'];
         };
         $saved=$leer();if($saved!==null)return $saved;
+        $snapshot=$datos;
+        foreach(['verificacion_telefono_confirmado','verificacion_correo_confirmado','verificacion_contacto_confirmado'] as $field)
+            if(!array_key_exists($field,$snapshot))$snapshot[$field]='0';
         $confirmed=false;
         $confirmar=static function(string $tipo,int $nativeId,array $respuesta)use(
-            $drafts,$usuario,$ids,$revision,$request,$adaptador,$datos,$hash,&$confirmed):void{
+            $drafts,$usuario,$ids,$revision,$request,$adaptador,$snapshot,$hash,&$confirmed):void{
             $drafts->confirmarAplicacionEnTransaccion($usuario,$ids,$revision,$request,$adaptador,$tipo,
-                $nativeId,$datos,$respuesta,$hash);
+                $nativeId,$snapshot,$respuesta,$hash);
             $confirmed=true;
         };
         try{

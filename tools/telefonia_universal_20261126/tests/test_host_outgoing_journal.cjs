@@ -9,12 +9,13 @@ function sdk(id){
  const events=new Map();return {id,direction:'outgoing',ended:false,established:false,on(name,fn){if(!events.has(name))events.set(name,[]);events.get(name).push(fn);},
   isEnded(){return this.ended;},isEstablished(){return this.established;},emit(name,event){for(const fn of events.get(name)||[])fn(event);}};
 }
-function fixture(){
+function fixture(options={}){
  const posted=[],preparations=[],finishes=[];let count=0,pulse,denied=false,holdEnd=null,holdPrepare=null;
- const window={IMPE_CURRENT_USER_ID:41,IMPE_CSRF_TOKEN:'fixture-csrf',location:{href:'http://fixture.test/',origin:'http://fixture.test'},
-  localStorage:storage(),Headers,Response,AbortController,setTimeout,clearTimeout,setInterval(fn){pulse=fn;},
-  navigator:{onLine:true},zdrmWebPhone:{regToCall(){window.zdrmWebPhone.webCallSession=sdk('sip-fixture-'+count);}},
-  fetch:async(url,options)=>{
+ const origin=options.origin||'http://fixture.test';
+ const window={IMPE_CURRENT_USER_ID:options.userId||41,IMPE_CSRF_TOKEN:options.csrf||'fixture-csrf',location:{href:origin+'/',origin},
+  localStorage:options.storage||storage(),Headers,Response,AbortController,setTimeout,clearTimeout,setInterval(fn){pulse=fn;},
+  navigator:{onLine:true},zdrmWebPhone:{regToCall(){if(options.fetch)++count;window.zdrmWebPhone.webCallSession=sdk('sip-fixture-'+count);}},
+  fetch:options.fetch|| (async(url,options)=>{
    const body=JSON.parse(options.body);
    if(body.accion==='preparar_saliente'){
     preparations.push(body);count++;
@@ -25,9 +26,9 @@ function fixture(){
    posted.push(body);
    if(holdEnd&&body.evento==='ended')await holdEnd;
    return new Response(JSON.stringify({ok:true,sesion:{session_id:body.session_id,ultima_secuencia:body.secuencia}}));
-  }};
+  })};
  window.IMPE_PHONE_HTTP=create(window);
- const box={window,URLSearchParams,Date,WeakMap,WeakSet,config:{sesionLocalUrl:'/prueba_telefonia/api/sesion_local.php'},extension:'101',ownsTransport:true,
+ const box={window,URLSearchParams,Date,WeakMap,WeakSet,config:{sesionLocalUrl:'/prueba_telefonia/api/sesion_local.php'},extension:options.extension||'101',ownsTransport:true,
   state:{active:false,phase:'ready',callToken:''},dialReservation:null,permiteSalientes:true,
   muted:false,answeredAtMs:0,lastCall:null,hangingUp:false,seguimientoPilot:null,transferFlow:null,
   hostRequest:(...args)=>window.IMPE_PHONE_HTTP.request(...args),ensureWidget:async()=>{},normalizarDestinoWebrtc:x=>x,startPolling(){},stopPolling(){},
@@ -39,7 +40,8 @@ function fixture(){
   '\ninvoke=startCall;',box);
  return {box,window,posted,preparations,finishes,pulse:()=>pulse(),deny:()=>denied=true,hold:promise=>holdEnd=promise,pausePreparation:promise=>holdPrepare=promise};
 }
-(async()=>{
+module.exports={fixture,sdk};
+if(require.main===module)(async()=>{
  let checks=0;const f=fixture();
  await f.box.invoke({destination:'5550000000',context:{type:'VINCULACION',seguimientoId:901}});
  assert.equal(f.preparations.length,1);assert.equal(f.preparations[0].accion,'preparar_saliente');checks+=2;
