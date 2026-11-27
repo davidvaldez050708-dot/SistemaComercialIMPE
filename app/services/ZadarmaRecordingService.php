@@ -10,6 +10,7 @@ class ZadarmaRecordingService
     private string $rootPath;
     private \Zadarma_API\Api $api;
     private ?ZadarmaWebhookEventStoreService $eventStore = null;
+    private ?TelefoniaPbxEstadisticasService $catalogo = null;
 
     public function __construct(bool $cargarEventos=true)
     {
@@ -123,11 +124,11 @@ class ZadarmaRecordingService
      * Nunca consulta por número ni convierte IDs decimales en float. */
     public function estadisticasPbx(string $desde,string $hasta): array
     {
-        $data=ZadarmaPbxIdentifierHelper::decodificarEstadisticas((string)$this->api->call(
-            '/v1/statistics/pbx/',['start'=>$desde,'end'=>$hasta,'version'=>2,'limit'=>1000],'get'));
-        if(($data['status']??'')!=='success'||!is_array($data['stats']??null)||count($data['stats'])>=1000)
-            throw new RuntimeException('La estadística está incompleta o no está disponible. Vuelve a comprobarla más tarde.');
-        return $data['stats'];
+        require_once __DIR__.'/TelefoniaPbxEstadisticasService.php';
+        $this->catalogo ??= new TelefoniaPbxEstadisticasService($this->api);
+        return $this->catalogo->consultar(
+            TelefoniaPbxEstadisticasService::fechaLocal($desde)->getTimestamp(),
+            TelefoniaPbxEstadisticasService::fechaLocal($hasta)->getTimestamp());
     }
 
     public function descargarGrabacion(string $link, string $rangeHeader = ''): array

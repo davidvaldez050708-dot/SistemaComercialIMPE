@@ -133,5 +133,20 @@
     "explicit_native_id_never_replaced": true,
     "full_call_acceptance": false,
     "production_changed": false
+  },
+  "continuation_shared_cdr_catalog": {
+    "base": "b0b15622",
+    "catalog_pure_checks": 19,
+    "exact_lookup_checks": 14,
+    "provider_cache_checks": 11,
+    "native_audio_catalog_sql_checks": 5,
+    "shared_by_closure_and_recording": true,
+    "provider_account_timezone_verified": false,
+    "bounded_pages": 3,
+    "complete_catalog_required": true,
+    "real_binary_audio_validated": false,
+    "production_schema_confirmed": false,
+    "full_call_acceptance": false,
+    "production_changed": false
   }
 }

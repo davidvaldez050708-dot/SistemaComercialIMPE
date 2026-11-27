@@ -4,7 +4,7 @@ class ZadarmaCallLookupService
 {
     private $api;
     private $timezone;
-    private $estadisticasCache = [];
+    private ?TelefoniaPbxEstadisticasService $catalogo = null;
 
     public function __construct()
     {
@@ -56,8 +56,8 @@ class ZadarmaCallLookupService
                     return false;
                 }
 
-                $inicio = strtotime((string)($fila['callstart'] ?? ''));
-                return $inicio !== false && $inicio >= $desdeUnix;
+                $inicio = TelefoniaPbxEstadisticasService::fechaLocal((string)($fila['callstart'] ?? ''))->getTimestamp();
+                return $inicio >= $desdeUnix;
             }
         ));
 
@@ -75,9 +75,8 @@ class ZadarmaCallLookupService
             return null;
         }
 
-        $estadisticas = $this->estadisticas(time() - 86400, time() + 30);
-        // Una página llena no demuestra unicidad entre todos los tramos.
-        if(count($estadisticas)>=1000)return null;
+        try { $estadisticas = $this->estadisticas(time() - 86400, time() + 30,str_starts_with($pbxCallId,'in_')?'in':'out'); }
+        catch (RuntimeException $e) { return null; } // Evidencia incompleta conserva la captura.
 
         require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
         $candidatas=[];$ajenas=[];
@@ -116,53 +115,14 @@ class ZadarmaCallLookupService
             throw new InvalidArgumentException('Ventana de estadísticas PBX inválida.');
         }
         $filas = $this->estadisticas($inicio->getTimestamp(), $fin->getTimestamp());
-        // La consulta del SDK limita a 1000 filas y no expone paginación.
-        // No decidir unicidad de un PBX con una respuesta posiblemente truncada.
-        if (count($filas) >= 1000) {
-            throw new RuntimeException('Estadísticas PBX truncadas: cierre no verificable.');
-        }
         return $filas;
     }
 
-    private function estadisticas(int $desdeUnix, int $hastaUnix): array
+    private function estadisticas(int $desdeUnix, int $hastaUnix, string $tipo='out'): array
     {
-        $inicio = (new DateTimeImmutable('@' . $desdeUnix))
-            ->setTimezone($this->timezone)
-            ->format('Y-m-d H:i:s');
-        $fin = (new DateTimeImmutable('@' . $hastaUnix))
-            ->setTimezone($this->timezone)
-            ->format('Y-m-d H:i:s');
-        $clave = $inicio . '|' . $fin;
-
-        if (array_key_exists($clave, $this->estadisticasCache)) {
-            return $this->estadisticasCache[$clave];
-        }
-
-        $body = $this->api->call(
-            '/v1/statistics/pbx/',
-            [
-                'start' => $inicio,
-                'end' => $fin,
-                'version' => 2,
-                'call_type' => 'out',
-                'limit' => 1000,
-            ],
-            'get'
-        );
-
-        // call_id de grabación puede ser decimal con más dígitos de los
-        // admitidos por float; conservar sus caracteres tal cual envía Zadarma.
-        require_once __DIR__ . '/../helpers/ZadarmaPbxIdentifierHelper.php';
-        $data = ZadarmaPbxIdentifierHelper::decodificarEstadisticas((string)$body);
-        if (!is_array($data) || ($data['status'] ?? '') !== 'success') {
-            $this->estadisticasCache[$clave] = [];
-            return [];
-        }
-
-        $this->estadisticasCache[$clave] =
-            is_array($data['stats'] ?? null) ? $data['stats'] : [];
-
-        return $this->estadisticasCache[$clave];
+        require_once __DIR__.'/TelefoniaPbxEstadisticasService.php';
+        $this->catalogo ??= new TelefoniaPbxEstadisticasService($this->api);
+        return $this->catalogo->consultar($desdeUnix,$hastaUnix,$tipo);
     }
 
     private function normalizar(array $fila): array

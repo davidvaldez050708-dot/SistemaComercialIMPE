@@ -100,8 +100,9 @@ class TelefoniaZadarmaApi extends \Zadarma_API\Api
         $directory=$this->impeDirectory();
         $account=hash('sha256',$this->impeUrl.'|'.$this->impeKey);
         $statistics=str_starts_with($method,'/v1/statistics/');
+        $timezone=$method==='/v1/info/timezone/';
         $record=$method==='/v1/pbx/record/request/';
-        $cacheable=$type==='GET'&&($statistics||$record);
+        $cacheable=$type==='GET'&&($statistics||$record||$timezone);
         $handle=null;
         try{
             $path=null;
@@ -145,7 +146,7 @@ class TelefoniaZadarmaApi extends \Zadarma_API\Api
                 // ni errores como si acreditaran una llamada o una grabación.
                 if(is_array($json)&&($json['status']??'')==='success'){
                     parse_str($query,$parameters);
-                    $ttl=$statistics?20:min(30,max(0,(int)($parameters['lifetime']??300)-5));
+                    $ttl=$timezone?3600:($statistics?20:min(30,max(0,(int)($parameters['lifetime']??300)-5)));
                     $this->impeWrite($handle,['until'=>time()+$ttl,'wire'=>$wire]);
                 }
             }

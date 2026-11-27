@@ -99,7 +99,7 @@ class Database {
     env=os.environ.copy();env['IMPE_PHONE_LAB_ROOT']=str(root)
     setup=subprocess.run([args.php,str(Path(__file__).with_name('bootstrap.php'))],env=env,cwd=SOURCE,capture_output=True,text=True)
     if setup.returncode:raise RuntimeError('Falló el fixture SQL: '+setup.stdout+setup.stderr)
-    for fixture in ['prepare_sales.php','prepare_attention.php']:
+    for fixture in ['prepare_sales.php','prepare_attention.php','prepare_audio.php']:
         provision=subprocess.run([args.php,str(Path(__file__).resolve().parents[1]/'integration'/fixture)],env=env,cwd=SOURCE,capture_output=True,text=True)
         if provision.returncode:raise RuntimeError('Falló el esquema sintético '+fixture+': '+provision.stdout+provision.stderr)
     (root/'lab.json').write_text(json.dumps(dict(version=1,synthetic=True,pid=proc.pid,root=str(root),source=str(SOURCE),php=args.php,port=3308,prepared_utc=time.time()),indent=2),encoding='utf-8')

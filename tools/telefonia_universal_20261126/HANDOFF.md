@@ -462,3 +462,45 @@ saliente con internal opcional. NO tratar un END sin extensión como fin probado
 de todos los tramos: sigue pendiente resolverlo por evidencia inequívoca de tramo
 (o CDR exacto) y probarlo con transferencias, sin inventar duración ni audio.
 Los demás pendientes del checkpoint7 continúan. Producción intacta.
+
+
+## Noveno checkpoint — catálogo CDR único para cierre y audio
+
+Base:`b0b15622`. Nuevo TelefoniaPbxEstadisticasService usado por
+ZadarmaCallLookupService y ZadarmaRecordingService: entrada/salida de fechas en
+México, conversión a la zona declarada en GET /v1/info/timezone/ y contraste de
+su datetime/unixtime. No adivinar UTC ni restar seis horas. La lectura de zona
+es perezosa y se conserva una hora en la caché privada por cuenta del transporte
+existente; no agrega timer ni conexión SQL. NO se consultó la cuenta real.
+
+El catálogo pide skip/limit y sólo entrega resultados tras la página terminal.
+Máximo3 páginas por consulta, dentro del presupuesto/plazo compartidos; página
+que no avanza, respuesta truncada/inválida o fecha fuera de ventana dejan la
+evidencia pendiente. No escoger un audio con una primera página incompleta.
+Los IDs opacos largos se conservan. La consulta por PBX in_ utiliza call_type=in;
+antes estaba fijada a out. Ventas/cierre conserva el filtro saliente y audio
+transferido consulta ambos tipos con sus comprobaciones de propiedad existentes.
+
+TelefoniaVentasEvidenciaService conserva sus permisos/cooldown/cache y ahora
+pasa ambos límites de la ventana en México (antes convertía sólo el extremo
+final a UTC). Admite un catálogo completo mayor de1,000 filas; el máximo de8
+segmentos propios y el rechazo de IDs ajenos/compartidos siguen vigentes.
+El catálogo admite ventanas de hasta48h para esta consulta existente. No se
+fabrican webhooks, cierres, resultados ni interacciones a partir de la caché.
+
+Validación:19 checks del catálogo,14 del selector PBX,11 del transporte/caché.
+5 checks SQL del servicio de evidencia real con catálogo sintético paginado de
+1,001 filas, ID de audio decimal largo, cooldown durable y ausencia de resultado
+comercial. Se ejecutó contra la DB aislada con fuentes candidatas, sin cambiar
+el código congelado del ensayo HTTP saliente que estaba en marcha. La tabla de
+caché de audio faltaba en el laboratorio: schema_audio_evidencias.sql define el
+contrato mínimo de prueba y prepare_audio.php lo crea EXPLÍCITAMENTE sólo en ese
+fixture. NO afirmar que ese DDL coincide con Hostinger: el futuro CHECK debe
+contrastar su esquema real y cualquier migración sería un paso separado.
+
+Prueba reproducible:tests/provider_statistics.php,tests/lookup_exact_pbx.php,
+tests/provider_cache.php e integration/audio_catalog_sql.php. lab/prepare.py y
+run_sql.py incluyen la preparación explícita de audio. La descarga binaria,
+Range, fallos de audio y grabaciones reales siguen pendientes. Documentación
+primaria contrastada:https://zadarma.com/en/support/api/ (zona, skip/limit y tipos).
+No se modificó producción. Continúan los demás pendientes del checkpoint8.

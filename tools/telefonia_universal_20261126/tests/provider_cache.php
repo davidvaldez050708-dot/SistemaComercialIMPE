@@ -20,16 +20,26 @@ namespace {
   $api=new TelefoniaZadarmaApi('fixture-key','fixture-secret',false,$transport,$directory);
   $api->call('/v1/statistics/pbx/',['pbx_call_id'=>'fixture-a']);$api->call('/v1/statistics/pbx/',['pbx_call_id'=>'fixture-a']);
   $assert($calls===1,'Exact provider cache prevents duplicate transport');
+  $api->call('/v1/info/timezone/');
+  $second=new TelefoniaZadarmaApi('fixture-key','fixture-secret',false,$transport,$directory);
+  $second->call('/v1/info/timezone/');
+  $assert($calls===2,'Account timezone cached across service instances, no repeated provider query');
+  $other=new TelefoniaZadarmaApi('different-fixture-account','fixture-secret',false,$transport,$directory);
+  $other->call('/v1/info/timezone/');
+  $assert($calls===3,'Timezone cache belongs to the authenticated provider account');
+  $baseline=$calls;
   $assert($wire['verify_peer']===true&&$wire['verify_host']===2&&str_starts_with($wire['url'],'https://'),'Provider request requires TLS identity validation');
-  $budget=glob($directory.'/*-budget.json')[0];
+  $budget=array_values(array_filter(glob($directory.'/*-budget.json'),static fn($p)=>count(json_decode(file_get_contents($p),true)['statistics'])===1))[0];
+  $state=json_decode(file_get_contents($budget),true);
+  $assert(count($state['statistics'])===1&&count($state['all'])===2,'Timezone uses general budget, never consumes a statistics page quota');
   foreach(['{','',json_encode(['all'=>'bad','statistics'=>[]])] as $corrupt){
    file_put_contents($budget,$corrupt);$rejected=false;
    try{$api->call('/v1/statistics/pbx/',['pbx_call_id'=>'fixture-corrupt-'.strlen($corrupt)]);}catch(RuntimeException $e){$rejected=$e->getCode()===503;}
-   $assert($rejected&&$calls===1,'Corrupt/truncated budget cannot reset quota or call provider');
+   $assert($rejected&&$calls===$baseline,'Corrupt/truncated budget cannot reset quota or call provider');
   }
   file_put_contents($budget,json_encode(['all'=>array_fill(0,100,microtime(true)),'statistics'=>[]]));$rejected=false;
   try{$api->call('/v1/pbx/record/request/',['call_id'=>'fixture-quota']);}catch(RuntimeException $e){$rejected=$e->getCode()===429;}
-  $assert($rejected&&$calls===1,'Shared full budget fails closed');
+  $assert($rejected&&$calls===$baseline,'Shared full budget fails closed');
   $now=time();$account=str_repeat('a',64);$expired=[];
   for($i=0;$i<9;++$i){$name=$account.'-'.hash('sha256','retention-'.$i).'.json';$path=$directory.'/'.$name;
    file_put_contents($path,json_encode(['until'=>$now-200000,'wire'=>[]]));touch($path,$now-200000);$expired[]=$path;}

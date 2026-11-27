@@ -8,7 +8,7 @@ def main():
  root=Path(a.lab_root).resolve();m=json.loads((root/'lab.json').read_text());c=json.loads((root/'credentials.json').read_text())
  if m.get('synthetic') is not True or c.get('host')!='127.0.0.1' or c.get('port')!=3308 or c.get('database')!='impe_telefonia_lab':raise RuntimeError('Only private synthetic loopback allowed')
  env=os.environ.copy();env['IMPE_PHONE_LAB_ROOT']=str(root)
- scripts=['provider_sdk','prepare_sales','prepare_attention','incoming_reducer_sql','sales_native_sql','approved_result_sql','callback_result_sql','callback_intent_sql','followup_receipt_sql','informative_receipt_sql','institution_funnel_sql','funnel_v3_sql','outgoing_intent_sql','canonical_capture_sql']
+ scripts=['provider_sdk','prepare_sales','prepare_attention','prepare_audio','audio_catalog_sql','incoming_reducer_sql','sales_native_sql','approved_result_sql','callback_result_sql','callback_intent_sql','followup_receipt_sql','informative_receipt_sql','institution_funnel_sql','funnel_v3_sql','outgoing_intent_sql','canonical_capture_sql']
  results=[];started=time.monotonic()
  for name in scripts:
   r=subprocess.run([a.php,str(Path(__file__).parent/'integration'/(name+'.php'))],cwd=SOURCE,env=env,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=120)

@@ -60,8 +60,9 @@ final class TelefoniaVentasEvidenciaService
         $s->bind_param('iss',$uid,$ext,$ref);$s->execute();if(!$s->affected_rows)return $this->enriquecer([$call],$uid)[0];
         if(!$stats||!$record){require_once __DIR__.'/ZadarmaRecordingService.php';$api=new ZadarmaRecordingService(false);$stats??=[$api,'estadisticasPbx'];$record??=[$api,'obtenerGrabacionPorCallId'];}
         $date=new DateTimeImmutable($call['fecha'],new DateTimeZone('America/Mexico_City'));
-        $rows=$stats($date->modify('-1 day')->format('Y-m-d H:i:s'),$date->setTimezone(new DateTimeZone('UTC'))->modify('+1 day')->format('Y-m-d H:i:s'));
-        if(count($rows)>=1000)throw new DomainException('La consulta está incompleta. No se vinculó ningún audio.');
+        // El catálogo común recibe ambas fechas en México y sólo devuelve
+        // páginas completas. No desplazar un extremo a UTC ni truncar por 1000.
+        $rows=$stats($date->modify('-1 day')->format('Y-m-d H:i:s'),$date->modify('+1 day')->format('Y-m-d H:i:s'));
         if($recordRefs!==null)$rows=array_values(array_filter($rows,static fn($row)=>
             is_array($row)&&isset($recordRefs[ZadarmaPbxIdentifierHelper::callIdDeFila($row)])));
         $data=TelefoniaPbxSegmentosService::propios($rows,$ref,$ext,$allowed);
