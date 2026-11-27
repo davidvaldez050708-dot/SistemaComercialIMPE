@@ -1,6 +1,22 @@
 <?php
+require_once __DIR__.'/app/helpers/PausaConsultasAutomaticas.php';
 
+require_once __DIR__ . '/app/helpers/PerfilPeticion.php';
+$impePerfilPeticion = ImpePerfilPeticion::iniciar(__DIR__);
 session_start();
+$impePerfilPeticion?->marca('sesion');
+
+set_exception_handler(static function (Throwable $error): void {
+    if (class_exists(ImpeControlCargaMysql::class,false)) ImpeControlCargaMysql::registrarFallo($error);
+    $ajax = in_array(strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), ['fetch', 'xmlhttprequest'], true);
+    if (class_exists(Database::class, false) && Database::responderFalloTemporal($error, $ajax)) {
+        return;
+    }
+    error_log('[impe_peticion] ' . get_class($error) . ' en ' . basename($error->getFile()) . ':' . $error->getLine());
+    http_response_code(500);
+    header('Content-Type: ' . ($ajax ? 'application/json' : 'text/plain') . '; charset=utf-8');
+    echo $ajax ? '{"ok":false,"mensaje":"No se pudo completar la solicitud."}' : 'No se pudo completar la solicitud.';
+});
 
 if (isset($_SESSION['usuario_id'])) {
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -76,6 +92,7 @@ if (isset($_SESSION['usuario_id'], $_SESSION['ultima_actividad'])) {
 
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/app/helpers/PermissionHelper.php';
+$impePerfilPeticion?->marca('config');
 
 
 $controller = $controllerSolicitado;
@@ -160,7 +177,7 @@ if (isset($_SESSION['usuario_id'])) {
     require_once __DIR__ . '/app/models/UsuarioModel.php';
     require_once __DIR__ . '/app/models/RolModel.php';
 
-    $modeloUsuarioSesion = new UsuarioModel();
+    $modeloUsuarioSesion = new UsuarioModel(Database::compartida());
     $usuarioSesion = $modeloUsuarioSesion->buscarPorId(
         (int)$_SESSION['usuario_id']
     );
@@ -197,11 +214,12 @@ if (isset($_SESSION['usuario_id'])) {
     $_SESSION['requiere_cambio_password'] =
         (int)($usuarioSesion['requiere_cambio_password'] ?? 0);
 
-    $modeloRolSesion = new RolModel();
+    $modeloRolSesion = new RolModel(Database::compartida());
     $_SESSION['permisos'] =
         $modeloRolSesion->obtenerCodigosPermisosPorRol(
             (int)$_SESSION['rol_id']
         );
+    define('IMPE_PERMISOS_REFRESCADOS',true);
 }
 
 
@@ -221,6 +239,7 @@ if (isset($_SESSION['usuario_id']) && empty($_SESSION['csrf_token'])) {
  * automáticamente desde dashboard_head.php.
  */
 $controladoresProtegidosCsrf = [
+    'correoMarketing',
     'seguimientoVinculacion',
     'seguimientoFlujo',
     'seguimientoInteraccion',
@@ -237,7 +256,8 @@ $controladoresProtegidosCsrf = [
     'whatsapp',
     'rol',
     'usuario',
-    'telefonia'
+    'telefonia',
+    'embudoComercial'
 ];
 
 if (
@@ -276,6 +296,7 @@ if (
 
 
 
+$impePerfilPeticion?->marca('autorizacion');
 switch ($controller) {
 
     case 'login':
@@ -310,6 +331,11 @@ switch ($controller) {
 
         break;
 
+
+    case 'respaldo':
+        require_once __DIR__ . '/app/controllers/RespaldoController.php';
+        $controllerInstance = new RespaldoController();
+        break;
 
     case 'usuario':
 
@@ -520,6 +546,11 @@ switch ($controller) {
         break;
 
 
+    case 'agendaComentario':
+        require_once __DIR__ . '/app/controllers/AgendaComentarioController.php';
+        $controllerInstance = new AgendaComentarioController();
+        break;
+
     case 'agendaReunion':
 
         require_once __DIR__ .
@@ -564,6 +595,12 @@ switch ($controller) {
         break;
 
 
+    // Compatibilidad con enlaces comerciales anteriores: no procesar OAuth personal.
+    case 'correoConexion':
+        header('Location: ' . BASE_URL . (strcasecmp((string)($_SESSION['rol'] ?? ''),'Marketing')===0
+            ? 'index.php?controller=correoMarketing&action=index' : 'index.php?controller=home&action=index'));
+        exit;
+
     case 'correoMarketing':
 
         require_once __DIR__ .
@@ -575,13 +612,41 @@ switch ($controller) {
         break;
 
 
-    case 'prospecto':
+    // Embudo comercial: autorización propia por vista y por asesor.
+    case 'embudoComercial':
 
         require_once __DIR__ .
-            '/app/controllers/ProspectoController.php';
+            '/app/controllers/EmbudoComercialController.php';
 
         $controllerInstance =
-            new ProspectoController();
+            new EmbudoComercialController();
+
+        break;
+
+
+    case 'miCartera':
+
+        require_once __DIR__ .
+            '/app/controllers/MiCarteraController.php';
+
+        $controllerInstance =
+            new MiCarteraController();
+
+        break;
+
+
+    case 'prospecto':
+        require_once __DIR__ . '/app/controllers/ProspectoController.php';
+        $controllerInstance = new ProspectoController();
+        break;
+
+    case 'inscritos':
+
+        require_once __DIR__ .
+            '/app/controllers/InscritosController.php';
+
+        $controllerInstance =
+            new InscritosController();
 
         break;
 
@@ -691,10 +756,12 @@ switch ($controller) {
 }
 
 
+$impePerfilPeticion?->marca('controlador');
 if (!method_exists($controllerInstance, $action)) {
 
     die('Acción no válida.');
 }
 
 
+$impePerfilPeticion?->marca('despacho');
 $controllerInstance->$action();
