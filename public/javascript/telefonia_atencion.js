@@ -365,7 +365,7 @@
             if(!response.ok||data.ok!==true||receipt?.request_id!==meta.request_id||
                 receipt.revision!==meta.revision||receipt.adaptador!==adapter||!receipt.respuesta)return null;
             own(user);
-            if(adapter==='SEGUIMIENTO'&&receipt.respuesta.ok===true)
+            if(['SEGUIMIENTO','INFORMATIVA'].includes(adapter)&&receipt.respuesta.ok===true)
                 return {...receipt.respuesta,recibo_recuperado:true};
             const field=adapter==='DEVOLUCION'?'intento':['VENTAS','RECEPCION'].includes(adapter)?'registro':'resultado';
             return {ok:true,[field]:receipt.respuesta,recibo_recuperado:true};
@@ -443,7 +443,7 @@
         catch(error){window.IMPE_TELEPHONY_NOTIFY?.(error.message,true);form.removeEventListener('input',dirty);return;}
         form.removeEventListener('input',dirty);
         if(!values||changed||window.IMPE_CALL_RESULTS.busy(form)||form.dataset.draftCycle!==String(cycle))return;
-        const institutional=!event.detail?.adaptador||['ANALISTA','SEGUIMIENTO','DEVOLUCION'].includes(event.detail.adaptador);
+        const institutional=!event.detail?.adaptador||['ANALISTA','SEGUIMIENTO','DEVOLUCION','INFORMATIVA'].includes(event.detail.adaptador);
         const normalized=institutional?window.IMPE_CALL_DRAFTS.resultValues(values):values;
           // El formulario original de salientes sólo dispone del contacto referido.
           // Conserva su captura de teléfono/correo sin mezclar los nombres de personas.

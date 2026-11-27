@@ -102,6 +102,21 @@ final class TelefoniaResultadoAnalistaService
             'inicio_evento'=>(int)($inicio['id']??0),'extension'=>$extension];
     }
 
+    /** Identidad de la llamada validada por el servidor; dentro de la transacción
+     * nativa. Compartido por captura inicial e interacciones de ruta avanzada. */
+    public static function bloquearRegistro(mysqli $db,int $usuario,array $proof):void
+    {
+        // La identidad procede de la consulta PBX del servidor. Serializar
+        // también dos expedientes distintos del mismo analista y llamada.
+        $lock=$db->prepare("SELECT id FROM telefonia_zadarma_eventos WHERE id=? AND pbx_call_id=BINARY ? AND internal=BINARY ? AND evento='NOTIFY_OUT_START' FOR UPDATE");
+        $lock->bind_param('iss',$proof['inicio_evento'],$proof['pbx_call_id'],$proof['extension']);
+        $lock->execute();$available=$lock->get_result()->num_rows>0;$lock->close();
+        if(!$available)throw new DomainException('La evidencia de esta llamada ya no está disponible. Conserva la captura.');
+        $duplicate=$db->prepare("SELECT id FROM interacciones_vinculacion WHERE usuario_id=? AND proveedor_externo='ZADARMA' AND id_externo=BINARY ? LIMIT 1 FOR UPDATE");
+        $duplicate->bind_param('is',$usuario,$proof['pbx_call_id']);$duplicate->execute();$exists=$duplicate->get_result()->num_rows>0;$duplicate->close();
+        if($exists)throw new DomainException('Esta llamada ya tiene una interacción registrada. Se conservó el resultado original.');
+    }
+
     private static function telefono(string $valor): string
     {
         $digits = preg_replace('/\D/', '', $valor);

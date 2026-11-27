@@ -344,3 +344,35 @@ no afirmar que su recibo inicial confirma toda la verificación comercial final.
 Faltan registrarInformativa/InteraccionRuta y la confirmación posterior, grabaciones,
 transferencias sin reserva temprana, regresión visual, Supervisión selectiva,
 publicador y aceptaciones universales. No se ha modificado producción.
+
+### Sexto checkpoint: interacciones informativas de ruta avanzada
+
+El quinto checkpoint está publicado en `ade22596`. Se extiende el mismo ciclo
+de aprobación a `seguimientoInteraccion.registrarInformativa`:
+
+- InteraccionRutaService usa la conexión común e inyectable; el callback del
+  recibo ocurre antes del COMMIT nativo. Mantiene resultado/notas/programación
+  originales y no cambia la etapa ni reuniones. Compara el contacto actual
+  bajo lock para no sobrescribir datos cambiados mientras se validaba la captura.
+- Tipo de adaptador explícito INFORMATIVA. Permisos/CSRF se validan en la ruta;
+  los errores mantienen su código comercial. La lectura de recibo recupera su
+  envelope nativo, sin reenviar automáticamente el resultado.
+- El guard de identidad PBX se extrajo a TelefoniaResultadoAnalistaService y
+  lo comparten el modelo inicial e InteraccionRuta. Dos rutas no pueden insertar
+  dos resultados para la misma referencia PBX y usuario. No se tocaron históricos.
+- El adaptador JS usa el controlador común sólo para llamadas ZADARMA con
+  referencia, conserva otros canales y evita callbacks sobre otro formulario.
+  Libera controles antes de su reset para que Guardar no quede deshabilitado al
+  cambiar sus ids. No se cambió HTML/CSS ni diseño institucional.
+- Pruebas:8 SQL nativas de ruta avanzada (ruta/acción futura preservadas, rollback,
+  replay y exclusión entre rutas),17 HTTP con CSRF/ACK perdido/recibo y12 del
+  adaptador JS real.20/20 suites aisladas pasan;10 checks SQL del guardado inicial
+  pasan después de extraer el guard común. No se cuentan como aceptación universal.
+- El fixture prepara únicamente la definición de oficios_vinculacion, sin filas
+  de dumps, para consultar la ruta avanzada. El modo HTTP `followup_receipt.cjs
+  --informative --lab-root <raíz>` reutiliza el harness del checkpoint anterior.
+
+Próximo bloque: conciliación posterior en vincular_interaccion_zadarma.php,
+eliminando atribuciones de duración desde el navegador y cerrando su recuperación
+con evidencia propia; después transferencias/audio y aceptación completa. Siguen
+sin iniciarse las ocho horas reales. No se ha modificado producción.

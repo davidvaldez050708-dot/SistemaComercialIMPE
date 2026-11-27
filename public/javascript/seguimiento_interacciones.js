@@ -738,6 +738,7 @@
         const registrarInteraccionInformativa = async function (event) {
             event.preventDefault();
             event.stopImmediatePropagation();
+            if(window.IMPE_CALL_RESULTS?.busy(formulario))return;
 
             if (!validarRequisitosInteraccion()) {
                 return;
@@ -752,6 +753,7 @@
             const textoOriginal = botonGuardar?.textContent || 'Guardar interacción';
             const formData = new FormData(formulario);
             const resultado = String(selectorResultado.value || '');
+            let interaccionActual=()=>true;
 
 
             if (resultado === 'NO_INTERESADO') {
@@ -778,6 +780,18 @@
             }
 
             try {
+                let datos;
+                const referencia=String(formData.get('llamada_pbx_id')||'');
+                if(String(formData.get('origen_llamada')||'').toUpperCase()==='ZADARMA'&&referencia){
+                    const values=Object.fromEntries(formData);
+                    interaccionActual=()=>String(formulario.querySelector('[name="seguimiento_id"]')?.value||'')===String(values.seguimiento_id||'')&&
+                        String(formulario.querySelector('[name="llamada_pbx_id"]')?.value||'')===referencia;
+                    const confirmed=await window.IMPE_CALL_RESULTS.submit({form:formulario,user:Number(window.IMPE_CURRENT_USER_ID),
+                        ids:[referencia],context:{adaptador:'INFORMATIVA'},values,endpoint:urlInteraccionInformativa,isCurrent:interaccionActual});
+                    if(!interaccionActual())return;
+                    if(!confirmed.ok)throw confirmed.error||new Error('No fue posible confirmar la interacción.');
+                    datos=confirmed.payload;
+                }else{
                 const respuesta = await fetch(urlInteraccionInformativa, {
                     method: 'POST',
                     headers: {
@@ -785,14 +799,20 @@
                     },
                     body: formData
                 });
-                const datos = await respuesta.json();
+                datos = await respuesta.json();
 
                 if (!respuesta.ok || !datos.ok) {
                     throw new Error(
                         datos.mensaje || 'No fue posible registrar la interacción.'
                     );
                 }
+                }
 
+                // La presentación siguiente reinicia el formulario y sus ids.
+                // Liberar primero sus controles, mientras sigue siendo el mismo.
+                if(botonGuardar&&interaccionActual()){
+                    botonGuardar.disabled=false;botonGuardar.textContent=textoOriginal;
+                }
                 window.IMPE_CALL_DRAFTS?.actualizarFicha(formData);
                 agregarActividadInformativa(datos.interaccion);
                 formulario.classList.add('d-none');
@@ -818,12 +838,13 @@
                     }
                 }));
             } catch (error) {
+                if(!interaccionActual())return;
                 mostrarToastLocal(
                     error.message || 'No fue posible registrar la interacción.',
                     true
                 );
             } finally {
-                if (botonGuardar) {
+                if (botonGuardar&&interaccionActual()) {
                     botonGuardar.disabled = false;
                     botonGuardar.textContent = textoOriginal;
                 }

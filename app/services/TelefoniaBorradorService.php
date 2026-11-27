@@ -113,7 +113,7 @@ final class TelefoniaBorradorService
     private static function limpiarContexto(array $contexto,int $revision):array
     {
         if(!$contexto)return [];
-        if(!in_array($contexto['adaptador']??'', ['VENTAS','ANALISTA','RECEPCION','SEGUIMIENTO','DEVOLUCION'],true))
+        if(!in_array($contexto['adaptador']??'', ['VENTAS','ANALISTA','RECEPCION','SEGUIMIENTO','DEVOLUCION','INFORMATIVA'],true))
             throw new InvalidArgumentException('Captura inválida.');
         $clean=['adaptador'=>$contexto['adaptador'],'pendiente'=>true];
         if(array_key_exists('cierre_local',$contexto)){
@@ -224,7 +224,7 @@ final class TelefoniaBorradorService
         $ids=$this->resolverReferencias($usuario,$ids);$valores=self::limpiar($valores);
         $types=['VENTAS'=>'RESULTADO_VENTAS','RECEPCION'=>'ATENCION_RECEPCION',
             'ANALISTA'=>'INTERACCION_VINCULACION','SEGUIMIENTO'=>'INTERACCION_VINCULACION',
-            'DEVOLUCION'=>'DEVOLUCION_ANALISTA'];
+            'DEVOLUCION'=>'DEVOLUCION_ANALISTA','INFORMATIVA'=>'INTERACCION_VINCULACION'];
         if($revision<1||$nativeId<1||!preg_match('/^[a-zA-Z0-9_-]{12,100}$/D',$requestId)||
             (($types[$adaptador]??null)!==$tipo && !($adaptador==='ANALISTA' && in_array($tipo,['ATENCION_SDK_ANALISTA','ATENCION_PBX_ANALISTA'],true))))
             throw new InvalidArgumentException('Confirmación de captura inválida.');

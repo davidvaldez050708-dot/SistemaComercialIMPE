@@ -44,11 +44,28 @@ class SeguimientoInteraccionController
             ], 422);
         }
 
-        $resultado = $this->service->registrarInformativa(
-            $seguimientoId,
-            $usuarioId,
-            $_POST
-        );
+        $datos=$_POST;
+        if(isset($datos['captura_confirmacion'])){
+            $csrf=(string)($_SESSION['csrf_token']??'');
+            if($csrf===''||!is_string($datos['csrf_token']??null)||!hash_equals($csrf,$datos['csrf_token']))
+                $this->responder(['ok'=>false,'mensaje'=>'La sesión expiró. Actualiza el CRM.'],403);
+            require_once __DIR__.'/../helpers/TelefoniaPeticionContexto.php';
+            TelefoniaPeticionContexto::liberarSesion();
+        }
+        try{
+            require_once __DIR__.'/../services/TelefoniaResultadoConfirmacion.php';
+            $resultado=(new TelefoniaResultadoConfirmacion(Database::compartida()))->ejecutar($usuarioId,'INFORMATIVA',$datos,
+                function(array $valores,?callable $confirmar)use($seguimientoId,$usuarioId):array{
+                    $r=$this->service->registrarInformativa($seguimientoId,$usuarioId,$valores,$confirmar);
+                    if($confirmar&&empty($r['ok']))throw new DomainException($r['mensaje'],(int)($r['codigo_http']??409));
+                    return $r;
+                });
+        }catch(DomainException|InvalidArgumentException $e){
+            $this->responder(['ok'=>false,'mensaje'=>$e->getMessage()],in_array($e->getCode(),[403,409,422],true)?$e->getCode():409);
+        }catch(Throwable $e){
+            error_log('[informativa_resultado_confirmado] '.get_class($e));
+            $this->responder(['ok'=>false,'mensaje'=>'No fue posible confirmar la interacción. Conserva la captura y vuelve a comprobar.'],500);
+        }
         $codigoHttp = (int)($resultado['codigo_http'] ?? 200);
         unset($resultado['codigo_http']);
 

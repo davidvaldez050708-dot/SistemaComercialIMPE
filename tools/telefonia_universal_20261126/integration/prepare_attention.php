@@ -11,11 +11,11 @@ if($db->query("SHOW COLUMNS FROM telefonia_devolucion_intentos LIKE 'sdk_session
  $db->query(file_get_contents(dirname(__DIR__).'/schema_devolucion_sesion.sql'));
 $dump=file_get_contents(dirname(__DIR__,3).'/database/sistema_comercial_impe.sql');
 // ONLY schema definitions for an explicit allowlist. Never import dump rows.
-foreach(['interacciones_vinculacion','seguimientos_vinculacion'] as $table){
+foreach(['interacciones_vinculacion','seguimientos_vinculacion','oficios_vinculacion'] as $table){
  if(!preg_match('/CREATE TABLE `'.preg_quote($table,'/').'` \(.*?;(?=\r?\n)/s',$dump,$match))throw new RuntimeException('Missing explicit fixture schema');
  $sql=str_replace('CREATE TABLE `','CREATE TABLE IF NOT EXISTS `',$match[0]);$db->query($sql);
 }
-foreach(['seguimientos_vinculacion','interacciones_vinculacion'] as $table){
+foreach(['seguimientos_vinculacion','interacciones_vinculacion','oficios_vinculacion'] as $table){
  if($db->query("SHOW INDEX FROM $table WHERE Key_name='PRIMARY'")->num_rows===0){
   preg_match_all('/ALTER TABLE `'.$table.'`.*?;/s',$dump,$alters);
   foreach($alters[0] as $alter)if(strpos($alter,'ADD CONSTRAINT')===false)$db->query($alter);

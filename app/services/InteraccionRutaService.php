@@ -10,13 +10,12 @@ class InteraccionRutaService
 {
     private $connection;
 
-    public function __construct()
+    public function __construct(?mysqli $connection=null)
     {
-        $database = new Database();
-        $this->connection = $database->connect();
+        $this->connection = $connection??Database::compartida();
     }
 
-    public function registrarInformativa($seguimientoId, $usuarioId, $datos)
+    public function registrarInformativa($seguimientoId, $usuarioId, $datos, ?callable $confirmar=null)
     {
         $seguimientoId = (int)$seguimientoId;
         $usuarioId = (int)$usuarioId;
@@ -74,7 +73,7 @@ class InteraccionRutaService
 
         try {
             require_once __DIR__.'/TelefoniaResultadoAnalistaService.php';
-            TelefoniaResultadoAnalistaService::validarLlamada($usuarioId, $seguimientoId, $datos, $this->connection);
+            $llamadaConfirmada=TelefoniaResultadoAnalistaService::validarLlamada($usuarioId, $seguimientoId, $datos, $this->connection);
         } catch (DomainException $e) {
             return $this->error($e->getMessage(),409);
         } catch (Throwable $e) {
@@ -280,23 +279,31 @@ class InteraccionRutaService
         $etapaPersistencia = 'guardar la interacción';
 
         try {
+            $lock=$this->connection->prepare('SELECT * FROM seguimientos_vinculacion WHERE id=? AND '.SeguimientoTerritorialScope::analista('seguimientos_vinculacion').' AND activo=1 FOR UPDATE');
+            $lock->bind_param('ii',$seguimientoId,$usuarioId);$lock->execute();$actual=$lock->get_result()->fetch_assoc();$lock->close();
+            if(!$actual||$actual['estado_seguimiento']==='DESCARTADO')throw new DomainException('El expediente ya no está disponible para registrar la atención.');
+            foreach(['estado_seguimiento','datos_verificados','telefono_fuente','correo_fuente','telefono_verificado','correo_verificado','contacto_nombre','contacto_cargo'] as $campo)
+                if((string)($actual[$campo]??'')!==(string)($seguimiento[$campo]??''))
+                    throw new DomainException('El expediente o contacto cambió. Conserva la captura y revisa sus datos.');
+            if($llamadaConfirmada)TelefoniaResultadoAnalistaService::bloquearRegistro($this->connection,$usuarioId,$llamadaConfirmada);
+            $proveedor=$llamadaConfirmada?'ZADARMA':null;$referencia=$llamadaConfirmada['pbx_call_id']??null;
             $sql = "INSERT INTO interacciones_vinculacion (
                         seguimiento_id,
                         usuario_id,
                         canal,
                         fecha_inicio,
                         resultado,
-                        notas
-                    ) VALUES (?, ?, ?, ?, ?, ?)";
+                        notas,proveedor_externo,id_externo
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $this->connection->prepare($sql);
             $stmt->bind_param(
-                'iissss',
+                'iissssss',
                 $seguimientoId,
                 $usuarioId,
                 $canal,
                 $fechaInicio,
                 $resultado,
-                $notas
+                $notas,$proveedor,$referencia
             );
             $stmt->execute();
 
@@ -358,9 +365,7 @@ class InteraccionRutaService
             $stmtSeguimiento->execute();
 
             DatosContactoLlamadaService::guardar($this->connection,$seguimientoId,$usuarioId,$contactoLlamada);
-            $this->connection->commit();
-
-            return [
+            $respuesta = [
                 'ok' => true,
                 'mensaje' => 'Interacción registrada en el expediente sin modificar la ruta.',
                 'interaccion' => [
@@ -377,8 +382,12 @@ class InteraccionRutaService
                     'evidencias' => $evidenciasVerificacion
                 ]
             ];
+            if($confirmar)$confirmar('INTERACCION_VINCULACION',$interaccionId,$respuesta);
+            $this->connection->commit();
+            return $respuesta;
         } catch (Throwable $error) {
             $this->connection->rollback();
+            if($confirmar)throw $error;
             error_log(
                 'Error registrando interacción informativa (' .
                 $etapaPersistencia . '): ' . $error->getMessage()

@@ -1354,16 +1354,8 @@ class SeguimientoVinculacionModel
                     if(!array_key_exists($campo,$actual)||(string)$actual[$campo]!==(string)$esperado)
                         throw new DomainException('El contacto o la asignación cambió. Conserva la captura y revisa el expediente antes de confirmar.');
             if(!empty($datos['llamada_confirmada'])){
-                // La identidad procede de la consulta PBX del servidor. Serializar
-                // también dos expedientes distintos del mismo analista y llamada.
-                $proof=$datos['llamada_confirmada'];
-                $lock=$this->connection->prepare("SELECT id FROM telefonia_zadarma_eventos WHERE id=? AND pbx_call_id=BINARY ? AND internal=BINARY ? AND evento='NOTIFY_OUT_START' FOR UPDATE");
-                $lock->bind_param('iss',$proof['inicio_evento'],$proof['pbx_call_id'],$proof['extension']);
-                $lock->execute();$available=$lock->get_result()->num_rows>0;$lock->close();
-                if(!$available)throw new DomainException('La evidencia de esta llamada ya no está disponible. Conserva la captura.');
-                $duplicate=$this->connection->prepare("SELECT id FROM interacciones_vinculacion WHERE usuario_id=? AND proveedor_externo='ZADARMA' AND id_externo=BINARY ? LIMIT 1 FOR UPDATE");
-                $duplicate->bind_param('is',$usuarioId,$proof['pbx_call_id']);$duplicate->execute();$exists=$duplicate->get_result()->num_rows>0;$duplicate->close();
-                if($exists)throw new DomainException('Esta llamada ya tiene una interacción registrada. Se conservó el resultado original.');
+                require_once __DIR__.'/../services/TelefoniaResultadoAnalistaService.php';
+                TelefoniaResultadoAnalistaService::bloquearRegistro($this->connection,$usuarioId,$datos['llamada_confirmada']);
             }
             if (!empty($datos['preservar_estado'])) {
                 $estadoSeguimiento=VerificacionInstitucionalService::estadoAtencion((string)$actual['estado_seguimiento'],$descartar);

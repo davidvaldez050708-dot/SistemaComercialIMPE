@@ -3,7 +3,7 @@
   "status": "autonomous_continuation_in_progress",
   "installed_baseline": "1d8f7da23907fabce398c13d924ef5996d839473",
   "portable_unit_suites": {
-    "passed": 19,
+    "passed": 20,
     "failed": 0,
     "runner": "run_unit.cjs"
   },
@@ -89,6 +89,17 @@
     "preserves_full_native_response": true,
     "rejects_second_approval_for_same_pbx": true,
     "later_pbx_verification_pipeline_pending": true,
+    "complete_call_acceptance": false,
+    "production_changed": false
+  },
+  "continuation_informative_receipts": {
+    "base": "ade22596",
+    "native_sql_checks": 8,
+    "native_http_checks": 17,
+    "actual_adapter_checks": 12,
+    "initial_followup_sql_regression_checks": 10,
+    "shared_pbx_identity_fence": true,
+    "preserves_advanced_stage_and_future_action": true,
     "complete_call_acceptance": false,
     "production_changed": false
   }

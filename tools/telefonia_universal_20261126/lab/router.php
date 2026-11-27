@@ -59,6 +59,12 @@ if(str_starts_with($path,'/fixture/')){
    fixtureReply(['ok'=>true,'attempt'=>$attempt]);
   }catch(Throwable $e){$db->rollback();throw $e;}
  }
+ if($path==='/fixture/followup-stage'){
+  if(($_SERVER['REQUEST_METHOD']??'')!=='POST')fixtureReply(['ok'=>false],405);
+  $body=json_decode((string)file_get_contents('php://input'),true,8,JSON_THROW_ON_ERROR);$id=(int)($body['id']??0);
+  $s=Database::compartida()->prepare("UPDATE seguimientos_vinculacion SET estado_seguimiento='ESPERANDO_RESPUESTA' WHERE id=? AND analista_id=42 AND activo=1");
+  $s->bind_param('i',$id);$s->execute();$ok=$s->affected_rows===1;$s->close();fixtureReply(['ok'=>$ok]);
+ }
  fixtureReply(['ok'=>false],404);
 }
 $files=['/prueba_telefonia/api/sesion_local.php','/prueba_telefonia/api/borrador_llamada.php',
@@ -72,6 +78,7 @@ if(in_array($path,$files,true)||$path==='/index.php'){
  $routes=['telefonia.guardarResultadoVenta'=>['TelefoniaController','guardarResultadoVenta'],
   'telefonia.devolucion'=>['TelefoniaController','devolucion'],
   'seguimientoVinculacion.registrarInteraccionTrabajo'=>['SeguimientoVinculacionController','registrarInteraccionTrabajo'],
+  'seguimientoInteraccion.registrarInformativa'=>['SeguimientoInteraccionController','registrarInformativa'],
   'seguimientoVinculacion.registrarLlamadaEntrante'=>['SeguimientoVinculacionController','registrarLlamadaEntrante']];
  $route=$routes[($_GET['controller']??'').'.'.($_GET['action']??'')]??null;if(!$route)fixtureReply(['ok'=>false],404);
  require_once $site.'/app/controllers/'.$route[0].'.php';(new $route[0])->{$route[1]}();exit;
