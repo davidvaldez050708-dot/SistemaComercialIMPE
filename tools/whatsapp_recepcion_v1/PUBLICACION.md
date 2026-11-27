@@ -1,0 +1,3 @@
+# Publicación recepción V1
+
+Pruebas SQL y reconstrucción exacta aprobadas: Actions 46063201567, commit e85f5db5a4c3c515a5733efe230c5d2183617c64. El publicador añade una prueba privada de aplicación, repetición, conflicto, restauración y fallo parcial antes de escribir en el sitio. Descarga el ZIP CHECK original y publicar_recepcion.py del mismo commit, extrae juntos fuera de public_html. CHECK no modifica sitio ni datos. APPLY requiere confirmación PUBLICAR_RECEPCION_WHATSAPP_V1 y guarda respaldo privado. RESTORE requiere ruta de respaldo y REVERTIR_RECEPCION_WHATSAPP_V1. No ejecuta migraciones ni envía mensajes. Conserva la asignación instalada; la conciliación de instituciones y prospectos es otra entrega. No desplegar rama completa.
