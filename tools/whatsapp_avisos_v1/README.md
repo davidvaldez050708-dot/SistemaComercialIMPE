@@ -1,0 +1,3 @@
+# Avisos globales V1 — candidato
+
+Vista previa personal de conversaciones empresariales no leídas, consulta cada 15 s sólo con página visible, sin marcado como leído ni cambio de cartera. Supervisor puede abrir bandeja general, contador no agrega toda la cartera del equipo. Se reutiliza el panel contextual y la autorización del servidor. Sin alertas sonoras, sin migración y sin cambios de telefonía. El contador usa el no_leidos existente, no un estado de lectura individual. CHECK sólo sobre bases exactas Hostinger; faltan pruebas de integración, navegador, compatibilidad y publicador. No aplicar aún. 
