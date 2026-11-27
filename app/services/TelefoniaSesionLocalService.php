@@ -119,6 +119,10 @@ class TelefoniaSesionLocalService
                     $values=['estado'=>$event==='ended'&&$row['fecha_atendida']===null?'missed':$event,'fecha_fin'=>gmdate('Y-m-d H:i:s')];
                     if(is_int($seconds)&&$row['fecha_atendida']!==null)$values['duracion_observada_segundos']=$seconds;
                 }
+                if($protocol>=2&&$direction==='ENTRANTE'&&$event==='ended'&&$row['fecha_atendida']!==null&&
+                    ($row['clasificacion']??'')==='PENDIENTE'&&$row['seguimiento_id']===null&&$row['interaccion_id']===null&&
+                    $this->esNumeroInterno((string)$row['numero_origen'],$ext))
+                    $values['clasificacion']='INTERNA';
             }
             if($sip!==''&&empty($row['sdk_id']))$values['sdk_id']=$sip;
             elseif($sip!==''&&$sip!==(string)$row['sdk_id'])throw new DomainException('El evento pertenece a otro diálogo SDK.');

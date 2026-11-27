@@ -185,18 +185,15 @@
         onState(value){
             statusBefore=current;current=value;
             if(cfg.receptionResults && statusBefore?.active && !value.active && ['finished','incoming-finished'].includes(value.phase)){
-                const transferStage=String(value.context?.transferRequest?.stage||statusBefore.context?.transferRequest?.stage||'');
-                const transfer=Boolean(value.status==='transferred'||
-                    ['ENVIADA','ENTREGADA','ENTREGANDO','SIN_CONFIRMAR','SIN_RESPUESTA'].includes(transferStage));
                 const id=String(value.pbxCallId||statusBefore.pbxCallId||value.callToken||'');
-                const ids=[...new Set([id,value.callToken,value.context?.sdkSessionId].filter(valid))];
-                if(ids.length)try{
-                    const existing=ids.some(ref=>drafts.localRead(user,ref));
-                    drafts.localSave(user,ids,existing?{}:(saved.forms[id]||{}), {adaptador:'RECEPCION',
-                        cierre_local:{at:Date.now(),transferencia:transfer,conciliado:false}});
+                try{
+                    drafts.observeAttention(user,value,'RECEPCION',saved.forms[id]||{});
                 }catch(_){notify('No se pudo conservar el aviso de esta llamada. Revisa el historial de recepción.',true);}
                 persist();void load();
             }
+            // Compatibilidad del adaptador aislado: el shell ya lo invoca para
+            // todos los roles; aquí no se calcula ni escribe otro cierre.
+            else if(cfg.receptionResults)drafts?.observeAttention(user,value,'RECEPCION');
             refreshView();
         },
         hasPending(){return cfg.receptionResults && saved.pending.length>0;},

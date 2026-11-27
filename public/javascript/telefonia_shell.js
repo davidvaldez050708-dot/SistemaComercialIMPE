@@ -557,6 +557,10 @@
             actionNotice = '';
         }
         currentState = value;
+        try{
+            const adapter=cfg.salesResults?'VENTAS':cfg.analystIncomingResults?'ANALISTA':cfg.receptionResults?'RECEPCION':null;
+            if(adapter)window.IMPE_CALL_DRAFTS?.observeAttention(userId,value,adapter);
+        }catch(_){window.IMPE_TELEPHONY_NOTIFY?.('No se pudo conservar el aviso de esta llamada. Revisa su historial antes de salir.',true);}
         window.IMPE_CALL_CLOSURE?.onState(value);
         syncIncomingClock(value);
         lastHeartbeat = Date.now();

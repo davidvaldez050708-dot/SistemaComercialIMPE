@@ -3,7 +3,8 @@ const {spawnSync}=require('node:child_process');
 const path=require('node:path');
 const tests=['test_common_capture.cjs','test_capture_alias_merge.cjs','test_draft_sync.cjs',
  'test_shell_draft_pulse.cjs','test_analyst_draft_restore.cjs','test_reception_pending.cjs',
- 'test_sales_pending.cjs','test_hangup_isolation.cjs','test_dial_isolation.cjs','test_host_outgoing_journal.cjs'];
+ 'test_sales_pending.cjs','test_hangup_isolation.cjs','test_dial_isolation.cjs','test_host_outgoing_journal.cjs',
+ 'test_attention_observer.cjs','test_sales_capture_identity.cjs'];
 let failures=0;
 for(const name of tests){
  const result=spawnSync(process.execPath,[path.join(__dirname,'tests',name)],{stdio:'inherit',timeout:15000});

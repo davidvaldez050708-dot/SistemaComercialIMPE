@@ -20,6 +20,9 @@ contra un laboratorio sintético. No deben ejecutarse en producción.
   antiguo; los formularios conservan la captura si falta evidencia.
 - La unión local de alias conserva los campos aportados por ambos formularios,
   detecta conflictos de revisión y conserva los recibos de aplicación.
+- El shell conserva el cierre de la atención mediante la misma función para los
+  tres perfiles. Recepción delega en ella. Los grupos de alias explícitos se
+  conservan al editar o cerrar mediante una sola referencia.
 - Recepción conserva varias llamadas pendientes de PBX en el almacén común.
   Ventas no descarta avisos por superar siete días o cuarenta llamadas.
 - Analista restaura las confirmaciones sólo después de consultar las reglas
@@ -48,7 +51,7 @@ Las pruebas unitarias portables se ejecutan con Node.js, sin dependencias:
 node tools/telefonia_universal_20261126/run_unit.cjs
 ```
 
-Cubren diez suites de capturas, alias, ACK, sincronización, restauración,
+Cubren doce suites de capturas, alias, ACK, sincronización, restauración,
 pendientes, carreras al marcar/colgar y registro saliente del host.
 No abren conexiones ni llamadas.
 El laboratorio HTTP/SQL y las pruebas de navegador se mantienen separados.

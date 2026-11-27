@@ -29,8 +29,19 @@
         return latest;
     };
     const fresh=d=>d && !d.closed && Number.isFinite(Number(d.saved_at)) && Number(d.saved_at)>0;
+    const expandRefs=(user,ids)=>{
+        let selected=refs(ids);const pending=[...selected],visited=new Set();
+        while(pending.length){
+            const id=pending.shift();if(visited.has(id))continue;visited.add(id);
+            const saved=localRead(user,id);
+            if(!fresh(saved)||!Array.isArray(saved.ids))continue;
+            selected=refs([...saved.ids,...selected]);
+            pending.push(...saved.ids.filter(ref=>!visited.has(ref)));
+        }
+        return selected;
+    };
     const localSave=(user,ids,values,contexto)=>{
-        own(user);ids=refs(ids);
+        own(user);ids=expandRefs(user,ids);
         if(!ids.length)throw new Error('La captura necesita una referencia exacta de llamada.');
         const snapshots=ids.map(id=>localRead(user,id)).filter(fresh).sort((a,b)=>a.saved_at-b.saved_at);
         const latest=snapshots[snapshots.length-1],previous=Number(latest?.saved_at||0);
@@ -121,8 +132,37 @@
         }
         return [...found.values()];
     };
+    const attentionStates=new Map();
+    const observeAttention=(user,state,adapter,legacyValues={})=>{
+        own(user);
+        if(!state||Number(state.userId)!==Number(user)||!['VENTAS','ANALISTA','RECEPCION','SEGUIMIENTO'].includes(adapter))return null;
+        const identity=Number(user)+'|'+adapter;
+        const pbx=String(state.pbxCallId||state.finalMetadata?.pbx_call_id||state.context?.transferReference||'');
+        if(state.pbxCallId&&state.finalMetadata?.pbx_call_id&&state.pbxCallId!==state.finalMetadata.pbx_call_id)return null;
+        const ids=refs([pbx,state.context?.sdkSessionId||state.callToken].filter(Boolean));
+        const keys=refs([...ids,state.callToken].filter(Boolean));
+        const previous=attentionStates.get(identity);
+        if(!state.active&&previous?.active&&!previous.keys.some(id=>keys.includes(id)))return null;
+        const snapshot={active:Boolean(state.active),ids,keys,
+            transferStage:String(state.context?.transferRequest?.stage||'')};
+        attentionStates.set(identity,snapshot);
+        if(state.active||!ids.length||!['finished','incoming-finished'].includes(state.phase))return null;
+        const ended=Boolean(previous?.active&&previous.keys.some(id=>keys.includes(id)));
+        const existing=ids.map(id=>localRead(user,id)).filter(fresh).sort((a,b)=>b.saved_at-a.saved_at)[0];
+        // Una pantalla recién cargada no inventa un cierre que no observó.
+        // Los cierres ya capturados sí admiten agregar su referencia PBX tardía.
+        if(!ended&&!existing?.contexto?.cierre_local)return null;
+        if(existing?.pending_close)return null;
+        const stage=snapshot.transferStage||previous?.transferStage||'';
+        const prior=existing?.contexto?.cierre_local;
+        const local=prior||{at:Date.now(),transferencia:Boolean(state.status==='transferred'||
+            ['ENVIADA','ENTREGADA','ENTREGANDO','SIN_CONFIRMAR','SIN_RESPUESTA'].includes(stage)),conciliado:false};
+        const values=Object.keys(existing?.valores||{}).length?{}:legacyValues;
+        const draft=localSave(user,ids,values,{adaptador:existing?.contexto?.adaptador||adapter,cierre_local:local});
+        return {ended,draft};
+    };
     window.IMPE_CALL_DRAFTS={
-        refs,localSave,localRead,formValues,
+        refs,localSave,localRead,formValues,observeAttention,
         unificarContacto(form) {
             const persona=form?.elements.namedItem('persona_atendio'),contacto=form?.elements.namedItem('nuevo_contacto_nombre');
             if(!persona||!contacto)return;
@@ -200,7 +240,7 @@
                     if(res.ok&&data.ok&&fresh(data.borrador)){
                         found.push(data.borrador);
                         if(Number(data.borrador.saved_at)>Number(localRead(user,id)?.saved_at||0))try{
-                            localStorage.setItem(key(user,id),JSON.stringify({...data.borrador,ids:[id],call_id:id,pending_sync:false}));
+                            localStorage.setItem(key(user,id),JSON.stringify({...data.borrador,ids:expandRefs(user,[id]),call_id:id,pending_sync:false}));
                         }catch(_){}
                     }
                 } catch (_) {}
@@ -267,7 +307,7 @@
             return {values,revision:draft.saved_at,ids:draft.ids,release(){for(const[el,disabled]of controls)el.disabled=disabled;}};
         },
         async remove(user,ids,csrf,revision) {
-            own(user);ids=refs(ids);
+            own(user);ids=expandRefs(user,ids);
             const previous=new Map(ids.map(id=>[id,localRead(user,id)?.saved_at]));
             const expected=revision??(Math.max(0,...[...previous.values()].map(value=>Number(value||0)))||null);
             if(expected!==null)markClosePending(user,ids,expected);

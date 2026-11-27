@@ -90,16 +90,25 @@
  const draftKey=ref=>'impe:sales-result-draft:'+Number(window.IMPE_CURRENT_USER_ID)+':'+(ref||'session:'+openContext.sessionKey);
  const captureRefs=new Set();let draftTimer=null;
  const captureIds=(ref=callRef)=>{
-  const id=ref||'sdk-'+String(openContext.sessionKey||'').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,80);
-  if(/^[A-Za-z0-9_-]{6,100}$/.test(id))captureRefs.add(id);
+  const key=String(openContext.sessionKey||'');
+  const sdk=/^sdk-[a-z0-9-]{12,94}$/.test(key)?key:!ref?'sdk-'+key.replace(/[^A-Za-z0-9_-]/g,'_').slice(0,80):'';
+  for(const id of [sdk,ref])if(/^[A-Za-z0-9_-]{6,100}$/.test(id))captureRefs.add(id);
   return window.IMPE_CALL_DRAFTS.refs([...captureRefs]);
  };
  // Compatibilidad de lectura con borradores anteriores, sin conservar otro escritor.
  const readDraft=ref=>{
   const uid=Number(window.IMPE_CURRENT_USER_ID),drafts=window.IMPE_CALL_DRAFTS;
-  const common=captureIds(ref).map(id=>drafts.localRead(uid,id)).filter(Boolean).sort((a,b)=>b.saved_at-a.saved_at)[0];
+  const previous='sdk-'+String(openContext.sessionKey||'').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,80);
+  if(openContext.sessionKey?.startsWith('sdk-')&&drafts.localRead(uid,previous))captureRefs.add(previous);
+  const common=captureIds(ref).map(id=>drafts.localRead(uid,id)).filter(d=>d&&!d.closed)
+   .map(d=>({at:Number(d.saved_at)||0,values:d.valores||{}}));
   let legacy=null;try{legacy=JSON.parse(sessionStorage.getItem(draftKey(ref))||'null');}catch(_){}
-  return common&&(!legacy||common.saved_at>=legacy.at)?{at:common.saved_at,values:common.valores}:legacy;
+  if(legacy)common.push(legacy);
+  common.sort((a,b)=>a.at-b.at);
+  if(!common.length)return null;
+  // El aviso vacío de cierre puede ser más reciente que un formulario anterior.
+  // Fusionar campos presentes; un vacío explícito posterior sí prevalece.
+  return {...common[common.length-1],values:Object.assign({},...common.map(d=>d.values||{}))};
  };
  const storeDraft=()=>{
   if((!callRef&&!openContext.sessionKey)||call?.registro)return;

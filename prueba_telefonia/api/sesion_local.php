@@ -22,6 +22,8 @@ function presentarSesionLocal(array $row):array
     foreach(['fecha_inicio','fecha_atendida','fecha_fin'] as $field){
         if(!empty($data[$field]))$data[$field]=str_replace(' ','T',$data[$field]).'Z';
     }
+    $data['interna']=($row['clasificacion']??'')==='INTERNA';
+    $data['resultado_registrado']=in_array($row['clasificacion']??'',['VINCULADA','SIN_IDENTIFICAR'],true);
     return $data+['fuente'=>'OBSERVACION_SDK','zona_horaria'=>'UTC'];
 }
 $user=(int)($_SESSION['usuario_id']??0);

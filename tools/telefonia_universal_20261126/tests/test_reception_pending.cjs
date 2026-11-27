@@ -18,8 +18,8 @@ function boot(persistent=storage()){
  let checks=0;
  const f=boot();await turn();
  for(const id of ['sdk-fixture-first-call','sdk-fixture-second-call']){
-  f.close.onState({active:true,phase:'in-progress',direction:'incoming',callToken:id,context:{}});
-  f.close.onState({active:false,phase:'incoming-finished',direction:'incoming',callToken:id,context:{}});
+  f.close.onState({userId:43,active:true,phase:'in-progress',direction:'incoming',callToken:id,context:{}});
+  f.close.onState({userId:43,active:false,phase:'incoming-finished',direction:'incoming',callToken:id,context:{}});
  }
  await turn();let captures=f.drafts.list(43);
  assert.equal(captures.length,2);assert.equal(captures.every(d=>d.contexto.cierre_local.conciliado===false),true);checks+=2;
@@ -38,8 +38,8 @@ function boot(persistent=storage()){
  assert.equal(legacy.drafts.list(43)[0].valores.nota,'Preserve legacy note');assert.equal(JSON.parse(legacyStore.getItem('impe:call-closure:43:100')).waiting,undefined);checks+=2;
  // An empty notice is closed only after the exact authenticated row says no
  // result is needed. Its close retry uses the same durable capture mechanism.
- const empty=boot();await turn();empty.close.onState({active:true,phase:'in-progress',callToken:'fixture-empty-call',context:{}});
- empty.close.onState({active:false,phase:'incoming-finished',callToken:'fixture-empty-call',context:{}});await turn();
+ const empty=boot();await turn();empty.close.onState({userId:43,active:true,phase:'in-progress',callToken:'fixture-empty-call',context:{}});
+ empty.close.onState({userId:43,active:false,phase:'incoming-finished',callToken:'fixture-empty-call',context:{}});await turn();
  empty.rows([{id:'fixture-empty-call',aliases:[],finalizada:true,requiere_resultado:false,fin_ts:empty.now()}]);empty.close.showPending();await turn();
  assert.equal(empty.drafts.list(43).length,0);checks++;
  console.log(`PASS ${checks} Reception pending-capture assertions with actual common storage and closure adapter: consecutive unresolved calls retained, exact alias resolution, no phone matching, reload/legacy migration and empty-notice cleanup. No SDK/SQL/provider calls.`);

@@ -76,7 +76,7 @@
  // Los pendientes se notifican desde la campana y los toasts compartidos del CRM.
  const announced=new Set(),retired=new Set(),autoOpened=new Set(),dismissedAuto=new Set();
  let pendingAuto=null;
- const sessionKey=state=>String(state?.callToken||state?.context?.sdkSessionId||reference(state)||'');
+ const sessionKey=state=>String(state?.context?.sdkSessionId||state?.callToken||reference(state)||'');
  const preparedForm=()=>{try{const api=crm?.contentWindow?.IMPE_SALES_RESULT_FORM;return Number(api?.userId)===Number(cfg.userId)?api:null;}catch(_){return null;}};
  const openPrepared=context=>{
   if(!context||phone.getPhoneStatus().active||dismissedAuto.has(context.sessionKey))return false;
