@@ -36,7 +36,7 @@ Valida fuentes/manifiesto, personalizaciones ajenas, LF/CRLF, idempotencia, auto
 
 | Área | Validación | Resultado esperado |
 |---|---|---|
-| Administración | Admin con permiso; Dirección/KAM y acceso directo sin permiso | Sólo el administrador autorizado consulta o modifica el módulo |
+| Administración | Admin con permiso; Dirección/KAM y acceso directo sin permiso | Sólo las cuentas con los permisos explícitos correspondientes consultan, gestionan o ven la bitácora; inicialmente sólo el administrador |
 | Selección | Buscar, filtrar, seleccionar varias personas, volver del resumen, cancelar | Conserva selección; cancelar/previsualizar no escribe |
 | Confirmación | Dos administradores abren la misma revisión; uno guarda primero | El segundo recibe conflicto y debe revisar; no sobrescribe |
 | Idempotencia | Respuesta de guardado perdida, repetir la misma confirmación | Un movimiento, sin duplicar bitácora |
@@ -55,3 +55,5 @@ Valida fuentes/manifiesto, personalizaciones ajenas, LF/CRLF, idempotencia, auto
 | Interfaz | Escritorio/móvil, carga fallida, sesión expirada, CSRF, error validación y éxito | Estilo institucional, controles coherentes y toasts con cierre automático |
 
 Esta matriz en staging con la versión personalizada completa, los datos reales auditados y los enlaces de audio autorizados queda pendiente. Las pruebas locales no acreditan funcionamiento de llamadas reales, permisos efectivos del alojamiento, exportación PDF completa ni convivencia con cambios de telefonía que se publiquen posteriormente.
+
+La prueba de base incluye `supervision_personal_roles.php`: Ver no permite guardar ni consultar bitácora; Bitácora no concede Gestión; la delegación explícita funciona; revocar Ver bloquea la siguiente petición y la repetición del instalador no repone concesiones revocadas. La migración CLI continúa reservada al administrador.

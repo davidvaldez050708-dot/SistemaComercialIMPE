@@ -550,6 +550,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'roles.cambiar_estado': 'roles.ver',
             'roles.asignar_permisos': 'roles.ver',
             'territorios.asignar': 'territorios.ver',
+            'personal.supervision.gestionar': 'personal.supervision.ver',
+            'personal.supervision.bitacora': 'personal.supervision.ver',
             'data_territorial.editar': 'data_territorial.ver',
             'data_territorial.actualizar_oficial': 'data_territorial.ver',
             'data_territorial.gestionar_secretarias': 'data_territorial.ver',

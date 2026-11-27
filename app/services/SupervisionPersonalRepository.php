@@ -5,6 +5,8 @@ declare(strict_types=1);
 final class SupervisionPersonalRepository
 {
     public const PERMISO='personal.supervision.gestionar';
+    public const VER='personal.supervision.ver';
+    public const BITACORA='personal.supervision.bitacora';
     public function __construct(private mysqli $db) {}
     private function rows(string $sql,array $args=[]): array
     {
@@ -17,12 +19,20 @@ final class SupervisionPersonalRepository
         $s=$this->db->prepare($sql);
         try {if($args)$s->bind_param(str_repeat('s',count($args)),...$args);$s->execute();}finally{$s->close();}
     }
-    public function autorizar(int $actor): void
+    public function permitido(int $actor,string $codigo): bool
     {
-        if(!$this->rows("SELECT u.id FROM usuarios u JOIN roles r ON r.id=u.rol_id AND r.estado=1
+        return (bool)$this->rows("SELECT u.id FROM usuarios u JOIN roles r ON r.id=u.rol_id AND r.estado=1
             JOIN rol_permisos rp ON rp.rol_id=r.id JOIN permisos p ON p.id=rp.permiso_id AND p.estado=1
-            WHERE u.id=? AND u.estado=1 AND u.rol_id=1 AND p.codigo=?",[$actor,self::PERMISO]))
-            throw new DomainException('No tienes permiso para administrar la supervisión de personal.',403);
+            WHERE u.id=? AND u.estado=1 AND p.codigo=?",[$actor,$codigo]);
+    }
+    public function autorizar(int $actor,string $codigo=self::PERMISO): void
+    {
+        if(!$this->permitido($actor,$codigo))throw new DomainException('No tienes permiso para esta acción de supervisión de personal.',403);
+    }
+    public function autorizarAdministrador(int $actor): void
+    {
+        $this->autorizar($actor);
+        if(!$this->rows('SELECT id FROM usuarios WHERE id=? AND rol_id=1 AND estado=1',[$actor]))throw new DomainException('La migración requiere un administrador activo.',403);
     }
     public function estado(): array
     {
@@ -32,18 +42,18 @@ final class SupervisionPersonalRepository
     }
     public function catalogo(int $actor): array
     {
-        $this->autorizar($actor);
+        $this->autorizar($actor,self::VER);
         $kams=$this->rows("SELECT u.id,u.nombre,u.apellidos,u.foto_perfil,
             COUNT(DISTINCT sp.colaborador_id) colaboradores
             FROM usuarios u JOIN roles r ON r.id=u.rol_id AND r.estado=1
             LEFT JOIN supervision_personal sp ON sp.kam_id=u.id AND sp.activo=1
             WHERE u.rol_id=6 AND u.estado=1 GROUP BY u.id,u.nombre,u.apellidos,u.foto_perfil
             ORDER BY u.nombre,u.apellidos,u.id");
-        return ['cuentas_clave'=>$kams,'estado'=>$this->estado()];
+        return ['cuentas_clave'=>$kams,'estado'=>$this->estado(),'permisos'=>['gestionar'=>$this->permitido($actor,self::PERMISO),'bitacora'=>$this->permitido($actor,self::BITACORA)]];
     }
     public function detalle(int $actor,int $kam): array
     {
-        $this->autorizar($actor);$this->kam($kam);
+        $this->autorizar($actor,self::VER);$this->kam($kam);
         $staff=$this->rows("SELECT u.id,u.nombre,u.apellidos,u.foto_perfil,u.rol_id,u.estado activo,
             EXISTS(SELECT 1 FROM supervision_personal sp WHERE sp.kam_id=? AND sp.colaborador_id=u.id AND sp.activo=1) seleccionado
             FROM usuarios u JOIN roles r ON r.id=u.rol_id AND r.estado=1
@@ -59,7 +69,7 @@ final class SupervisionPersonalRepository
             '' apellidos,'' foto_perfil,0 rol_id,0 activo,1 seleccionado,1 requiere_revision
             FROM supervision_personal sp LEFT JOIN usuarios u ON u.id=sp.colaborador_id
             WHERE sp.kam_id=? AND sp.activo=1 AND u.id IS NULL",[$kam]);
-        return ['colaboradores'=>array_merge($staff,$noElegibles,$noDisponibles),'estado'=>$this->estado()];
+        return ['colaboradores'=>array_merge($staff,$noElegibles,$noDisponibles),'estado'=>$this->estado(),'puede_gestionar'=>$this->permitido($actor,self::PERMISO)];
     }
     private function kam(int $id): void
     {
@@ -81,7 +91,7 @@ final class SupervisionPersonalRepository
     }
     private function plan(int $actor,int $kam,array $ids,int $revision,string $secreto): array
     {
-        $this->autorizar($actor);$this->kam($kam);$ids=self::normalizar($ids);$previos=$this->actuales($kam);
+        $this->autorizar($actor,self::VER);$this->autorizar($actor);$this->kam($kam);$ids=self::normalizar($ids);$previos=$this->actuales($kam);
         $agregar=array_values(array_diff($ids,$previos));$retirar=array_values(array_diff($previos,$ids));
         if($agregar){
             $marks=implode(',',array_fill(0,count($agregar),'?'));
@@ -97,19 +107,19 @@ final class SupervisionPersonalRepository
     }
     public function previsualizar(int $actor,int $kam,$seleccion,int $revision,string $secreto): array
     {
-        $ids=self::normalizar($seleccion);$this->autorizar($actor);
+        $ids=self::normalizar($seleccion);$this->autorizar($actor,self::VER);$this->autorizar($actor);
         if(!$this->estado()['activo'])throw new DomainException('La supervisión está preparada, pendiente de activación autorizada.');
         if($revision!==$this->estado()['revision'])throw new DomainException('Las asignaciones cambiaron. Actualiza antes de continuar.');
         return $this->plan($actor,$kam,$ids,$revision,$secreto);
     }
     public function guardar(int $actor,int $kam,$seleccion,int $revision,string $token,string $secreto): array
     {
-        $ids=self::normalizar($seleccion);$this->autorizar($actor);
+        $ids=self::normalizar($seleccion);$this->autorizar($actor,self::VER);$this->autorizar($actor);
         if(!preg_match('/^[a-f0-9]{64}$/D',$token))throw new InvalidArgumentException('Revisa y confirma los cambios antes de guardar.');
         $this->db->begin_transaction();
         try {
             $state=$this->rows('SELECT revision,activo FROM supervision_personal_estado WHERE id=1 FOR UPDATE');
-            $this->autorizar($actor);
+            $this->autorizar($actor,self::VER);$this->autorizar($actor);
             $prev=$this->rows('SELECT id FROM supervision_personal_bitacora WHERE solicitud_id=? AND responsable_id=? AND kam_id=?',[$token,$actor,$kam]);
             if($prev){$this->db->commit();return ['revision'=>(int)$state[0]['revision'],'idempotente'=>true];}
             if(!$state || !(int)$state[0]['activo'])throw new DomainException('La supervisión no está activa. No se guardaron cambios.');
@@ -128,7 +138,7 @@ final class SupervisionPersonalRepository
     }
     public function bitacora(int $actor,int $kam,int $pagina=1): array
     {
-        $this->autorizar($actor);if($kam>0)$this->kam($kam);$pagina=max(1,min(100000,$pagina));$offset=($pagina-1)*30;
+        $this->autorizar($actor,self::VER);$this->autorizar($actor,self::BITACORA);if($kam>0)$this->kam($kam);$pagina=max(1,min(100000,$pagina));$offset=($pagina-1)*30;
         return $this->rows("SELECT b.id,b.tipo,b.creado_at,b.agregados_json,b.retirados_json,b.responsable_id,
             b.responsable_nombre responsable,b.kam_nombre,b.nombres_json
             FROM supervision_personal_bitacora b ".($kam>0?'WHERE b.kam_id=?':'')." ORDER BY b.id DESC LIMIT 30 OFFSET $offset",$kam>0?[$kam]:[]);

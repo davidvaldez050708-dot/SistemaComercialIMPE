@@ -14,12 +14,13 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--site', required=True)
     p.add_argument('--private-root', required=True)
+    p.add_argument('--paquete', choices=['supervision_personal_release.json','supervision_personal_ajustes_release.json'], default='supervision_personal_release.json')
     args = p.parse_args()
     site, private = Path(args.site).resolve(), Path(args.private_root).resolve()
     if not (site / 'index.php').is_file() or not private.is_dir() or site == private or site in private.parents:
         raise RuntimeError('El ensayo requiere una carpeta privada existente fuera del sitio.')
     here = Path(__file__).resolve().parent
-    release = here / 'supervision_personal_release.json'
+    release = here / args.paquete
     spec = json.loads(release.read_text(encoding='utf-8'))
     # Comprobar todo antes de crear la copia. No se incluyen config, datos o credenciales.
     plan = []
@@ -41,9 +42,11 @@ def main():
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(old)
     config = copy / 'config'
+    if not (copy / 'index.php').exists():
+        (copy / 'index.php').write_bytes(b'<?php http_response_code(404);exit;\n')
     config.mkdir(mode=0o700)
     (config / 'db_connection.php').write_bytes(b"<?php throw new RuntimeException('Copia privada sin conexion MySQL; no ejecutar la aplicacion.');\n")
-    cmd = [sys.executable, str(here / 'publicar_supervision_personal.py'), '--site', str(copy), '--backup-root', str(work / 'respaldo')]
+    cmd = [sys.executable, str(here / 'publicar_supervision_personal.py'), '--paquete', args.paquete, '--site', str(copy), '--backup-root', str(work / 'respaldo')]
     subprocess.run(cmd + ['--check'], check=True)
     subprocess.run(cmd + ['--apply', '--autorizar-publicacion'], check=True)
     subprocess.run(cmd + ['--check'], check=True)

@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 loader = importlib.util.spec_from_file_location('sp_publisher', ROOT / 'tools/publicar_supervision_personal.py')
 publisher = importlib.util.module_from_spec(loader)
 loader.loader.exec_module(publisher)
-SPEC = json.loads((ROOT / 'tools/supervision_personal_release.json').read_text(encoding='utf-8'))
+MANIFEST = os.environ.get('SP_RELEASE_MANIFEST','supervision_personal_release.json')
+SPEC = json.loads((ROOT / 'tools' / MANIFEST).read_text(encoding='utf-8'))
 BASE = Path(os.environ.get('SP_BASELINE_DIR', ROOT / 'tmp/hostinger-base'))
 
 
@@ -23,9 +24,10 @@ class ReleaseTest(unittest.TestCase):
             for row in SPEC['files']:
                 if not row['new_file']:
                     p=site/row['path'];p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes((BASE/row['path']).read_bytes())
+            if not (site/'index.php').exists():(site/'index.php').write_text('<?php // Sitio ficticio',encoding='utf-8')
             (site/'config').mkdir();(site/'config/db_connection.php').write_text('<?php // CREDENCIAL_FICTICIA_NO_COPIAR',encoding='utf-8')
             before={str(p.relative_to(site)):p.read_bytes() for p in site.rglob('*') if p.is_file()}
-            result=subprocess.run([sys.executable,str(ROOT/'tools/supervision_personal_ensayo.py'),'--site',str(site),'--private-root',str(private)],capture_output=True,text=True)
+            result=subprocess.run([sys.executable,str(ROOT/'tools/supervision_personal_ensayo.py'),'--site',str(site),'--private-root',str(private),'--paquete',MANIFEST],capture_output=True,text=True)
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
             self.assertEqual(before,{str(p.relative_to(site)):p.read_bytes() for p in site.rglob('*') if p.is_file()})
             report=json.loads(next(private.glob('supervision-ensayo-*/resultado.json')).read_text(encoding='utf-8'))
@@ -65,7 +67,8 @@ class ReleaseTest(unittest.TestCase):
                     p = site / row['path']
                     p.parent.mkdir(parents=True, exist_ok=True)
                     p.write_bytes((BASE / row['path']).read_bytes())
-            command = [sys.executable, str(ROOT / 'tools/publicar_supervision_personal.py'), '--site', str(site), '--backup-root', str(root / 'privado')]
+            if not (site/'index.php').exists():(site/'index.php').write_text('<?php // Sitio ficticio',encoding='utf-8')
+            command = [sys.executable, str(ROOT / 'tools/publicar_supervision_personal.py'), '--site', str(site), '--backup-root', str(root / 'privado'),'--paquete',MANIFEST]
             run = lambda *args: subprocess.run(command + list(args), capture_output=True, text=True)
             self.assertEqual(run('--check').returncode, 0)
             self.assertNotEqual(run('--apply').returncode, 0, 'Publicar exige autorización explícita')

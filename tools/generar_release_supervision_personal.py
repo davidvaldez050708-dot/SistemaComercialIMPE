@@ -10,6 +10,7 @@ from pathlib import Path
 # Dependencias primero; navegación al final. Estos archivos ya existen en Hostinger,
 # aunque algunos aún no estaban en origin/main al iniciar esta rama.
 EXISTENTES = (
+    'app/views/roles/index.php',
     'app/helpers/SupervisionRolePolicy.php',
     'app/services/SupervisionLlamadasRepository.php',
     'app/services/VentasActividadRepository.php',
@@ -24,6 +25,7 @@ EXISTENTES = (
 )
 NUEVOS = (
     'app/services/SupervisionPersonalAcceso.php',
+    'app/services/SupervisionPersonalPermisos.php',
     'app/services/SupervisionPersonalRepository.php',
     'app/services/SupervisionPersonalAuditoria.php',
     'app/services/SupervisionPersonalMigracion.php',
@@ -33,6 +35,7 @@ NUEVOS = (
     'public/css/supervision_personal.css',
     'public/javascript/supervision_personal.js',
     'tools/supervision_personal_migrar.php',
+    'tools/supervision_personal_permisos.php',
 )
 
 

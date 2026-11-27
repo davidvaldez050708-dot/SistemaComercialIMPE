@@ -5,12 +5,15 @@ $esc=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8
 <link rel="stylesheet" href="<?= BASE_URL ?>public/css/supervision_personal.css?v=<?= filemtime(ROOT_PATH.'/public/css/supervision_personal.css') ?>">
 <section class="dashboard-panel personal-supervision" data-personal-supervision
     data-endpoint="<?= $esc(BASE_URL.'index.php?controller=supervisionPersonal') ?>"
+    data-can-manage="<?= !empty($datos['permisos']['gestionar'])?'1':'0' ?>"
     data-csrf="<?= $esc($_SESSION['csrf_token']??'') ?>">
  <header class="personal-heading"><div><span class="personal-eyebrow">GESTIÓN</span><h2>Supervisión de personal</h2>
  <p>Asigna los analistas y asesores que puede supervisar cada Cuenta Clave.</p></div>
- <button class="btn btn-system-cancel" type="button" data-personal-history><i class="bi bi-clock-history" aria-hidden="true"></i> Bitácora</button></header>
- <?php if(!$datos['estado']['activo']): ?><div class="alert alert-light border small" role="status"><i class="bi bi-info-circle" aria-hidden="true"></i> Preparación disponible en modo consulta. La nueva supervisión requiere activación autorizada.</div><?php endif; ?>
- <div class="personal-toolbar"><label for="personalKamSearch">Buscar Cuenta Clave</label><div class="input-group"><span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span><input type="search" class="form-control" id="personalKamSearch" placeholder="Nombre de Cuenta Clave" autocomplete="off" data-personal-kam-search></div></div>
+ <button class="btn btn-system-cancel<?= empty($datos['permisos']['bitacora'])?' d-none':'' ?>" type="button" data-personal-history><i class="bi bi-clock-history" aria-hidden="true"></i> Bitácora</button></header>
+ <?php if(!$datos['estado']['activo']): ?>
+ <div class="personal-status" role="status"><span class="personal-status-icon"><i class="bi bi-info-circle" aria-hidden="true"></i></span><div><strong>Supervisión en modo consulta</strong><p>Puedes revisar los equipos actuales. Los cambios se habilitarán al activar la supervisión de personal.</p></div><span class="personal-status-badge">Pendiente de activación</span></div>
+ <?php elseif(empty($datos['permisos']['gestionar'])): ?><div class="personal-status" role="status"><span class="personal-status-icon"><i class="bi bi-eye" aria-hidden="true"></i></span><div><strong>Acceso de consulta</strong><p>Tu permiso permite revisar los equipos de supervisión.</p></div></div><?php endif; ?>
+ <div class="personal-toolbar"><label for="personalKamSearch">Buscar Cuenta Clave</label><div class="personal-search-control"><i class="bi bi-search" aria-hidden="true"></i><input type="search" id="personalKamSearch" placeholder="Buscar por nombre o apellido…" autocomplete="off" data-personal-kam-search></div></div>
  <div class="personal-kam-grid" data-personal-cards>
  <?php foreach($datos['cuentas_clave'] as $kam): $nombre=trim($kam['nombre'].' '.$kam['apellidos']); ?>
  <button class="personal-kam-card" type="button" data-kam-card="<?= (int)$kam['id'] ?>" data-kam-name="<?= $esc($nombre) ?>" aria-label="Administrar supervisión de <?= $esc($nombre) ?>">
@@ -45,6 +48,6 @@ $esc=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8
 </div>
 <div class="modal fade" id="modalBitacoraSupervision" tabindex="-1" aria-labelledby="tituloBitacoraSupervision" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content system-form-modal">
  <div class="modal-header system-form-modal-header"><div><h5 id="tituloBitacoraSupervision" class="system-form-modal-title">Bitácora de supervisión</h5><p class="system-form-modal-subtitle">Responsable, fecha y cambios realizados.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
- <div class="modal-body system-form-modal-body" data-personal-history-list></div><div class="modal-footer system-form-modal-footer"><span class="small me-auto" data-personal-history-page>Página 1</span><button type="button" class="btn btn-system-cancel" data-personal-history-prev>Anterior</button><button type="button" class="btn btn-system-cancel" data-personal-history-next>Siguiente</button></div>
+ <div class="modal-body system-form-modal-body" data-personal-history-list></div><div class="modal-footer system-form-modal-footer"><span class="personal-history-pagination"><i class="bi bi-journal-text" aria-hidden="true"></i><span data-personal-history-page>Página 1</span></span><button type="button" class="btn btn-system-cancel" data-personal-history-prev><i class="bi bi-chevron-left" aria-hidden="true"></i> Anterior</button><button type="button" class="btn btn-system-cancel" data-personal-history-next>Siguiente <i class="bi bi-chevron-right" aria-hidden="true"></i></button></div>
 </div></div></div>
 <script src="<?= BASE_URL ?>public/javascript/supervision_personal.js?v=<?= filemtime(ROOT_PATH.'/public/javascript/supervision_personal.js') ?>"></script>

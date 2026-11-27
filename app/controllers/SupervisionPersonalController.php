@@ -19,7 +19,7 @@ class SupervisionPersonalController
         if(!isset($metodos[$accion])){$this->json(['ok'=>false,'mensaje'=>'Acción no disponible.'],404);return;}
         if(($_SERVER['REQUEST_METHOD']??'GET')!==$metodos[$accion]){header('Allow: '.$metodos[$accion]);$this->json(['ok'=>false,'mensaje'=>'Método no permitido.'],405);return;}
         try {
-            $repo=new SupervisionPersonalRepository($this->conexion());$repo->autorizar($actor);
+            $repo=new SupervisionPersonalRepository($this->conexion());$repo->autorizar($actor,SupervisionPersonalRepository::VER);
             if($metodos[$accion]==='POST'){
                 $token=$_SERVER['HTTP_X_CSRF_TOKEN']??$_POST['csrf_token']??'';
                 if(!is_string($token)||empty($_SESSION['csrf_token'])||!hash_equals((string)$_SESSION['csrf_token'],$token)){

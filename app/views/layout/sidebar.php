@@ -11,7 +11,7 @@ $opcionActiva = $opcionActiva ?? 'inicio';
 $mostrarUsuarios = tienePermiso('usuarios.ver');
 $mostrarRoles = tienePermiso('roles.ver');
 $mostrarTerritorios = tienePermiso('territorios.ver');
-$mostrarSupervisionPersonal = (int)($_SESSION['rol_id']??0)===1 && tienePermiso('personal.supervision.gestionar');
+$mostrarSupervisionPersonal = tienePermiso('personal.supervision.ver');
 $mostrarTelefoniaConfiguracion =
     (int)($_SESSION['rol_id'] ?? 0) === 1
     && tienePermiso('telefonia.configurar');

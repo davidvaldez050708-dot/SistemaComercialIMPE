@@ -47,6 +47,7 @@ try{
  $otrasDecisiones=$decisions;$otrasDecisiones[array_key_first($otrasDecisiones)]['motivo']='Decisión diferente que necesita una aprobación nueva.';
  rejected(fn()=>$migration->activar(1,$plan,$otrasDecisiones,$hashRevision),'La aprobación debe incluir las decisiones exactas.');
  $migration->activar(1,$plan,$decisions,$hashRevision);
+ require __DIR__.'/supervision_personal_roles.php';
  $equipo=team($db,10,4);sort($equipo);check($equipo===[22,24],'Importar equipo legítimo e históricos inactivos.');
  check(team($db,10,3)===[],'Compartir territorio no concede asesores.');check(team($db,11,3)===[20],'Conservar equipo de Sarahi.');
  $secret=str_repeat('test-secret-',4);$revision=$repo->estado()['revision'];

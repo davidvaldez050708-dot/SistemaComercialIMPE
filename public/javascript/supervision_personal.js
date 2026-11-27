@@ -26,7 +26,7 @@
    if(!response.ok||!data.ok)throw Error(data.mensaje||'No fue posible completar la solicitud.');return data.datos;
   }catch(e){if(e.name==='AbortError')throw Error('No se recibió la confirmación. Conservamos la selección; puedes reintentar sin duplicar los cambios.');throw e}finally{clearTimeout(timer)}
  }
- function controls(){el('preview').disabled=busy||!active;el('select-visible').disabled=busy||!active;el('save').disabled=busy;el('back').disabled=busy;el('cancel').disabled=busy;modalEl.querySelector('[data-bs-dismiss]').disabled=busy;for(const input of modalEl.querySelectorAll('input,select'))input.disabled=busy||!active;}
+ function controls(){el('preview').disabled=busy||!active;el('select-visible').disabled=busy||!active;el('save').disabled=busy;el('back').disabled=busy;el('cancel').disabled=busy;modalEl.querySelector('[data-bs-dismiss]').disabled=busy;for(const input of modalEl.querySelectorAll('input,select'))input.disabled=busy||(!active&&input.type==='checkbox');}
  function rows(){
   const search=clean(el('search').value),role=el('role').value,filter=el('filter').value;
   return staff.filter(p=>(!search||clean(name(p)).includes(search))&&(!role||String(p.rol_id)===role)&&(!filter||(filter==='selected'?selected.has(Number(p.id)):!selected.has(Number(p.id)))));
@@ -47,7 +47,7 @@
   if(busy)return;const cycle=++sequence;kam=Number(card.dataset.kamCard);selected.clear();staff=[];plan=null;active=false;
   el('kam-label').textContent=card.dataset.kamName;show(el('loading'),true);show(el('editor'),false);show(el('review'),false);show(el('load-error'),false);show(el('preview'),true);show(el('save'),false);show(el('back'),false);
   busy=true;controls();modal.show();el('search').value='';el('role').value='';el('filter').value='';
-  try{const data=await request('detalle',null,{kam_id:kam});if(cycle!==sequence)return;staff=data.colaboradores;revision=Number(data.estado.revision);active=!!data.estado.activo;selected=new Set(staff.filter(p=>Number(p.seleccionado)).map(p=>Number(p.id)));show(el('editor'),true);render();}
+  try{const data=await request('detalle',null,{kam_id:kam});if(cycle!==sequence)return;staff=data.colaboradores;revision=Number(data.estado.revision);active=!!data.estado.activo&&!!data.puede_gestionar;selected=new Set(staff.filter(p=>Number(p.seleccionado)).map(p=>Number(p.id)));show(el('editor'),true);render();}
   catch(e){if(cycle===sequence){show(el('load-error'),true);notify(e.message,true)}}finally{if(cycle===sequence){busy=false;show(el('loading'),false);controls()}}
  }
  function payload(){const body=new FormData();body.set('kam_id',String(kam));body.set('revision',String(revision));body.set('csrf_token',root.dataset.csrf);for(const id of [...selected].sort((a,b)=>a-b))body.append('colaboradores[]',String(id));return body;}
@@ -71,13 +71,26 @@
  el('kam-search').addEventListener('input',()=>{let count=0;for(const card of root.querySelectorAll('[data-kam-card]')){const visible=clean(card.dataset.kamName).includes(clean(el('kam-search').value));show(card,visible);if(visible)count++}show(el('no-kams'),count===0)});
  modalEl.addEventListener('hide.bs.modal',e=>{if(busy)e.preventDefault()});modalEl.addEventListener('hidden.bs.modal',()=>{sequence++;plan=null});
  async function history(){
-  const cycle=++historySequence;el('history-list').textContent='Cargando movimientos…';el('history-prev').disabled=true;el('history-next').disabled=true;
+  const cycle=++historySequence;el('history-list').replaceChildren();const loading=document.createElement('div');loading.className='personal-loading';loading.setAttribute('role','status');const spinner=document.createElement('span');spinner.className='spinner-border spinner-border-sm';spinner.setAttribute('aria-hidden','true');loading.append(spinner,document.createTextNode('Cargando movimientos…'));el('history-list').append(loading);el('history-prev').disabled=true;el('history-next').disabled=true;
   try{const data=await request('bitacora',null,{pagina:historyPage});if(cycle!==historySequence)return;const list=el('history-list');list.replaceChildren();
-   for(const row of data.movimientos){const article=document.createElement('article');article.className='personal-history-row';const title=document.createElement('strong');title.textContent=(row.kam_nombre||'Sistema')+' · '+row.responsable;
-    const date=document.createElement('time');date.dateTime=row.creado_at+'Z';date.textContent=new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',dateStyle:'medium',timeStyle:'short'}).format(new Date(row.creado_at.replace(' ','T')+'Z'));
-    const text=document.createElement('p');let names={};try{names=JSON.parse(row.nombres_json)||{}}catch(_){}const label=ids=>ids.map(id=>names[id]||'#'+id).join(', ')||'Ninguno';
-    text.textContent=['MANUAL','MIGRACION','AMPLIACION_REVISADA'].includes(row.tipo)?'Agregados: '+label(JSON.parse(row.agregados_json))+' · Retirados: '+label(JSON.parse(row.retirados_json)):row.tipo;article.append(title,date,text);list.append(article)}
-   if(!data.movimientos.length)list.textContent='No hay movimientos en esta página.';el('history-page').textContent='Página '+historyPage;el('history-prev').disabled=historyPage<=1;el('history-next').disabled=data.movimientos.length<30;
+   const labels={MANUAL:'Equipo actualizado',MIGRACION:'Asignación inicial',AMPLIACION_REVISADA:'Acceso conservado',ACTIVACION:'Supervisión activada',REVERSION:'Supervisión desactivada'};
+   for(const row of data.movimientos){
+    const article=document.createElement('article');article.className='personal-history-row';
+    const marker=document.createElement('span');marker.className='personal-history-icon';const icon=document.createElement('i');icon.className='bi '+(row.tipo==='REVERSION'?'bi-arrow-counterclockwise':'bi-people');icon.setAttribute('aria-hidden','true');marker.append(icon);
+    const content=document.createElement('div');content.className='personal-history-content';
+    const head=document.createElement('div');head.className='personal-history-heading';const title=document.createElement('strong');title.textContent=row.kam_nombre||'Sistema';const badge=document.createElement('span');badge.className='personal-history-type';badge.textContent=labels[row.tipo]||'Movimiento registrado';head.append(title,badge);
+    const meta=document.createElement('div');meta.className='personal-history-meta';const actor=document.createElement('span');actor.textContent='Por '+row.responsable;const date=document.createElement('time');date.dateTime=row.creado_at.replace(' ','T')+'Z';date.textContent=new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',dateStyle:'medium',timeStyle:'short'}).format(new Date(date.dateTime));meta.append(actor,date);content.append(head,meta);
+    let names={};try{names=JSON.parse(row.nombres_json)||{}}catch(_){}
+    if(['MANUAL','MIGRACION','AMPLIACION_REVISADA'].includes(row.tipo)){
+     for(const [key,label,tone]of [['agregados_json','Agregados','added'],['retirados_json','Retirados','removed']]){
+      const ids=JSON.parse(row[key]);if(!ids.length)continue;
+      const group=document.createElement('div');group.className='personal-history-change';const caption=document.createElement('span');caption.className='personal-history-change-label';caption.textContent=label+' ('+ids.length+')';group.append(caption);
+      const chips=document.createElement('div');chips.className='personal-history-chips';for(const id of ids){const chip=document.createElement('span');chip.className='personal-history-chip personal-history-chip-'+tone;chip.textContent=names[id]||'#'+id;chips.append(chip)}group.append(chips);content.append(group);
+     }
+    }
+    article.append(marker,content);list.append(article);
+   }
+   if(!data.movimientos.length){const empty=document.createElement('p');empty.className='personal-empty';empty.textContent='No hay movimientos en esta página.';list.append(empty)}el('history-page').textContent='Página '+historyPage;el('history-prev').disabled=historyPage<=1;el('history-next').disabled=data.movimientos.length<30;
   }catch(e){if(cycle===historySequence){el('history-list').textContent='No se pudo cargar la bitácora.';notify(e.message,true)}}
  }
  el('history').addEventListener('click',()=>{historyPage=1;historyModal.show();void history()});el('history-prev').addEventListener('click',()=>{if(historyPage>1){historyPage--;void history()}});el('history-next').addEventListener('click',()=>{historyPage++;void history()});

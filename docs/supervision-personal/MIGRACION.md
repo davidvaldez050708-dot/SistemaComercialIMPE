@@ -1,6 +1,6 @@
 # Migración y publicación de supervisión de personal
 
-**Preparado para revisión. No hay autorización para ejecutar cambios en producción.**
+**Procedimiento de referencia.** El titular ya ejecutó la instalación inicial autorizada de `de71579`; la política nueva continúa desactivada. Para los ajustes posteriores usar [AJUSTES_INSTALADOS.md](AJUSTES_INSTALADOS.md).
 
 La rama es `feat/supervision-personal-independiente`. La referencia de código son las personalizaciones leídas de Hostinger el 27/11/2026, sobre Git `a90b6ad`. No utilizar una copia completa de esta rama para sustituir producción: el Git remoto no contiene todas sus personalizaciones.
 
@@ -10,7 +10,7 @@ Se añaden `supervision_personal`, `supervision_personal_estado` y `supervision_
 
 `supervision_personal_estado` mantiene modo, revisión global, versión de esquema y huella del plan. `supervision_personal_bitacora` conserva IDs, nombres, antes/después, altas/bajas, actor, fecha UTC y clave de idempotencia. La UI muestra fecha de Ciudad de México. No eliminar estas tablas durante una reversión.
 
-Único permiso nuevo: `personal.supervision.gestionar`, reservado y asignado al rol 1. No se conceden permisos de reportes, desempeño o audio al crear una relación. Los permisos generales siguen siendo obligatorios. Los colaboradores desactivados pueden conservar su historial; no pueden añadirse nuevos inactivos desde el módulo. Las relaciones cuyo usuario desapareció o cambió de rol se muestran para revisión y no se eliminan al aplicar un filtro.
+Permisos nuevos: `personal.supervision.ver`, `personal.supervision.gestionar` y `personal.supervision.bitacora`. Se asignan inicialmente sólo al rol 1. Administración puede delegarlos explícitamente desde Roles y permisos; Gestión y Bitácora requieren Ver. La activación/preparación/reversión por CLI sigue requiriendo una cuenta administrativa activa. No se conceden permisos de reportes, desempeño o audio al crear una relación. Los permisos generales siguen siendo obligatorios. Los colaboradores desactivados pueden conservar su historial; no pueden añadirse nuevos inactivos desde el módulo. Las relaciones cuyo usuario desapareció o cambió de rol se muestran para revisión y no se eliminan al aplicar un filtro.
 
 No se modifican asignaciones territoriales, carteras, responsables, prospectos, extensiones, eventos PBX, transferencias, webhooks, importaciones, señalización, cierre de llamadas ni registro de resultados. El único ajuste al endpoint antiguo de audio ocurre antes de obtener el archivo: valida al autor supervisado. Las reglas de evidencia, proveedor, rangos y reproducción se conservan.
 
@@ -57,7 +57,7 @@ Sólo se importan pares explícitos válidos y se concede el permiso de administ
 
 ## 3. Publicación de código, con aprobación independiente
 
-Revisar `tools/supervision_personal_release.json`: 10 archivos nuevos y 11 existentes, con bloques concretos de la versión de Hostinger y huellas de referencia. Los servicios de llamadas/ventas y `SupervisionRolePolicy.php` aparecen como nuevos respecto de Git, pero son archivos **existentes en Hostinger** y se publican mediante parches.
+Revisar `tools/supervision_personal_release.json`: 12 archivos nuevos y 12 existentes, con bloques concretos de la versión de Hostinger y huellas de referencia. Los servicios de llamadas/ventas y `SupervisionRolePolicy.php` aparecen como nuevos respecto de Git, pero son archivos **existentes en Hostinger** y se publican mediante parches.
 
 Llevar publicador y manifiesto a una carpeta privada. Primero comprobar sobre staging y después, con autorización, sobre producción:
 

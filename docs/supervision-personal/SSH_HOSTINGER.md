@@ -1,5 +1,7 @@
 # Hostinger: auditoría, CHECK y ensayo privado
 
+Si ya instalaste `de71579`, utiliza [AJUSTES_INSTALADOS.md](AJUSTES_INSTALADOS.md) para las correcciones visuales y permisos. No vuelvas a aplicar el paquete de instalación inicial sobre archivos ya actualizados.
+
 Continuación de `76e2f19`, rama `feat/supervision-personal-independiente`. No desplegar el repositorio completo: producción tiene personalizaciones que no están todas en `main`. Se releýeron los once archivos existentes involucrados y sus bloques fueron compatibles en esta revisión; el CHECK local en el servidor sigue siendo obligatorio.
 
 ## Ejecutar ahora: ningún cambio al CRM ni a MySQL

@@ -58,13 +58,15 @@ final class SupervisionPersonalMigracion
                 $s=$this->db->prepare('INSERT INTO supervision_personal_estado(id,activo,version_schema,plan_hash,preparado_at) VALUES(1,0,1,?,UTC_TIMESTAMP())');$s->bind_param('s',$plan['plan_hash']);$s->execute();$s->close();
                 $this->db->query("INSERT INTO permisos(modulo,codigo,nombre,descripcion,estado) VALUES('Supervisión de personal','personal.supervision.gestionar','Administrar supervisión de personal','Administrar colaboradores supervisados y consultar su bitácora, sin alterar territorios.',1)");
                 $this->db->query("INSERT INTO rol_permisos(rol_id,permiso_id) SELECT 1,id FROM permisos WHERE codigo='personal.supervision.gestionar'");
+                require_once __DIR__.'/SupervisionPersonalPermisos.php';
+                SupervisionPersonalPermisos::agregarNuevos($this->db);
                 $this->db->commit();
             }catch(Throwable $e){$this->db->rollback();throw $e;}
         }finally{$this->unlock();}
     }
     public function activar(int $actor,array $plan,array $decisiones,string $planAutorizado): void
     {
-        (new SupervisionPersonalRepository($this->db))->autorizar($actor);
+        (new SupervisionPersonalRepository($this->db))->autorizarAdministrador($actor);
         $revisionAutorizada=SupervisionPersonalAuditoria::hashRevision($plan,$decisiones);
         if(!hash_equals($revisionAutorizada,$planAutorizado))throw new DomainException('Falta autorizar expresamente el plan y sus decisiones revisadas.');
         $pares=SupervisionPersonalAuditoria::resolver($plan,$decisiones);
@@ -97,7 +99,7 @@ final class SupervisionPersonalMigracion
     }
     public function desactivar(int $actor): void
     {
-        (new SupervisionPersonalRepository($this->db))->autorizar($actor);
+        (new SupervisionPersonalRepository($this->db))->autorizarAdministrador($actor);
         $this->db->begin_transaction();
         try {
             $r=$this->db->query('SELECT activo FROM supervision_personal_estado WHERE id=1 FOR UPDATE')->fetch_assoc();

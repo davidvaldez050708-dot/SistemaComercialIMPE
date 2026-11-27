@@ -84,6 +84,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--site', required=True)
     parser.add_argument('--backup-root', required=True)
+    parser.add_argument('--paquete', choices=['supervision_personal_release.json','supervision_personal_ajustes_release.json'], default='supervision_personal_release.json')
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--check', action='store_true')
     modes.add_argument('--apply', action='store_true')
@@ -97,9 +98,9 @@ def main():
         raise RuntimeError('No es la raíz del CRM')
     if backups == site or site in backups.parents:
         raise RuntimeError('El respaldo debe estar fuera del sitio público')
-    spec = json.loads(Path(__file__).with_name('supervision_personal_release.json').read_text(encoding='utf-8'))
+    spec = json.loads(Path(__file__).with_name(args.paquete).read_text(encoding='utf-8'))
     names = [row['path'] for row in spec['files']]
-    if spec['release'] != RELEASE or len(names) != len(set(names)) or not names:
+    if spec['release'] not in (RELEASE,'supervision-personal-ajustes-v1') or len(names) != len(set(names)) or not names:
         raise RuntimeError('Paquete inválido')
     plan = []
     if args.restore:
@@ -108,7 +109,7 @@ def main():
             raise RuntimeError('Respaldo fuera de la carpeta autorizada')
         record = json.loads((backup / 'manifest.json').read_text(encoding='utf-8'))
         paths = [r['path'] for r in record['files']]
-        if record['release'] != RELEASE or len(paths) != len(set(paths)) or not set(paths).issubset(names):
+        if record['release'] != spec['release'] or len(paths) != len(set(paths)) or not set(paths).issubset(names):
             raise RuntimeError('Respaldo inválido')
         for row in reversed(record['files']):
             p = safe(site, row['path'])
@@ -147,7 +148,7 @@ def main():
                 os.chmod(saved, 0o600)
             rows.append(dict(path=name, old_sha=None if old is None else sha(old), new_sha=sha(new), mode=mode))
         manifest = backup / 'manifest.json'
-        manifest.write_text(json.dumps(dict(release=RELEASE, files=rows)), encoding='utf-8')
+        manifest.write_text(json.dumps(dict(release=spec['release'], files=rows)), encoding='utf-8')
         os.chmod(manifest, 0o600)
         print('RESPALDO: ' + str(backup))
     written = []

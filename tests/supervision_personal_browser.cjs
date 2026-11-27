@@ -32,6 +32,10 @@ const css=fs.readFileSync(path.join(deps,'bootstrap/dist/css/bootstrap.min.css')
   await page.goto('http://personal.test/');
   // Inicializar después de Bootstrap, igual que el dashboard.
   await page.addScriptTag({content:read('public/javascript/supervision_personal.js')});
+  if(process.env.SP_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.SP_SCREENSHOT_DIR,'catalogo-'+width+'.png')});
+  await page.locator('[data-personal-kam-search]').fill('José');
+  assert.equal(await page.locator('[data-kam-card]:visible').count(),1,'Búsqueda institucional filtra tarjetas');
+  await page.locator('[data-personal-kam-search]').fill('');
   await page.locator('[data-kam-card="10"]').click();await page.locator('[data-personal-editor]').waitFor({state:'visible'});
   await page.waitForTimeout(400);if(process.env.SP_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.SP_SCREENSHOT_DIR,'equipo-'+width+'.png')});
   const checkbox=page.getByRole('checkbox',{name:'Supervisar a Mayra Prueba'});
@@ -50,6 +54,10 @@ const css=fs.readFileSync(path.join(deps,'bootstrap/dist/css/bootstrap.min.css')
   await page.locator('[data-personal-cancel]').click();await page.locator('#modalSupervisionPersonal').waitFor({state:'hidden'});
   await page.locator('[data-personal-history]').click();await page.locator('.personal-history-row').first().waitFor();
   assert.match(await page.locator('[data-personal-history-list]').innerText(),/Mayra Prueba/);
+  assert.ok(await page.locator('.personal-history-type').count()>0,'Bitácora identifica el movimiento');
+  assert.ok(await page.locator('.personal-history-chip-added,.personal-history-chip-removed').count()>0,'Cambios presentados en etiquetas');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Bitácora sin desbordamiento móvil');
+  if(process.env.SP_SCREENSHOT_DIR){await page.waitForTimeout(400);await page.screenshot({path:path.join(process.env.SP_SCREENSHOT_DIR,'bitacora-'+width+'.png')});}
   if(width===1440){
    await page.locator('#modalBitacoraSupervision [data-bs-dismiss]').click();await page.locator('#modalBitacoraSupervision').waitFor({state:'hidden'});
    failDetail=true;await page.locator('[data-kam-card="10"]').click();await page.locator('[data-personal-load-error]').waitFor({state:'visible'});
@@ -58,5 +66,5 @@ const css=fs.readFileSync(path.join(deps,'bootstrap/dist/css/bootstrap.min.css')
   }
   assert.deepEqual(errors,[]);await page.close();console.log('PASS '+width+': selección persistente al filtrar, resumen previo, un guardado, reapertura y bitácora.');
  }}finally{await browser.close()}
- console.log('PASS: administrador exclusivo; CSRF; verbos HTTP; vista compacta de escritorio y móvil; cambios auditados.');
+ console.log('PASS: permisos de servidor; CSRF; verbos HTTP; vista compacta de escritorio y móvil; búsqueda y bitácora institucional.');
 })().catch(e=>{console.error(e);process.exit(1)});
