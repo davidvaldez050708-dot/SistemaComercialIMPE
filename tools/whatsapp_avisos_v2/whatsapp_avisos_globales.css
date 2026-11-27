@@ -1,0 +1,9 @@
+/* Layout only. Colors, badges, typography and toasts belong to recordatorios.css. */
+.wa-global{flex-shrink:0}
+.wa-global .topbar-reminder-list{max-height:min(300px,45vh)}
+.wa-global .topbar-reminder-item{width:100%;border:0;border-bottom:1px solid var(--color-border);background:transparent;text-align:left}
+.wa-global .topbar-reminder-item:last-child{border-bottom:0}
+.wa-global .topbar-reminder-item:hover,.wa-global .topbar-reminder-item:focus-visible{background-color:#f8fafc}
+.wa-global [data-wa-status][hidden]{display:none}
+.wa-global-all{display:flex;align-items:center;justify-content:center;gap:7px;padding:12px;border-top:1px solid var(--color-border);color:var(--color-primary);font-size:12px;font-weight:700;text-decoration:none}
+.wa-global-all:hover{background:#f8fafc;color:var(--color-primary)}

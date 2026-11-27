@@ -1,0 +1,77 @@
+{
+  "patches": [
+    {
+      "path": "app/controllers/WhatsAppController.php",
+      "before": "419c54921a65c7fdfda8653a2c2209e638118397",
+      "anchor": "    public function conversaciones()\n",
+      "insert": "    public function avisosGlobales(): void\n    {\n        header('Cache-Control: private, no-store, max-age=0');\n        $this->validarPermiso('whatsapp.ver');\n        if(strtoupper((string)($_SERVER['REQUEST_METHOD']??'GET'))!=='GET')$this->responder(['ok'=>false],405);\n        $uid=(int)$_SESSION['usuario_id'];\n        if(session_status()===PHP_SESSION_ACTIVE)session_write_close();\n        try{\n            require_once __DIR__.'/../services/WhatsAppAvisosService.php';\n            $modelo=new WhatsAppModel();\n            $this->validarEstructura($modelo);\n            $resumen=WhatsAppAvisosService::resumen($modelo->conexionParaAutorizacion(),$uid);\n            $this->responder(['ok'=>true]+$resumen);\n        }catch(DomainException $e){$this->responder(['ok'=>false,'mensaje'=>'Tu acceso cambió.'],403);}\n        catch(Throwable $e){error_log('[whatsapp_avisos_globales] '.get_class($e));$this->responder(['ok'=>false,'mensaje'=>'No fue posible consultar WhatsApp.'],503);}\n    }\n\n"
+    },
+    {
+      "path": "app/views/layout/topbar.php",
+      "before": "53f70bfec09d2b8e8a0fe6ff372ffb96e21711a3",
+      "anchor": "            <?php if ($mostrarAgendaReuniones): ?>",
+      "insert": "            <?php require __DIR__.'/whatsapp_avisos_globales.php'; ?>\n\n"
+    }
+  ],
+  "replacement": {
+    "path": "public/javascript/whatsapp_contextual.js",
+    "before": "f916582fc46c7332aa95ab7e27ac5196b8aa1b8e"
+  },
+  "new_files": [
+    {
+      "path": "app/services/WhatsAppAvisosService.php",
+      "file": "WhatsAppAvisosService.php"
+    },
+    {
+      "path": "app/views/layout/whatsapp_avisos_globales.php",
+      "file": "whatsapp_avisos_globales.php"
+    },
+    {
+      "path": "public/css/whatsapp_avisos_globales.css",
+      "file": "whatsapp_avisos_globales.css"
+    },
+    {
+      "path": "public/javascript/whatsapp_avisos_globales.js",
+      "file": "whatsapp_avisos_globales.js"
+    }
+  ],
+  "additional_patches": [
+    {
+      "path": "public/javascript/recordatorios.js",
+      "before": "16d593cc7524bc91befcf45deb872c39dc5a3158",
+      "hunks": [
+        {
+          "old": "        const mostrarToast = function (aviso) {\n",
+          "new": "        const mostrarToast = function (aviso) {\n            const waId = Number(aviso.whatsapp_conversation_id || 0);\n            const whatsapp = Number.isSafeInteger(waId) && waId > 0;\n            if (whatsapp && (document.querySelector('.toast.show,.convocatoria-activation-toast,dialog[open],.modal.show,[data-agenda-marketing-toast]') || window.IMPE_TELEPHONY_PERSISTENT?.getState?.()?.active)) return false;\n"
+        },
+        {
+          "old": "            const url = urlRecordatorio(aviso);\n            if (Number(aviso.telefonia_id) > 0) {",
+          "new": "            const url = whatsapp ? '' : urlRecordatorio(aviso);\n            if (whatsapp) {\n                toast.dataset.whatsappConversation = String(waId);\n                toast.classList.add('is-clickable');\n                toast.setAttribute('tabindex','0');\n                toast.addEventListener('click',()=>{toast.remove();if(toastActivo===toast)toastActivo=null;});\n                toast.addEventListener('keydown',e=>{if(e.target===toast && (e.key==='Enter'||e.key===' ')){e.preventDefault();toast.click();}});\n            }\n            if (Number(aviso.telefonia_id) > 0) {"
+        },
+        {
+          "old": "            if(esComercial(aviso)){\n                toast.dataset.comercialClave=claveRecordatorio(aviso);",
+          "new": "            if(whatsapp || esComercial(aviso)){\n                if(!whatsapp)toast.dataset.comercialClave=claveRecordatorio(aviso);"
+        },
+        {
+          "old": "            alertasAgenda('onToastShown', aviso);",
+          "new": "            if(!whatsapp)alertasAgenda('onToastShown', aviso);"
+        },
+        {
+          "old": "        window.IMPE_REMINDER_STATUS = function () {",
+          "new": "        // External WhatsApp source uses the exact same presenter and active slot.\n        // No agenda acknowledgement, no change to the eight-minute clock.\n        window.IMPE_WHATSAPP_TOAST = function (item) {\n            if(!item || !Number.isSafeInteger(item.id) || item.id<1 ||\n                !document.querySelector('[data-wa-global]'))return false;\n            const nombre=String(item.nombre||'Contacto').slice(0,180);\n            const mensaje=String(item.mensaje||'Nuevo mensaje').slice(0,160);\n            const otros=Number(item.otros)||0;\n            return mostrarToast({whatsapp_conversation_id:item.id,icono:'bi-whatsapp',\n                titulo:'Nuevo mensaje de WhatsApp',mensaje:nombre+' · '+mensaje+(otros>0?' · Más conversaciones pendientes':'')});\n        };\n\n        window.IMPE_REMINDER_STATUS = function () {"
+        }
+      ]
+    }
+  ],
+  "guards": {
+    "public/css/global.css": "69ddfe721529c516751c0ec96cc895ff27b14d60",
+    "public/css/recordatorios.css": "e9776d79d1c369d531fec2074a04726067e34387",
+    "public/javascript/convocatoria_notificaciones.js": "08b519e224bf24645ccf10abc19488ec562b0a89",
+    "public/javascript/telefonia_notificaciones.js": "138bba91592bc7274b19357a6fa0b224d64e777e",
+    "app/views/layout/dashboard_head.php": "f0c5fcf7cbb7cceb404ada5b20de805386071f65",
+    "app/views/layout/dashboard_footer.php": "f16d5658a475d79ab3b71346dbdf3337e2b36c1d",
+    "app/models/WhatsAppModel.php": "0e8046ac823e56417a0631894cf6f6f2d6e0bb7d",
+    "app/services/WhatsAppAsignacionService.php": "aab8f8395f565f9303379a27e4017b5f9b6a5636",
+    "app/services/WhatsAppContextoService.php": "1bea17bb7cc07d2ab7c1809b6e0aca3192ad500a"
+  }
+}
