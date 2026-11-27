@@ -2461,10 +2461,12 @@ document.addEventListener('DOMContentLoaded', function () {
         event.preventDefault();
         mostrarAlertaTrabajo('');
         const formularioInteraccion = event.currentTarget;
+        if(window.IMPE_CALL_RESULTS?.busy(formularioInteraccion))return;
         const botonGuardar = formularioInteraccion.querySelector('button[type="submit"]');
         const textoOriginal = botonGuardar ? botonGuardar.textContent : '';
         const formData = new FormData(formularioInteraccion);
         const resultado = String(formData.get('resultado') || '');
+        let interaccionActual=()=>true;
 
         if (botonGuardar) {
             botonGuardar.disabled = true;
@@ -2472,17 +2474,31 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         try {
-            const respuesta = await fetch(urlRegistrarInteraccionTrabajo, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'fetch'
-                },
-                body: formData
-            });
-            const datos = await respuesta.json();
+            let datos;
+            const referencia=String(formData.get('llamada_pbx_id')||'');
+            if(String(formData.get('origen_llamada')||'').toUpperCase()==='ZADARMA'&&referencia){
+                const values=Object.fromEntries(formData);
+                interaccionActual=()=>String(formularioInteraccion.querySelector('[name="seguimiento_id"]')?.value||'')===String(values.seguimiento_id||'')&&
+                    String(formularioInteraccion.querySelector('[name="llamada_pbx_id"]')?.value||'')===referencia;
+                const confirmed=await window.IMPE_CALL_RESULTS.submit({form:formularioInteraccion,
+                    user:Number(window.IMPE_CURRENT_USER_ID),ids:[referencia],context:{adaptador:'SEGUIMIENTO'},
+                    values,endpoint:urlRegistrarInteraccionTrabajo,isCurrent:interaccionActual});
+                if(!interaccionActual())return;
+                if(!confirmed.ok)throw confirmed.error||new Error('No fue posible confirmar la interacción.');
+                datos=confirmed.payload;
+            }else{
+                const respuesta = await fetch(urlRegistrarInteraccionTrabajo, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'fetch'
+                    },
+                    body: formData
+                });
+                datos = await respuesta.json();
 
-            if (!respuesta.ok || !datos.ok) {
-                throw new Error(datos.mensaje || 'No fue posible guardar la interacción.');
+                if (!respuesta.ok || !datos.ok) {
+                    throw new Error(datos.mensaje || 'No fue posible guardar la interacción.');
+                }
             }
 
             try {
@@ -2517,9 +2533,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 modalDescarte?.show();
             }
         } catch (error) {
-            mostrarErrorTrabajo(error, 'No fue posible registrar la interacción.');
+            if(interaccionActual())mostrarErrorTrabajo(error, 'No fue posible registrar la interacción.');
         } finally {
-            if (botonGuardar) {
+            if (botonGuardar&&interaccionActual()) {
                 botonGuardar.disabled = false;
                 botonGuardar.textContent = textoOriginal || 'Guardar interacción';
             }

@@ -10,6 +10,7 @@ if(($meta['synthetic']??false)!==true||$c['host']!=='127.0.0.1'||$c['port']!==33
 date_default_timezone_set('America/Mexico_City');
 $site=$lab.'/site';$path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH);
 function fixtureReply(array $data,int $status=200):never {http_response_code($status);header('Content-Type: application/json');echo json_encode($data,JSON_THROW_ON_ERROR);exit;}
+function fixtureReference(string $value):bool{return (bool)preg_match('/^(?:(?:out_)?lab_[a-zA-Z0-9_-]{6,80}|out_[a-f0-9]{32})$/D',$value);}
 if(str_starts_with($path,'/fixture/')){
  $provided=$_SERVER['HTTP_X_FIXTURE_KEY']??'';
  if(!is_string($provided)||!hash_equals($c['fixture_key']??'unavailable',$provided))fixtureReply(['ok'=>false],403);
@@ -23,7 +24,7 @@ if(str_starts_with($path,'/fixture/')){
  }
  if($path==='/fixture/event'){
   $event=json_decode((string)file_get_contents('php://input'),true,16,JSON_THROW_ON_ERROR);
-  if(!is_array($event)||!preg_match('/^(?:out_)?lab_[a-zA-Z0-9_-]{6,80}$/D',(string)($event['pbx_call_id']??''))||
+  if(!is_array($event)||!fixtureReference((string)($event['pbx_call_id']??''))||
     !in_array($event['event']??'',['NOTIFY_OUT_START','NOTIFY_INTERNAL','NOTIFY_ANSWER','NOTIFY_OUT_END','NOTIFY_END','NOTIFY_RECORD'],true)||
     !in_array($event['internal']??'',['100','101','102'],true))fixtureReply(['ok'=>false],422);
   require_once $site.'/app/services/ZadarmaWebhookEventStoreService.php';
@@ -31,10 +32,14 @@ if(str_starts_with($path,'/fixture/')){
   fixtureReply(['ok'=>(bool)$ok]);
  }
  if($path==='/fixture/inspect'){
-  $id=(string)($_GET['pbx']??'');if(!preg_match('/^(?:out_)?lab_[a-zA-Z0-9_-]{6,80}$/D',$id))fixtureReply(['ok'=>false],422);
+  $id=(string)($_GET['pbx']??'');if(!fixtureReference($id))fixtureReply(['ok'=>false],422);
   $db=Database::compartida();$counts=[];
   foreach(['telefonia_ventas_resultados','telefonia_recepcion_resultados','telefonia_analista_entrantes','telefonia_zadarma_eventos'] as $table){
    $s=$db->prepare('SELECT COUNT(*) n FROM '.$table.' WHERE pbx_call_id=BINARY ?');$s->bind_param('s',$id);$s->execute();$counts[$table]=(int)$s->get_result()->fetch_assoc()['n'];$s->close();
+  }
+  if(isset($_GET['followup'])){
+   $followup=(int)$_GET['followup'];$s=$db->prepare('SELECT COUNT(*) n FROM interacciones_vinculacion WHERE seguimiento_id=? AND usuario_id=42');
+   $s->bind_param('i',$followup);$s->execute();$counts['interacciones_vinculacion']=(int)$s->get_result()->fetch_assoc()['n'];$s->close();
   }
   fixtureReply(['ok'=>true,'counts'=>$counts]);
  }
@@ -66,6 +71,7 @@ if(in_array($path,$files,true)||$path==='/index.php'){
  session_start();require_once $site.'/app/helpers/TelefoniaPeticionContexto.php';TelefoniaPeticionContexto::actualizar();
  $routes=['telefonia.guardarResultadoVenta'=>['TelefoniaController','guardarResultadoVenta'],
   'telefonia.devolucion'=>['TelefoniaController','devolucion'],
+  'seguimientoVinculacion.registrarInteraccionTrabajo'=>['SeguimientoVinculacionController','registrarInteraccionTrabajo'],
   'seguimientoVinculacion.registrarLlamadaEntrante'=>['SeguimientoVinculacionController','registrarLlamadaEntrante']];
  $route=$routes[($_GET['controller']??'').'.'.($_GET['action']??'')]??null;if(!$route)fixtureReply(['ok'=>false],404);
  require_once $site.'/app/controllers/'.$route[0].'.php';(new $route[0])->{$route[1]}();exit;

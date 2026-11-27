@@ -1290,7 +1290,7 @@ class SeguimientoVinculacionModel
         return (int)$this->ultimaInteraccionCreadaId;
     }
 
-    public function registrarInteraccionManual($seguimientoId, $usuarioId, $datos, $transaccionExterna = false)
+    public function registrarInteraccionManual($seguimientoId, $usuarioId, $datos, $transaccionExterna = false, ?callable $confirmar = null)
     {
         $evidenciaStore=new TelefoniaVerificacionEvidenciaService($this->connection);
         $this->ultimoErrorInteraccion = '';
@@ -1341,7 +1341,7 @@ class SeguimientoVinculacionModel
         if (!$transaccionExterna) $this->connection->begin_transaction();
 
         try {
-                $actualStmt=$this->connection->prepare('SELECT estado_seguimiento, proxima_accion_at
+                $actualStmt=$this->connection->prepare('SELECT *
                     FROM seguimientos_vinculacion WHERE id=? AND ' . SeguimientoTerritorialScope::analista('seguimientos_vinculacion') . ' AND activo=1 FOR UPDATE');
                 $actualStmt->bind_param('ii',$seguimientoId,$usuarioId);
                 $actualStmt->execute();
@@ -1350,6 +1350,21 @@ class SeguimientoVinculacionModel
                 if (!$actual || $actual['estado_seguimiento']==='DESCARTADO') {
                     throw new DomainException('El expediente ya no está disponible para registrar la atención.');
                 }
+                foreach(($datos['contacto_esperado']??[]) as $campo=>$esperado)
+                    if(!array_key_exists($campo,$actual)||(string)$actual[$campo]!==(string)$esperado)
+                        throw new DomainException('El contacto o la asignación cambió. Conserva la captura y revisa el expediente antes de confirmar.');
+            if(!empty($datos['llamada_confirmada'])){
+                // La identidad procede de la consulta PBX del servidor. Serializar
+                // también dos expedientes distintos del mismo analista y llamada.
+                $proof=$datos['llamada_confirmada'];
+                $lock=$this->connection->prepare("SELECT id FROM telefonia_zadarma_eventos WHERE id=? AND pbx_call_id=BINARY ? AND internal=BINARY ? AND evento='NOTIFY_OUT_START' FOR UPDATE");
+                $lock->bind_param('iss',$proof['inicio_evento'],$proof['pbx_call_id'],$proof['extension']);
+                $lock->execute();$available=$lock->get_result()->num_rows>0;$lock->close();
+                if(!$available)throw new DomainException('La evidencia de esta llamada ya no está disponible. Conserva la captura.');
+                $duplicate=$this->connection->prepare("SELECT id FROM interacciones_vinculacion WHERE usuario_id=? AND proveedor_externo='ZADARMA' AND id_externo=BINARY ? LIMIT 1 FOR UPDATE");
+                $duplicate->bind_param('is',$usuarioId,$proof['pbx_call_id']);$duplicate->execute();$exists=$duplicate->get_result()->num_rows>0;$duplicate->close();
+                if($exists)throw new DomainException('Esta llamada ya tiene una interacción registrada. Se conservó el resultado original.');
+            }
             if (!empty($datos['preservar_estado'])) {
                 $estadoSeguimiento=VerificacionInstitucionalService::estadoAtencion((string)$actual['estado_seguimiento'],$descartar);
                 if (!$descartar && $proximaAccionAt===null &&
@@ -1496,12 +1511,14 @@ class SeguimientoVinculacionModel
             $this->vincularParametros($stmtSeguimiento, $tiposSeguimiento, $parametrosSeguimiento);
             $stmtSeguimiento->execute();
 
+            if($confirmar)$confirmar($interaccionCreadaId);
             if (!$transaccionExterna) $this->connection->commit();
             $this->ultimaInteraccionCreadaId = $interaccionCreadaId;
 
             return $transaccionExterna ? $interaccionCreadaId : true;
         } catch (Throwable $error) {
             if (!$transaccionExterna) $this->connection->rollback();
+            if($confirmar)throw $error;
             $this->ultimoErrorInteraccion = $etapaPersistencia;
             error_log(
                 'Error registrarInteraccionManual (' .

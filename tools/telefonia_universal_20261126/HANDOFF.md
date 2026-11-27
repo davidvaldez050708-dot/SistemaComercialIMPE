@@ -306,3 +306,41 @@ de devolución al mismo preparador/conciliador saliente del host:
 Siguiente bloque: endpoints restantes de Seguimiento con recibos dentro de su
 transacción real, sin duplicar el pipeline comercial ya implementado. Mantener
 pendientes de grabaciones/transferencias/soak/publicador y Supervisión selectiva.
+
+### Quinto checkpoint: envío común desde el expediente de Seguimiento
+
+El cuarto checkpoint está publicado en `6be5608b`. Este bloque conserva la
+lógica existente de `registrarInteraccionTrabajo` y la conecta al recibo común:
+
+- La ruta valida aprobación/CSRF y libera la sesión antes de guardar. El intento
+  exacto se consulta antes de repetir validaciones comerciales que podrían haber
+  cambiado tras el primer guardado. La lógica previa se mantiene en un método
+  privado con datos explícitos, sin duplicar ni sustituir las políticas comerciales.
+- `registrarInteraccionManual` admite callback antes de COMMIT. Interacción,
+  cambios de contacto, auditoría/avisos de Cuenta Clave y recibo con la respuesta
+  institucional completa usan la misma conexión/transacción. Fallo del callback
+  revierte el registro; los adaptadores anteriores conservan sus contratos.
+- El lock existente del expediente compara el contacto/asignación actuales con
+  el snapshot validado para la aprobación. Si cambió, rechaza el guardado y
+  conserva la captura, sin atribuir verificación a datos obsoletos.
+- La consulta PBX devuelve su identidad técnica validada y respeta la fecha de
+  asignación. Se guarda proveedor/referencia con la interacción. El inicio PBX
+  exacto serializa dos aprobaciones distintas para la misma llamada; se rechaza
+  una segunda interacción del mismo usuario con esa referencia, sin modificar
+  históricos duplicados ni imponer un índice único sobre ellos.
+- El formulario institucional sólo delega el canal ZADARMA con referencia al
+  controlador común. Los demás canales conservan su envío. Evita doble submit y
+  callbacks tardíos sobre otra institución. Recuperación de SEGUIMIENTO conserva
+  el envelope nativo (seguimiento/interacciones/resumen/interaccion_id).
+- Validación nueva:10 checks SQL del pipeline nativo (incluye otra aprobación
+  para la misma PBX),16 HTTP con CSRF/pérdida de ACK/replay,12 del adaptador real
+  extraído de la vista.19/19 suites JS pasan. Regresión por el cambio del modelo:
+  11 checks institución/embudo y15 recibos previos. Sintaxis de los cuatro PHP
+  cambiados correcta. No son 1,000 llamadas ni un soak de ocho horas.
+
+**Todavía pendiente:** la conciliación posterior de evidencia/duración de este
+formulario sigue pasando por `vincular_interaccion_zadarma.php` y su job existente;
+no afirmar que su recibo inicial confirma toda la verificación comercial final.
+Faltan registrarInformativa/InteraccionRuta y la confirmación posterior, grabaciones,
+transferencias sin reserva temprana, regresión visual, Supervisión selectiva,
+publicador y aceptaciones universales. No se ha modificado producción.

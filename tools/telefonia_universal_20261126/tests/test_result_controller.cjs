@@ -52,6 +52,16 @@ const deferred=()=>{let resolve;return {promise:new Promise(r=>resolve=r),resolv
   context:{adaptador:'DEVOLUCION'},onError(){throw Error('Committed callback must recover its receipt');},onCommitted(){}});
  assert.equal(callbackSaved.ok,true);assert.equal(callbackSaved.payload.intento.id,23);
  assert.equal(callbackSaved.payload.recibo_recuperado,true);assert.equal(callbackPosts,1,'Lost callback ACK cannot automatically repeat the native result');
+ const followup=fixture();let followupMeta;
+ followup.reply(async(input,settings)=>{
+  if(String(input)==='/result'){followupMeta=JSON.parse(settings.body.get('captura_confirmacion'));return response(503,{ok:false});}
+  if(settings?.method==='POST')return response(200,{ok:true});
+  return response(200,{ok:true,borrador:{aplicaciones:{[followupMeta.request_id]:{
+   request_id:followupMeta.request_id,revision:followupMeta.revision,adaptador:'SEGUIMIENTO',respuesta:{ok:true,interaccion_id:29,seguimiento:{id:7},interacciones:[],resumen:{}}
+  }}}});
+ });
+ const followupSaved=await followup.window.IMPE_CALL_RESULTS.submit({...options,form:new Form(),context:{adaptador:'SEGUIMIENTO'},onCommitted(){},onError(){throw Error('Committed Seguimiento receipt must retain its native envelope');}});
+ assert.equal(followupSaved.ok,true);assert.equal(followupSaved.payload.interaccion_id,29);assert.equal(followupSaved.payload.seguimiento.id,7);
  const failed=fixture(),invalid=new Form();let deniedReads=0;
  failed.reply(async(input,settings)=>{if(String(input)==='/result')return response(422,{ok:false,mensaje:'Required field'});if(settings?.method!=='POST')deniedReads++;return response(200,{ok:true});});
  const denied=await failed.window.IMPE_CALL_RESULTS.submit({...options,form:invalid,onError(){assert.equal(invalid.button.disabled,false);},onCommitted(){throw Error('Invalid result cannot commit');}});

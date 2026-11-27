@@ -3,7 +3,7 @@
   "status": "autonomous_continuation_in_progress",
   "installed_baseline": "1d8f7da23907fabce398c13d924ef5996d839473",
   "portable_unit_suites": {
-    "passed": 18,
+    "passed": 19,
     "failed": 0,
     "runner": "run_unit.cjs"
   },
@@ -76,6 +76,20 @@
     "callback_http_checks": 28,
     "scope": "SDK host to reserved callback/PBX identity and native result receipts; includes concurrent receipt replay. Synthetic provider; not universal call acceptance.",
     "schema_proposal": "schema_devolucion_sesion.sql",
+    "production_changed": false
+  },
+  "continuation_followup_receipts": {
+    "base": "6be5608b",
+    "native_sql_checks": 10,
+    "native_http_checks": 16,
+    "actual_view_adapter_checks": 12,
+    "institution_funnel_regression_checks": 11,
+    "prior_adapter_receipt_regression_checks": 15,
+    "php_changed_syntax_checks": 4,
+    "preserves_full_native_response": true,
+    "rejects_second_approval_for_same_pbx": true,
+    "later_pbx_verification_pipeline_pending": true,
+    "complete_call_acceptance": false,
     "production_changed": false
   }
 }

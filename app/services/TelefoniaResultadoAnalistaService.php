@@ -6,15 +6,17 @@ final class TelefoniaResultadoAnalistaService
     private const CON_PERSONA = ['CONTACTO_CORRECTO','CONTACTO_REFERIDO','CONTACTO_INCORRECTO',
         'SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO'];
 
-    public static function validarLlamada(int $usuario, int $seguimiento, array $datos, ?mysqli $db = null): void
+    public static function validarLlamada(int $usuario, int $seguimiento, array $datos, ?mysqli $db = null): ?array
     {
         $ref = trim((string)($datos['llamada_pbx_id'] ?? ''));
         $origen = strtoupper(trim((string)($datos['origen_llamada'] ?? '')));
-        if ($ref === '' && $origen !== 'ZADARMA') return; // Registros manuales y otros canales.
+        if ($ref === '' && $origen !== 'ZADARMA') return null; // Registros manuales y otros canales.
         if (strtoupper((string)($datos['canal'] ?? '')) !== 'LLAMADA') {
             throw new DomainException('El resultado de esta llamada debe registrarse en el canal Llamada.');
         }
-        self::validarCaptura(self::consultar($usuario, $seguimiento, $ref, $db), $datos);
+        $reglas=self::consultar($usuario, $seguimiento, $ref, $db);
+        self::validarCaptura($reglas,$datos);
+        return $reglas;
     }
 
     public static function validarCaptura(array $reglas, array $datos): void
@@ -51,6 +53,9 @@ final class TelefoniaResultadoAnalistaService
             throw new DomainException('Tu extensión saliente no está habilitada.');
         }
         $eventos = (new ZadarmaWebhookEventStoreService($db))->obtenerPorPbxCallId($ref);
+        require_once __DIR__.'/../helpers/TelefoniaAsignacionFechaHelper.php';
+        $desde=TelefoniaAsignacionFechaHelper::aMexico((string)($asignacion['asignacion_desde']??''));
+        $eventos=array_values(array_filter($eventos,static fn(array $e):bool=>(string)($e['received_at']??'')>=$desde));
         return self::reglasEventos($eventos, $ref, $extension, array_values($expediente));
     }
 
@@ -93,7 +98,8 @@ final class TelefoniaResultadoAnalistaService
             $label = 'Sin conexión confirmada';
             $opciones = ['SIN_RESPUESTA','FUERA_SERVICIO','NUMERO_INCORRECTO','OTRO'];
         }
-        return ['pbx_call_id'=>$ref,'etiqueta'=>$label,'opciones'=>$opciones,'permite_verificar'=>$contestada];
+        return ['pbx_call_id'=>$ref,'etiqueta'=>$label,'opciones'=>$opciones,'permite_verificar'=>$contestada,
+            'inicio_evento'=>(int)($inicio['id']??0),'extension'=>$extension];
     }
 
     private static function telefono(string $valor): string

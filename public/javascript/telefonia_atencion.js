@@ -365,6 +365,8 @@
             if(!response.ok||data.ok!==true||receipt?.request_id!==meta.request_id||
                 receipt.revision!==meta.revision||receipt.adaptador!==adapter||!receipt.respuesta)return null;
             own(user);
+            if(adapter==='SEGUIMIENTO'&&receipt.respuesta.ok===true)
+                return {...receipt.respuesta,recibo_recuperado:true};
             const field=adapter==='DEVOLUCION'?'intento':['VENTAS','RECEPCION'].includes(adapter)?'registro':'resultado';
             return {ok:true,[field]:receipt.respuesta,recibo_recuperado:true};
         }catch(_){return null;}

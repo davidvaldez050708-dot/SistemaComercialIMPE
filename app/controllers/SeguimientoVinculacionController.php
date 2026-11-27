@@ -1226,11 +1226,34 @@ class SeguimientoVinculacionController
     {
         $this->validarMetodoPostJson();
         $this->validarPermisoJson('seguimientos_vinculacion.operar_propios');
+        $datos=$_POST;$usuario=$this->obtenerUsuarioActualId();
+        if(isset($datos['captura_confirmacion'])){
+            $csrf=(string)($_SESSION['csrf_token']??'');
+            if($csrf===''||!is_string($datos['csrf_token']??null)||!hash_equals($csrf,$datos['csrf_token']))
+                $this->responderJson(['ok'=>false,'mensaje'=>'La sesión expiró. Actualiza el CRM.'],403);
+            require_once __DIR__.'/../helpers/TelefoniaPeticionContexto.php';
+            TelefoniaPeticionContexto::liberarSesion();
+        }
+        try{
+            require_once __DIR__.'/../services/TelefoniaResultadoConfirmacion.php';
+            $respuesta=(new TelefoniaResultadoConfirmacion(Database::compartida()))->ejecutar($usuario,'SEGUIMIENTO',$datos,
+                fn(array $valores,?callable $confirmar):array=>$this->guardarInteraccionTrabajo($valores,$confirmar));
+            $this->responderJson($respuesta);
+        }catch(InvalidArgumentException|DomainException $e){
+            $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);
+        }catch(Throwable $e){
+            error_log('[seguimiento_resultado_confirmado] '.get_class($e));
+            $this->responderJson(['ok'=>false,'mensaje'=>'No fue posible confirmar el registro. Conserva la captura y vuelve a comprobar.'],500);
+        }
+    }
 
-        $modelo = new SeguimientoVinculacionModel();
+    private function guardarInteraccionTrabajo(array $datos,?callable $confirmar):array
+    {
+        $db=Database::compartida();
+        $modelo = new SeguimientoVinculacionModel($db);
         $usuarioId = $this->obtenerUsuarioActualId();
         $modoSeguimiento = $this->resolverModoSeguimiento();
-        $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
+        $seguimientoId = (int)($datos['seguimiento_id'] ?? 0);
         $seguimiento = $this->obtenerSeguimientoPorModo(
             $modelo,
             $usuarioId,
@@ -1252,7 +1275,7 @@ class SeguimientoVinculacionController
             ], 422);
         }
 
-        $canalFormulario = strtoupper(trim((string)($_POST['canal'] ?? '')));
+        $canalFormulario = strtoupper(trim((string)($datos['canal'] ?? '')));
         $canales = [
             'LLAMADA' => 'LLAMADA_IP',
             'WHATSAPP' => 'WHATSAPP',
@@ -1260,7 +1283,7 @@ class SeguimientoVinculacionController
             'OTRO' => 'NOTA'
         ];
         $canal = $canales[$canalFormulario] ?? '';
-        $resultadoFormulario = strtoupper(trim((string)($_POST['resultado'] ?? '')));
+        $resultadoFormulario = strtoupper(trim((string)($datos['resultado'] ?? '')));
         $mapaResultados = [
             'SIN_RESPUESTA' => 'SIN_RESPUESTA',
             'OCUPADO' => 'OCUPADO',
@@ -1302,7 +1325,7 @@ class SeguimientoVinculacionController
 
         try {
             require_once __DIR__.'/../services/TelefoniaResultadoAnalistaService.php';
-            TelefoniaResultadoAnalistaService::validarLlamada($usuarioId, $seguimientoId, $_POST);
+            $llamadaConfirmada=TelefoniaResultadoAnalistaService::validarLlamada($usuarioId, $seguimientoId, $datos,$db);
         } catch (DomainException $e) {
             $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);
         } catch (Throwable $e) {
@@ -1310,9 +1333,9 @@ class SeguimientoVinculacionController
             $this->responderJson(['ok'=>false,'mensaje'=>'No se pudo confirmar la llamada. No se guardó la interacción. Intenta nuevamente.'],503);
         }
 
-        $fechaInicio = $this->normalizarFechaFormulario($_POST['fecha_inicio'] ?? '');
+        $fechaInicio = $this->normalizarFechaFormulario($datos['fecha_inicio'] ?? '');
         try {
-            $programacion = InteraccionProximaAccion::validar($_POST);
+            $programacion = InteraccionProximaAccion::validar($datos);
         } catch (DomainException $error) {
             $this->responderJson(['ok'=>false, 'mensaje'=>$error->getMessage()], 422);
         }
@@ -1358,19 +1381,19 @@ class SeguimientoVinculacionController
         }
 
         require_once __DIR__.'/../services/DatosContactoLlamadaService.php';
-        try { $contactoLlamada=DatosContactoLlamadaService::extraer($_POST,$canalFormulario,$resultadoFormulario); }
+        try { $contactoLlamada=DatosContactoLlamadaService::extraer($datos,$canalFormulario,$resultadoFormulario); }
         catch (InvalidArgumentException $e) { $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422); }
-        $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['persona_atendio'] ?? ''));
+        $personaAtendio = VerificacionInstitucionalService::limpiarObservacion((string)($datos['persona_atendio'] ?? ''));
         $proximaAccion = $programacion['accion'];
-        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['observacion'] ?? ''));
-        $origenLlamada = strtoupper(trim((string)($_POST['origen_llamada'] ?? 'MANUAL')));
+        $observacion = VerificacionInstitucionalService::limpiarObservacion((string)($datos['observacion'] ?? ''));
+        $origenLlamada = strtoupper(trim((string)($datos['origen_llamada'] ?? 'MANUAL')));
         if (!in_array($origenLlamada, ['ZADARMA', 'PRUEBA', 'MANUAL'], true)) {
             $origenLlamada = 'MANUAL';
         }
-        $nuevoTelefonoContacto = trim((string)($_POST['nuevo_telefono_contacto'] ?? ''));
-        $nuevoCorreoContacto = trim((string)($_POST['nuevo_correo_contacto'] ?? ''));
-        $nuevoContactoNombre = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['nuevo_contacto_nombre'] ?? ''));
-        $nuevoContactoCargo = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['nuevo_contacto_cargo'] ?? ''));
+        $nuevoTelefonoContacto = trim((string)($datos['nuevo_telefono_contacto'] ?? ''));
+        $nuevoCorreoContacto = trim((string)($datos['nuevo_correo_contacto'] ?? ''));
+        $nuevoContactoNombre = VerificacionInstitucionalService::limpiarObservacion((string)($datos['nuevo_contacto_nombre'] ?? ''));
+        $nuevoContactoCargo = VerificacionInstitucionalService::limpiarObservacion((string)($datos['nuevo_contacto_cargo'] ?? ''));
 
         if ($resultadoFormulario === 'CONTACTO_REFERIDO') {
             if ($canalFormulario !== 'LLAMADA') {
@@ -1427,9 +1450,9 @@ class SeguimientoVinculacionController
         $resultadoAdmiteVerificacion = VerificacionInstitucionalService::resultadoVerificable($resultadoFormulario);
 
         try {
-            $telefonoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'telefono');
-            $correoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'correo');
-            $contactoActual=VerificacionInstitucionalService::datoConfirmable($_POST,$seguimiento,'contacto');
+            $telefonoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'telefono');
+            $correoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'correo');
+            $contactoActual=VerificacionInstitucionalService::datoConfirmable($datos,$seguimiento,'contacto');
         } catch (InvalidArgumentException $e) { $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422); }
 
 
@@ -1438,7 +1461,7 @@ class SeguimientoVinculacionController
             $resultadoAdmiteVerificacion &&
             (int)($seguimiento['datos_verificados'] ?? 0) !== 1
         ) {
-            if ((int)($_POST['verificacion_telefono_confirmado'] ?? 0) === 1) {
+            if ((int)($datos['verificacion_telefono_confirmado'] ?? 0) === 1) {
                 if ($telefonoActual === '') {
                     $this->responderJson([
                         'ok' => false,
@@ -1448,7 +1471,7 @@ class SeguimientoVinculacionController
                 $evidenciasVerificacion[] = 'Teléfono confirmado';
             }
 
-            if ((int)($_POST['verificacion_correo_confirmado'] ?? 0) === 1) {
+            if ((int)($datos['verificacion_correo_confirmado'] ?? 0) === 1) {
                 if ($correoActual === '') {
                     $this->responderJson([
                         'ok' => false,
@@ -1458,7 +1481,7 @@ class SeguimientoVinculacionController
                 $evidenciasVerificacion[] = 'Correo confirmado';
             }
 
-            if ((int)($_POST['verificacion_contacto_confirmado'] ?? 0) === 1) {
+            if ((int)($datos['verificacion_contacto_confirmado'] ?? 0) === 1) {
                 if ($contactoActual === '') {
                     $this->responderJson([
                         'ok' => false,
@@ -1479,9 +1502,9 @@ class SeguimientoVinculacionController
         }
 
         try {
-            if ($resultadoFormulario==='CONTACTO_REFERIDO') VerificacionInstitucionalService::referido($_POST);
+            if ($resultadoFormulario==='CONTACTO_REFERIDO') VerificacionInstitucionalService::referido($datos);
             $detallesVerificacion=$canalFormulario==='LLAMADA' && $resultadoAdmiteVerificacion
-                ? VerificacionInstitucionalService::detalles($_POST,$seguimiento) : [];
+                ? VerificacionInstitucionalService::detalles($datos,$seguimiento) : [];
         } catch (InvalidArgumentException|DomainException $e) {
             $this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],422);
         }
@@ -1503,8 +1526,8 @@ class SeguimientoVinculacionController
         }
 
         $descartar = $resultadoFormulario === 'NO_INTERESADO' &&
-            (int)($_POST['descartar'] ?? 0) === 1;
-        $motivoDescarte = VerificacionInstitucionalService::limpiarObservacion((string)($_POST['motivo_descarte'] ?? ''));
+            (int)($datos['descartar'] ?? 0) === 1;
+        $motivoDescarte = VerificacionInstitucionalService::limpiarObservacion((string)($datos['motivo_descarte'] ?? ''));
 
         if ($descartar && $motivoDescarte === '') {
             $this->responderJson([
@@ -1547,6 +1570,9 @@ class SeguimientoVinculacionController
 
         $notas=trim($notas."\n".DatosContactoLlamadaService::nota($contactoLlamada));
         $datosInteraccion = [
+            'llamada_confirmada'=>$llamadaConfirmada,
+            'proveedor_externo'=>$llamadaConfirmada?'ZADARMA':null,
+            'id_externo'=>$llamadaConfirmada['pbx_call_id']??null,
             'contacto_llamada'=>$contactoLlamada,
             'canal' => $canal,
             'resultado' => $resultado,
@@ -1567,69 +1593,70 @@ class SeguimientoVinculacionController
             'persona_informante'=>$personaAtendio
         ];
 
-        if (!$modelo->registrarInteraccionManual($seguimientoId, $usuarioId, $datosInteraccion)) {
-            $etapaError = trim((string)$modelo->obtenerUltimoErrorInteraccion());
-            $mensajeError = 'No fue posible registrar la interacción.';
-
-            if ($etapaError !== '') {
-                $mensajeError = 'No fue posible ' . $etapaError . '.';
-            }
-
-            $this->responderJson([
-                'ok' => false,
-                'mensaje' => $mensajeError
-            ], 500);
-        }
-
-        $interaccionCreadaId = $modelo->obtenerUltimaInteraccionCreadaId();
-
-        $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
-            $modelo,
-            $usuarioId,
-            $seguimientoId,
-            $modoSeguimiento
-        );
-
-        $auditoriaCambios = (new SeguimientoCambioDatosService())->registrarCambios(
-            $seguimientoId,
-            $usuarioId,
-            $seguimiento,
-            $seguimientoActualizado
-        );
-        $notificadosCuentaClave = (int)($auditoriaCambios['notificados'] ?? 0);
-
-        $this->responderJson([
-            'ok' => true,
-            'interaccion_id' => $interaccionCreadaId,
-            'mensaje' => $notificadosCuentaClave > 0
-                ? 'Interacción registrada. Cuenta Clave fue notificada del cambio de contacto.'
-                : 'Interacción registrada correctamente.',
-            'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
-                $seguimientoActualizado,
-                $usuarioId,
-                $modoSeguimiento
-            ),
-            'interacciones' => $this->serializarInteraccionesTrabajo(
-                $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
-            ),
-            'resumen' => $this->obtenerResumenTrabajoActualizado(
+        $presentar=function(int $interaccionCreadaId)use($modelo,$db,$usuarioId,$seguimientoId,$modoSeguimiento,
+            $seguimiento,$esCandidataVerificacion,$esVerificacionEfectiva,$detallesVerificacion,$origenLlamada,$evidenciasVerificacion):array{
+            $seguimientoActualizado = $this->obtenerSeguimientoPorModo(
                 $modelo,
                 $usuarioId,
-                $seguimientoActualizado,
+                $seguimientoId,
                 $modoSeguimiento
-            ),
-            'verificacion_telefonica' => [
-                'candidata' => $esCandidataVerificacion,
-                'contabilizable' => $esVerificacionEfectiva,
-                'parcial' => !empty($detallesVerificacion) && !VerificacionInstitucionalService::tienePar($detallesVerificacion),
-                'origen' => $origenLlamada,
-                'evidencias' => $evidenciasVerificacion,
-                'resumen_hoy' => $modelo->obtenerResumenVerificacionTelefonicaDia(
+            );
+
+            $auditoriaCambios = (new SeguimientoCambioDatosService($db))->registrarCambios(
+                $seguimientoId,
+                $usuarioId,
+                $seguimiento,
+                $seguimientoActualizado
+            );
+            $notificadosCuentaClave = (int)($auditoriaCambios['notificados'] ?? 0);
+
+            return [
+                'ok' => true,
+                'interaccion_id' => $interaccionCreadaId,
+                'mensaje' => $notificadosCuentaClave > 0
+                    ? 'Interacción registrada. Cuenta Clave fue notificada del cambio de contacto.'
+                    : 'Interacción registrada correctamente.',
+                'seguimiento' => $this->serializarSeguimientoTrabajoConPermisos(
+                    $seguimientoActualizado,
                     $usuarioId,
-                    date('Y-m-d')
-                )
-            ]
-        ]);
+                    $modoSeguimiento
+                ),
+                'interacciones' => $this->serializarInteraccionesTrabajo(
+                    $modelo->obtenerUltimasInteraccionesSeguimiento($seguimientoId, 3)
+                ),
+                'resumen' => $this->obtenerResumenTrabajoActualizado(
+                    $modelo,
+                    $usuarioId,
+                    $seguimientoActualizado,
+                    $modoSeguimiento
+                ),
+                'verificacion_telefonica' => [
+                    'candidata' => $esCandidataVerificacion,
+                    'contabilizable' => $esVerificacionEfectiva,
+                    'parcial' => !empty($detallesVerificacion) && !VerificacionInstitucionalService::tienePar($detallesVerificacion),
+                    'origen' => $origenLlamada,
+                    'evidencias' => $evidenciasVerificacion,
+                    'resumen_hoy' => $modelo->obtenerResumenVerificacionTelefonicaDia(
+                        $usuarioId,
+                        date('Y-m-d')
+                    )
+                ]
+            ];
+        };
+        $respuesta=null;$alPersistir=null;
+        if($confirmar){
+            $datosInteraccion['contacto_esperado']=array_intersect_key($seguimiento,array_flip([
+                'analista_id','activo','datos_verificados','telefono_verificado','telefono_fuente',
+                'correo_verificado','correo_fuente','contacto_nombre','contacto_cargo','estado_seguimiento'
+            ]));
+            $alPersistir=static function(int $id)use($presentar,$confirmar,&$respuesta):void{
+                $respuesta=$presentar($id);
+                $confirmar('INTERACCION_VINCULACION',$id,$respuesta);
+            };
+        }
+        if(!$modelo->registrarInteraccionManual($seguimientoId,$usuarioId,$datosInteraccion,false,$alPersistir))
+            throw new RuntimeException('No fue posible '.$modelo->obtenerUltimoErrorInteraccion().'.');
+        return $respuesta??$presentar($modelo->obtenerUltimaInteraccionCreadaId());
     }
 
     public function resumenVerificacionTelefonicaHoy()
