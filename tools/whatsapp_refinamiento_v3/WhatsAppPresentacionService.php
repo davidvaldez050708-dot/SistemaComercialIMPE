@@ -7,6 +7,21 @@ declare(strict_types=1);
  */
 final class WhatsAppPresentacionService
 {
+    /** Revalida permisos efectivos sin grabar sesión ni conceder permisos. */
+    public static function validarSesion(mysqli $db,int $uid): void
+    {
+        $rol=(int)($_SESSION['rol_id']??0);
+        if($uid<1 || (int)($_SESSION['usuario_id']??0)!==$uid || !tienePermiso('whatsapp.ver'))throw new DomainException('Acceso no disponible.',403);
+        $s=$db->prepare("SELECT p.codigo FROM usuarios u JOIN roles r ON r.id=u.rol_id AND r.estado=1
+            JOIN rol_permisos rp ON rp.rol_id=u.rol_id JOIN permisos p ON p.id=rp.permiso_id AND p.estado=1
+            WHERE u.id=? AND u.rol_id=? AND u.estado=1");
+        try{$s->bind_param('ii',$uid,$rol);$s->execute();$live=array_column($s->get_result()->fetch_all(MYSQLI_ASSOC),'codigo');}
+        finally{$s->close();}
+        $saved=$_SESSION['permisos']??[];
+        $_SESSION['permisos']=array_values(array_intersect(is_array($saved)?$saved:[],$live));
+        if(!tienePermiso('whatsapp.ver'))throw new DomainException('Tu acceso cambió.',403);
+    }
+
     public static function nombre(array $fila): string
     {
         foreach(['prospecto_nombre','aliado_nombre','nombre_contacto','telefono_contacto'] as $k){

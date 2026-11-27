@@ -1,0 +1,23 @@
+<?php
+if(getenv('IMPE_WHATSAPP_VENTAS_TEST')!=='YES'||!preg_match('/^impe_wa_ventas_test_[a-f0-9]{10}$/D',$schema))exit(2);
+$db->query("INSERT IGNORE INTO rol_permisos SELECT 3,id FROM permisos WHERE codigo IN ('whatsapp.ver','whatsapp.enviar')");
+waSession(22);
+date_default_timezone_set('America/Mexico_City');
+$db->query("SET time_zone='+00:00'");
+$db->query("UPDATE whatsapp_mensajes SET enviado_at='2026-11-27 15:00:00',created_at='2026-11-27 21:00:00' WHERE conversacion_id=$other AND direccion='ENTRANTE'");
+$db->query("UPDATE whatsapp_mensajes SET enviado_at='2026-11-27 20:58:00',created_at='2026-11-27 20:58:00' WHERE conversacion_id=$other AND direccion='SALIENTE'");
+$db->query("UPDATE whatsapp_conversaciones SET ultimo_mensaje_at='2026-11-27 20:58:00',ultimo_mensaje_preview='stale',no_leidos=2,nombre_contacto='Perfil externo' WHERE id=$other");
+$row=array_values(array_filter($model->obtenerConversaciones(22,false),fn($r)=>(int)$r['id']===$other))[0];
+avCheck($row['ultimo_mensaje_at']==='2026-11-27 15:00:00'&&$row['ultimo_mensaje_direccion']==='ENTRANTE'&&$row['ultimo_mensaje_preview']==='Hola','actual last message from mixed legacy time fields');
+avCheck((int)$row['no_leidos']===2,'list does not mark read');
+avCheck($row['prospecto_nombre']==='Prospecto dos','canonical CRM name');
+$alerts=WhatsAppAvisosService::resumen($db,22);
+$r=array_values(array_filter($alerts['conversaciones'],fn($r)=>$r['id']===$other))[0];
+avCheck($r['nombre']==='Prospecto dos'&&$r['fecha']==='2026-11-27 15:00:00','alert uses CRM name and local incoming time');
+$msg=$model->obtenerMensajes($other,22,false);
+foreach($msg as $r)if($r['direccion']==='SALIENTE')avCheck($r['fecha_visible']==='2026-11-27 14:58:00','old outgoing shown in Mexico');
+$model->registrarMensajeSalida($other,22,'new synthetic',['ok'=>false,'mensaje'=>'fixture']);
+$r=$db->query("SELECT enviado_at,created_at FROM whatsapp_mensajes WHERE conversacion_id=$other AND direccion='SALIENTE' ORDER BY id DESC LIMIT 1")->fetch_assoc();
+avCheck(abs((new DateTimeImmutable($r['enviado_at'],new DateTimeZone('America/Mexico_City')))->getTimestamp()-(new DateTimeImmutable($r['created_at'],new DateTimeZone('UTC')))->getTimestamp())<=2,'new outgoing local time and UTC record agree');
+waSession(23);avCheck(!in_array($other,array_map('intval',array_column($model->obtenerConversaciones(23,false),'id')),true),'former adviser denied');
+echo "WA_REFINAMIENTO_SQL_OK\n";
