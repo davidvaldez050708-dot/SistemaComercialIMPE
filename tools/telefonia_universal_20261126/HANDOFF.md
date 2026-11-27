@@ -432,3 +432,33 @@ del navegador (las evidencias/resultados SQL sobreviven); aprobación diferida a
 PBX tardía para todos los roles; integración entrante/transferencias/audio completo,
 regresión visual, Supervisión selectiva,1,000 llamadas universales,8h reales y
 publicador. No se ha modificado producción ni arrancado el soak de ocho horas.
+
+
+## Octavo checkpoint — recibo nativo independiente de la llamada actual
+
+Base: `bdc46e8c`. Seguimiento inicial e Informativa capturan la identidad PBX,
+SDK y expediente ANTES del await y entregan el ID nativo mediante onCommitted
+al mismo controlador común. La cola técnica se conserva aunque el ACK llegue
+tras abrir otro expediente o empezar otra llamada. No se infiere el ID por DOM,
+fecha, orden del historial ni último resultado del expediente. El puente legacy
+ya no reemplaza un interaccion_id explícito ni rellena uno ausente por ese mapa.
+
+La limpieza de las reglas SDK2 exige el token de su captura; los eventos de
+presentación no pueden asignarse a la llamada siguiente. El observador de toast
+y los manejadores legacy dejan de inferir asociaciones SDK2. Los controles del
+formulario inicial se restauran antes de retirar sus campos telefónicos.
+Recepción/Ventas siguen usando el mismo controlador; no cambian sus permisos.
+
+Validación:23/23 suites JS,19 checks de la función real de entrega del ID,
+3 del puente real,17 del adaptador inicial y14 del avanzado, incluidos ACK tardío,
+formulario cambiado, sobreescritura rechazada y restauración de controles.
+Sintaxis PHP de la vista y cuatro scripts correctos. HTTP/SQL no se repitió:
+este bloque no modifica contratos ni código servidor. Son pruebas parciales con
+HTTP simulado; NO equivalen a1,000 llamadas ni ocho horas de estabilidad real.
+
+Revisión dirigida: fetchCallState del host YA envía session_id; no duplicar ese
+cambio. La documentación distingue NOTIFY_END por extensión y NOTIFY_OUT_END
+saliente con internal opcional. NO tratar un END sin extensión como fin probado
+de todos los tramos: sigue pendiente resolverlo por evidencia inequívoca de tramo
+(o CDR exacto) y probarlo con transferencias, sin inventar duración ni audio.
+Los demás pendientes del checkpoint7 continúan. Producción intacta.

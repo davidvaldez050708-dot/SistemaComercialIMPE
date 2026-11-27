@@ -209,6 +209,8 @@
                 const form = offcanvas.querySelector('[data-work-interaction-form]');
                 const captura = form && reglasPorFormulario.get(form);
                 if (!captura?.enviada || Number(event.detail?.seguimientoId) !== Number(captura.metadata.seguimiento_id)) return;
+                if (Number(captura.metadata.session_protocol) === 2 &&
+                    event.detail?.callToken !== captura.metadata.call_token) return;
                 captura.cancelada = true; clearTimeout(captura.timer); reglasPorFormulario.delete(form);
                 for (const [option,disabled] of captura.originales) option.disabled = disabled;
                 form.querySelector('[data-call-result-rules]')?.remove();
@@ -380,6 +382,34 @@
         let awaitingInteractionSave = false;
         let linkingMetadata = false;
         let pendingInteractionFeedback = null;
+        // Capturar antes del await: otro expediente o una nueva llamada no puede
+        // cambiar la identidad del resultado ya aprobado y confirmado por SQL.
+        window.IMPE_ZADARMA_LINKS = Object.freeze({
+            submission(form) {
+                const rules = reglasPorFormulario.get(form);
+                if (!rules || rules.cancelada || !rules.metadata?.call_token ||
+                    String(form.querySelector('[name="llamada_pbx_id"]')?.value || '') !== String(rules.metadata.pbx_call_id || '') ||
+                    Number(form.querySelector('[name="seguimiento_id"]')?.value) !== Number(rules.metadata.seguimiento_id)) return null;
+                const metadata = {...rules.metadata};
+                const feedback = pendingMetadata?.call_token === metadata.call_token && pendingInteractionFeedback
+                    ? {...pendingInteractionFeedback} : null;
+                const link = {committed:false, detail:{seguimientoId:Number(metadata.seguimiento_id),
+                    callToken:metadata.call_token, pbxCallId:metadata.pbx_call_id, protocol:Number(metadata.session_protocol || 1)}};
+                link.onCommitted = ({payload}) => {
+                    const id = Number(payload?.interaccion_id || payload?.interaccion?.id || 0);
+                    if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Falta el ID confirmado de la interacción.');
+                    const prior = queue[metadata.call_token];
+                    if (prior && Number(prior.interactionId) !== id) throw new Error('La llamada ya tiene otro resultado confirmado. Conserva la captura para revisión.');
+                    if (pendingMetadata?.call_token === metadata.call_token) pendingInteractionId = id;
+                    if (!secureResult(prior || {metadata, interactionId:id, feedback}, !prior))
+                        throw new Error('El resultado está guardado; falta conservar su conciliación técnica.');
+                    link.committed = true;
+                    // El timer existente procesa esta cola; no crear otro sondeo.
+                    // El formulario se limpia sólo tras presentar su propio ACK.
+                };
+                return link;
+            }
+        });
         let lastFinishedToken = '';
         let telefonoFlotanteOculto = false;
 
@@ -1493,7 +1523,7 @@
             function (event) {
                 if (
                     !awaitingInteractionSave ||
-                    !pendingMetadata
+                    !pendingMetadata || Number(pendingMetadata.session_protocol) === 2
                 ) {
                     return;
                 }
@@ -1543,7 +1573,7 @@
             function (event) {
                 if (
                     !awaitingInteractionSave ||
-                    !pendingMetadata
+                    !pendingMetadata || Number(pendingMetadata.session_protocol) === 2
                 ) {
                     return;
                 }
@@ -1603,7 +1633,7 @@
                     function (mutations) {
                         if (
                             !awaitingInteractionSave ||
-                            !pendingMetadata
+                            !pendingMetadata || Number(pendingMetadata.session_protocol) === 2
                         ) {
                             return;
                         }

@@ -754,6 +754,7 @@
             const formData = new FormData(formulario);
             const resultado = String(selectorResultado.value || '');
             let interaccionActual=()=>true;
+            let enlaceLlamada=null;
 
 
             if (resultado === 'NO_INTERESADO') {
@@ -786,8 +787,9 @@
                     const values=Object.fromEntries(formData);
                     interaccionActual=()=>String(formulario.querySelector('[name="seguimiento_id"]')?.value||'')===String(values.seguimiento_id||'')&&
                         String(formulario.querySelector('[name="llamada_pbx_id"]')?.value||'')===referencia;
+                    enlaceLlamada=window.IMPE_ZADARMA_LINKS?.submission(formulario);
                     const confirmed=await window.IMPE_CALL_RESULTS.submit({form:formulario,user:Number(window.IMPE_CURRENT_USER_ID),
-                        ids:[referencia],context:{adaptador:'INFORMATIVA'},values,endpoint:urlInteraccionInformativa,isCurrent:interaccionActual});
+                        ids:[referencia],context:{adaptador:'INFORMATIVA'},values,endpoint:urlInteraccionInformativa,isCurrent:interaccionActual,onCommitted:enlaceLlamada?.onCommitted});
                     if(!interaccionActual())return;
                     if(!confirmed.ok)throw confirmed.error||new Error('No fue posible confirmar la interacción.');
                     datos=confirmed.payload;
@@ -833,6 +835,7 @@
 
                 document.dispatchEvent(new CustomEvent('impe:interaction-informative-saved', {
                     detail: {
+                        ...(enlaceLlamada?.detail||{}),
                         seguimientoId: Number(formData.get('seguimiento_id') || 0),
                         interaccionId: Number(datos.interaccion?.id || 0)
                     }

@@ -8,7 +8,6 @@
     window.IMPE_EXACT_INTERACTION_BRIDGE_READY = true;
 
     const fetchOriginal = window.fetch.bind(window);
-    const interaccionesExactas = new Map();
     // Protege el resultado ya confirmado de la misma llamada frente a clics
     // repetidos. La protección no sustituye idempotencia de servidor.
     const guardadosPorLlamada = new Map();
@@ -98,35 +97,6 @@
         return null;
     };
 
-    const resolverIdTrabajo = function (datos, contexto) {
-        const interacciones = Array.isArray(datos && datos.interacciones)
-            ? datos.interacciones
-            : [];
-        const llamadas = interacciones.filter(function (interaccion) {
-            return String(interaccion && interaccion.canal || '') === contexto.canal;
-        });
-        const fechaMinuto = String(contexto.fechaInicio || '').slice(0, 16);
-
-        if (llamadas.length === 0) {
-            return 0;
-        }
-
-        const candidatas = fechaMinuto === ''
-            ? llamadas
-            : llamadas.filter(function (interaccion) {
-                return String(interaccion.fecha_inicio || '').slice(0, 16) === fechaMinuto;
-            });
-
-        if (candidatas.length === 0) {
-            return 0;
-        }
-
-        return candidatas.reduce(function (mayor, interaccion) {
-            const id = Number(interaccion && interaccion.id || 0);
-            return id > mayor ? id : mayor;
-        }, 0);
-    };
-
     const guardarInteraccionExacta = function (datos, contexto) {
         if (!datos || datos.ok !== true || !contexto) {
             return;
@@ -145,8 +115,6 @@
             console.warn('No se pudo resolver el ID exacto de la interacción telefónica guardada.');
             return;
         }
-
-        interaccionesExactas.set(contexto.seguimientoId, interaccionId);
 
         document.dispatchEvent(new CustomEvent('impe:interaction-exact-id-ready', {
             detail: {
@@ -172,23 +140,8 @@
             });
         }
 
-        const esVinculacion =
-            esUrl(url, 'prueba_telefonia/api/vincular_interaccion_zadarma.php');
-        const body = init && init.body instanceof FormData ? init.body : null;
-        let seguimientoVinculacion = 0;
-        let interaccionVinculacion = 0;
-
-        if (esVinculacion && body) {
-            seguimientoVinculacion = Number(valorFormData(body, 'seguimiento_id') || 0);
-            interaccionVinculacion = Number(
-                interaccionesExactas.get(seguimientoVinculacion) || 0
-            );
-
-            if (interaccionVinculacion > 0) {
-                body.set('interaccion_id', String(interaccionVinculacion));
-            }
-        }
-
+        // El ID viaja explícito desde el recibo nativo. No sustituirlo por
+        // el último ID guardado en otro formulario del mismo expediente.
         const originalRequest = fetchOriginal(input, init);
         if (claveRegistro) {
             const confirmation = originalRequest.then(async function (response) {
@@ -214,17 +167,6 @@
                     guardarInteraccionExacta(datos, contexto);
                 } catch (error) {
                     // La respuesta principal conserva su manejo normal de errores.
-                }
-            }
-
-            if (esVinculacion && seguimientoVinculacion > 0 && interaccionVinculacion > 0) {
-                try {
-                    const datos = await response.clone().json();
-                    if (datos && datos.ok === true) {
-                        interaccionesExactas.delete(seguimientoVinculacion);
-                    }
-                } catch (error) {
-                    // Conserva el ID para permitir un reintento si la respuesta no fue JSON.
                 }
             }
 

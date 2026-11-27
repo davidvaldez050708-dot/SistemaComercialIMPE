@@ -121,5 +121,17 @@
     "server_recovery_without_browser_queue_complete": false,
     "full_call_acceptance": false,
     "production_changed": false
+  },
+  "continuation_exact_native_handoff": {
+    "base": "bdc46e8c",
+    "unit_suites_passed": 23,
+    "actual_handoff_checks": 19,
+    "compatibility_bridge_checks": 3,
+    "initial_adapter_checks": 17,
+    "advanced_adapter_checks": 14,
+    "late_ack_after_new_call_covered": true,
+    "explicit_native_id_never_replaced": true,
+    "full_call_acceptance": false,
+    "production_changed": false
   }
 }

@@ -2467,6 +2467,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData(formularioInteraccion);
         const resultado = String(formData.get('resultado') || '');
         let interaccionActual=()=>true;
+        let enlaceLlamada=null;
 
         if (botonGuardar) {
             botonGuardar.disabled = true;
@@ -2480,9 +2481,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const values=Object.fromEntries(formData);
                 interaccionActual=()=>String(formularioInteraccion.querySelector('[name="seguimiento_id"]')?.value||'')===String(values.seguimiento_id||'')&&
                     String(formularioInteraccion.querySelector('[name="llamada_pbx_id"]')?.value||'')===referencia;
+                enlaceLlamada=window.IMPE_ZADARMA_LINKS?.submission(formularioInteraccion);
                 const confirmed=await window.IMPE_CALL_RESULTS.submit({form:formularioInteraccion,
                     user:Number(window.IMPE_CURRENT_USER_ID),ids:[referencia],context:{adaptador:'SEGUIMIENTO'},
-                    values,endpoint:urlRegistrarInteraccionTrabajo,isCurrent:interaccionActual});
+                    values,endpoint:urlRegistrarInteraccionTrabajo,isCurrent:interaccionActual,onCommitted:enlaceLlamada?.onCommitted});
                 if(!interaccionActual())return;
                 if(!confirmed.ok)throw confirmed.error||new Error('No fue posible confirmar la interacción.');
                 datos=confirmed.payload;
@@ -2531,6 +2533,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     botonConfirmarDescarte.disabled = true;
                 }
                 modalDescarte?.show();
+            }
+            if(enlaceLlamada?.committed){
+                // El evento retira los campos telefónicos. Restaurar primero
+                // los controles mientras su identidad todavía coincide.
+                if(botonGuardar){botonGuardar.disabled=false;botonGuardar.textContent=textoOriginal||'Guardar interacción';}
+                document.dispatchEvent(new CustomEvent('impe:interaction-exact-id-ready',{
+                    detail:{...enlaceLlamada.detail,interaccionId:Number(datos.interaccion_id)}
+                }));
             }
         } catch (error) {
             if(interaccionActual())mostrarErrorTrabajo(error, 'No fue posible registrar la interacción.');

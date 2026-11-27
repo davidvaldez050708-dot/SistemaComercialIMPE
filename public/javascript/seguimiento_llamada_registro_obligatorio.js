@@ -243,6 +243,10 @@
         } catch (_) { /* Fuera del shell conserva la protección del documento. */ }
         if (unloadOwner === window) window.addEventListener('beforeunload', beforeUnload);
         const saved = event => {
+            // El controlador común libera SDK2 por el recibo durable y token.
+            // Un evento de presentación tardío nunca pertenece a la llamada nueva.
+            if (Number(event.detail?.protocol) === 2 ||
+                (event.detail?.callToken && event.detail.callToken !== pending?.token)) return;
             if (!pending?.finished || Number(event.detail?.seguimientoId) !== pending.seguimientoId ||
                 !(Number(event.detail?.interaccionId) > 0)) return;
             pending.interactionId = Number(event.detail.interaccionId);
