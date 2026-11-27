@@ -1,0 +1,3 @@
+# Asignación V2 — publicación selectiva
+
+CI 46064386931 aprobada sobre c394d3f7366c9b4e3b19e16c9731fb48b1698a4f. CHECK de Hostinger aprobado por operador. Publicador basado en recepción V1, probado previamente por operador; esta variante exige repetir prueba privada de aplicación, idempotencia, conflicto, restauración y fallo parcial antes de APPLY. Orden: servicio primero, modelo después. Restauración en orden inverso. Sin migraciones ni cambios de permisos o carteras. Conserva conversaciones antiguas. No se conceden permisos de Analista. Sólo el código cambia durante APPLY; eventos entrantes posteriores podrán crear vínculos auditados. No revertir esos datos al restaurar código. No desplegar rama completa.
