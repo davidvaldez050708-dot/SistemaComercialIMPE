@@ -15,7 +15,7 @@ try{
  foreach([
  'CREATE TABLE roles(id INT PRIMARY KEY,estado TINYINT,nombre VARCHAR(100))',
  'CREATE TABLE usuarios(id INT PRIMARY KEY,rol_id INT,estado TINYINT,nombre VARCHAR(100),apellidos VARCHAR(100),foto_perfil VARCHAR(250) DEFAULT "")',
- 'CREATE TABLE estados(id INT PRIMARY KEY,estado TINYINT,nombre VARCHAR(100))',
+ 'CREATE TABLE estados(id INT PRIMARY KEY,estado TINYINT,nombre VARCHAR(100),nombre_corto VARCHAR(30) DEFAULT "",clave_inegi VARCHAR(4) DEFAULT "")',
  'CREATE TABLE asignaciones_territorio(id INT PRIMARY KEY,usuario_id INT,estado_id INT,tipo_asignacion VARCHAR(30),cuenta_clave_asignacion_id INT,activo TINYINT,fecha_inicio DATE NULL,fecha_fin DATE NULL)',
  'CREATE TABLE seguimientos_vinculacion(id INT PRIMARY KEY,estado_id INT,analista_id INT,activo TINYINT)',
  'CREATE TABLE interacciones_vinculacion(id INT PRIMARY KEY,seguimiento_id INT,usuario_id INT,canal VARCHAR(20),fecha_inicio DATETIME)',
@@ -23,7 +23,7 @@ try{
  'CREATE TABLE rol_permisos(rol_id INT,permiso_id INT,PRIMARY KEY(rol_id,permiso_id))',
  "INSERT INTO roles VALUES(1,1,'Administrador'),(2,1,'Director'),(3,1,'Asesor'),(4,1,'Analista de Datos'),(5,1,'Marketing'),(6,1,'Cuenta Clave')",
  "INSERT INTO usuarios(id,rol_id,estado,nombre,apellidos) VALUES(1,1,1,'Admin','Prueba'),(2,2,1,'Dirección','Prueba'),(10,6,1,'José','Prueba'),(11,6,1,'Sarahi','Prueba'),(20,3,1,'Mayra','Prueba'),(21,4,1,'Ana','Prueba'),(22,4,1,'Luis','Prueba'),(23,4,1,'Rosa','Prueba'),(24,4,0,'Inactivo','Prueba'),(25,3,0,'Asesor inactivo','Prueba'),(30,5,1,'Marketing','Prueba')",
- "INSERT INTO estados VALUES(1,1,'Jalisco'),(2,1,'CDMX')",
+ "INSERT INTO estados(id,estado,nombre) VALUES(1,1,'Jalisco'),(2,1,'CDMX')",
  "INSERT INTO asignaciones_territorio VALUES(1,10,1,'CUENTA_CLAVE',NULL,1,NULL,NULL),(2,11,2,'CUENTA_CLAVE',NULL,1,NULL,NULL),(3,22,1,'ANALISTA_DATOS',1,1,NULL,NULL),(4,21,2,'ANALISTA_DATOS',2,1,NULL,NULL),(5,20,2,'ASESOR',2,1,NULL,NULL),(6,24,1,'ANALISTA_DATOS',1,1,NULL,NULL),(7,23,2,'ANALISTA_DATOS',999,1,NULL,NULL),(8,22,1,'ANALISTA_DATOS',1,1,NULL,NULL),(9,21,1,'ANALISTA_DATOS',1,1,'2020-01-01','2020-01-02')",
  "INSERT INTO seguimientos_vinculacion VALUES(100,1,22,1),(101,2,21,1),(102,2,23,1),(103,1,23,1)",
  "INSERT INTO interacciones_vinculacion VALUES(1,100,22,'LLAMADA_IP',UTC_TIMESTAMP()),(2,100,23,'CORREO',UTC_TIMESTAMP()),(3,101,21,'LLAMADA_IP',UTC_TIMESTAMP()),(4,102,23,'CORREO',UTC_TIMESTAMP())",
@@ -33,6 +33,7 @@ try{
  $operativo=static fn()=>hash('sha256',json_encode($db->query('SELECT * FROM asignaciones_territorio ORDER BY id')->fetch_all(MYSQLI_ASSOC)));
  $original=$operativo();check(!(new SupervisionPersonalAcceso($db))->activa(),'Sin migración debe conservar comportamiento heredado.');
  $plan=SupervisionPersonalAuditoria::leer($db);check(count($plan['relaciones'])===4,'Deduplicar relaciones operativas explícitas.');check(count($plan['requieren_revision'])>=2,'Detectar relaciones huérfanas y exposición por territorio.');
+ check($plan['resumen']['grupos_duplicados']===1,'Informar las asignaciones vigentes repetidas sin borrarlas.');
  $alterado=$plan;$alterado['relaciones'][]=['kam_id'=>10,'colaborador_id'=>30];
  rejected(fn()=>SupervisionPersonalAuditoria::resolver($alterado,[]),'No aceptar un plan editado con la huella anterior.');
  rejected(fn()=>SupervisionPersonalAuditoria::resolver($plan,[]),'Las ambigüedades necesitan autorización expresa.');

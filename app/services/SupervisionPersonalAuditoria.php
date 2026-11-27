@@ -23,10 +23,14 @@ final class SupervisionPersonalAuditoria
     {
         $usuarios=array_column($datos['usuarios'],null,'id');$roles=array_column($datos['roles'],null,'id');
         $estados=array_column($datos['estados'],null,'id');$asignaciones=array_column($datos['asignaciones'],null,'id');
-        $fecha=(string)$datos['fecha'];$pares=[];$problemas=[];$estadosKam=[];
+        $fecha=(string)$datos['fecha'];$pares=[];$problemas=[];$estadosKam=[];$duplicados=[];
         $vigente=static fn($a)=>(int)($a['activo']??0)===1 && (empty($a['fecha_inicio'])||substr($a['fecha_inicio'],0,10)<=$fecha) && (empty($a['fecha_fin'])||substr($a['fecha_fin'],0,10)>=$fecha);
         $issue=static function(string $id,string $motivo,int $kam=0,int $col=0)use(&$problemas){$problemas[$id]=['id'=>$id,'motivo'=>$motivo,'kam_id'=>$kam,'colaborador_id'=>$col];};
         foreach($asignaciones as $a){
+            if($vigente($a)){
+                $firma=implode(':',[(int)$a['usuario_id'],(int)$a['estado_id'],(string)$a['tipo_asignacion'],(int)($a['cuenta_clave_asignacion_id']??0)]);
+                $duplicados[$firma][]=(int)$a['id'];
+            }
             if(!$vigente($a)||!in_array($a['tipo_asignacion'],['ANALISTA_DATOS','ASESOR'],true))continue;
             $c=$asignaciones[$a['cuenta_clave_asignacion_id']??0]??null;
             $uid=(int)$a['usuario_id'];$kam=(int)($c['usuario_id']??0);$rol=$a['tipo_asignacion']==='ASESOR'?3:4;
@@ -55,8 +59,9 @@ final class SupervisionPersonalAuditoria
         }
         ksort($pares,SORT_NATURAL);ksort($problemas,SORT_NATURAL);
         $snapshot=hash('sha256',json_encode($datos,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
+        $avisos=[];foreach($duplicados as $firma=>$ids)if(count($ids)>1)$avisos[]=['tipo'=>'ASIGNACIONES_VIGENTES_REPETIDAS','asignacion_ids'=>$ids,'motivo'=>'Misma persona, estado, tipo y relación operativa. Se conservan todas las filas originales; la supervisión usa una pareja única.'];
         $plan=['version'=>1,'fecha'=>$fecha,'snapshot_hash'=>$snapshot,'relaciones'=>array_values($pares),
-            'requieren_revision'=>array_values($problemas),'resumen'=>['relaciones_explicitas'=>count($pares),'ambiguedades'=>count($problemas)]];
+            'requieren_revision'=>array_values($problemas),'advertencias'=>$avisos,'resumen'=>['relaciones_explicitas'=>count($pares),'ambiguedades'=>count($problemas),'grupos_duplicados'=>count($avisos)]];
         $plan['plan_hash']=hash('sha256',json_encode($plan,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
         return $plan;
     }

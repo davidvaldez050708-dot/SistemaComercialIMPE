@@ -48,5 +48,6 @@ Pruebas con MariaDB local efímero, datos ficticios y Chrome automatizado; ningu
 Falta antes de producción: auditoría de asignaciones reales y aprobación de ambigüedades; pruebas completas en staging con la versión personalizada, permisos reales, exportaciones/PDF y audios de prueba autorizados. La nueva reestructuración universal de telefonía debe compararse al preparar el despliegue: cualquier diferencia en un bloque protegido detiene el publicador.
 
 Procedimiento: [MIGRACION.md](MIGRACION.md). Matriz y ejecución de pruebas: [PRUEBAS.md](PRUEBAS.md).
+Comandos concretos para la primera fase en Hostinger, sin modificar el CRM: [SSH_HOSTINGER.md](SSH_HOSTINGER.md). Incluye auditoría READ ONLY, detección informativa de duplicados, comprobación de columnas/motores/índices, CHECK y ensayo privado sin credenciales.
 
 Vistas de prueba con datos ficticios: [selección en móvil](vista-movil.png) y [confirmación en escritorio](confirmacion-escritorio.png).

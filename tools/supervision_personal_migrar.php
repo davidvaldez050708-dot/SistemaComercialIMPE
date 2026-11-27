@@ -38,9 +38,12 @@ try{
  if($mode==='auditar'){
   $output=privado((string)($options['salida']??''),$site);
   if(file_exists($output))throw new RuntimeException('La auditoría ya existe. Utiliza otro nombre para no sobrescribirla.');
-  $plan=SupervisionPersonalAuditoria::leer($db);escribirNuevo($output,$plan);
+  $db->begin_transaction(MYSQLI_TRANS_START_READ_ONLY);
+  try{$plan=SupervisionPersonalAuditoria::leer($db);$db->commit();}catch(Throwable $e){$db->rollback();throw $e;}
+  escribirNuevo($output,$plan);
   echo 'AUDITORIA_SOLO_LECTURA_OK RELACIONES='.$plan['resumen']['relaciones_explicitas'].' AMBIGUEDADES='.$plan['resumen']['ambiguedades'].PHP_EOL;
   echo 'PLAN_HASH='.$plan['plan_hash'].PHP_EOL;echo "No se modificaron tablas, permisos, territorios ni supervisiones.\n";
+  echo 'GRUPOS_DUPLICADOS='.(int)$plan['resumen']['grupos_duplicados'].PHP_EOL;
  }elseif($mode==='preparar'){
   $plan=leerPlan((string)($options['plan']??''),$site);$backup=privado((string)($options['respaldo']??''),$site);
   $migration->preparar($plan,static function($snapshot)use($backup){if(file_exists($backup))throw new RuntimeException('El respaldo ya existe; no se sobrescribe.');escribirNuevo($backup,$snapshot);},(int)($options['actor']??0));

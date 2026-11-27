@@ -17,6 +17,21 @@ BASE = Path(os.environ.get('SP_BASELINE_DIR', ROOT / 'tmp/hostinger-base'))
 
 
 class ReleaseTest(unittest.TestCase):
+    def test_ensayo_sin_credenciales_y_origen_intacto(self):
+        with tempfile.TemporaryDirectory(prefix='sp-ensayo-test-') as folder:
+            root=Path(folder);site=root/'sitio';private=root/'privado';private.mkdir()
+            for row in SPEC['files']:
+                if not row['new_file']:
+                    p=site/row['path'];p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes((BASE/row['path']).read_bytes())
+            (site/'config').mkdir();(site/'config/db_connection.php').write_text('<?php // CREDENCIAL_FICTICIA_NO_COPIAR',encoding='utf-8')
+            before={str(p.relative_to(site)):p.read_bytes() for p in site.rglob('*') if p.is_file()}
+            result=subprocess.run([sys.executable,str(ROOT/'tools/supervision_personal_ensayo.py'),'--site',str(site),'--private-root',str(private)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertEqual(before,{str(p.relative_to(site)):p.read_bytes() for p in site.rglob('*') if p.is_file()})
+            report=json.loads(next(private.glob('supervision-ensayo-*/resultado.json')).read_text(encoding='utf-8'))
+            self.assertFalse(report['validacion_funcional_completa'])
+            self.assertNotIn('CREDENCIAL_FICTICIA', (Path(report['copia'])/'config/db_connection.php').read_text())
+
     def test_paquete_coincide_con_fuentes(self):
         for row in SPEC['files']:
             self.assertEqual(publisher.sha((ROOT / row['path']).read_bytes().replace(b'\r\n', b'\n')), row['after_sha'], row['path'])
