@@ -1,0 +1,22 @@
+{
+  "privacidad": {
+    "archivo_fuente": "AVISO DE PRIVACIDAD.docx",
+    "sha256_docx": "564a23ccb602eddff36d8c0a8dde0111913c778e0caf7f8f8e19919061451681",
+    "sha256_texto": "f00de19972460363a80dc829e01caa7df1551e5d27471d450deff44c3263c0cf",
+    "parrafos": 36,
+    "destinos": [
+      "privacidad.txt",
+      "privacidad-bachillerato-general.txt"
+    ]
+  },
+  "terminos": {
+    "archivo_fuente": "TÉRMINOS Y CONDICIONES RED EDUCATIVA .docx",
+    "sha256_docx": "54bcfc826da7d87a23ee539c9092d47ead63209c979bda633bb1d3a4a99439f6",
+    "sha256_texto": "dbf1e00fe9b87987f172feb9796ba7275bf7bbc5a5b0e399bf8e6a6989613880",
+    "parrafos": 32,
+    "destinos": [
+      "terminos-ejecutivas.txt",
+      "terminos-bachillerato-general.txt"
+    ]
+  }
+}
