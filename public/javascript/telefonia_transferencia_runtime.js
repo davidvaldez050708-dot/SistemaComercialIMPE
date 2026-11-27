@@ -30,6 +30,7 @@
    tracked.op=op;
    const state=api.read(),source=tracked.source;
    if(String(state.callToken||'')!==String(tracked.token||''))return;
+   if(!source)api.journalTransfer?.(op,tracked.session);
    if(!source&&!state.active)return;
    if(source){
     if(state.active && op.estado==='DEVUELTA')api.publish({message:op.modo==='DIRECTA'?'La centralita confirmó el retorno de la llamada. Retoma la conversación.':'La consulta terminó. Retoma la conversación con la persona.',context:{...state.context,transferRequest:{...state.context?.transferRequest,id:op.id,stage:op.estado,mode:op.modo,extension:op.destino_extension}}});

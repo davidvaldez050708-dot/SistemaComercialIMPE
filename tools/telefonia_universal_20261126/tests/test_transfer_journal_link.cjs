@@ -1,0 +1,24 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {fixture,session}=require('./test_host_incoming_journal.cjs');
+(async()=>{
+ let checks=0;const f=fixture(),sip=session('sip-transfer-journal-fixture');
+ f.window.zdrmWebPhone.webCallSession=sip;
+ f.hooks.onRinging({caller:'100',sipSessionId:sip.id});f.hooks.onSessionBound({sessionId:sip.id});
+ const id=f.box.state.context.sdkSessionId;
+ const recorder=f.window.IMPE_PHONE_HTTP.createSessionRecorder({session_id:'sdk-test-transfer-link-'+Date.now(),direccion:'ENTRANTE',numero:'100'});
+ const op={id:17,intento:2,estado:'ENTREGADA',sdk_consulta:recorder.session_id};
+ recorder.bind('fixture-sip-transfer');recorder.start();recorder.transfer(op);await f.drain();
+ assert.equal(f.posted.some(e=>e.evento==='transfer_link'),false);checks++;
+ recorder.answered();recorder.end();recorder.transfer({...op,sdk_consulta:id});await f.drain();
+ assert.equal(f.posted.some(e=>e.evento==='transfer_link'),false);checks++;
+ recorder.transfer({...op,estado:'CONSULTANDO'});await f.drain();
+ assert.equal(f.posted.some(e=>e.evento==='transfer_link'),false);checks++;
+ recorder.transfer(op);recorder.transfer(op);await f.drain();
+ const links=f.posted.filter(e=>e.evento==='transfer_link');
+ assert.equal(links.length,1);assert.equal(links[0].operacion_id,17);assert.equal(links[0].intento,2);checks+=3;
+ assert.equal(links[0].secuencia,4);assert.equal(recorder.snapshot().closed,true);checks+=2;
+ assert.throws(()=>f.window.IMPE_PHONE_HTTP.enqueueSession({session_id:id,secuencia:9,evento:'transfer_link',operacion_id:'17',intento:2}));checks++;
+ assert.equal(Object.hasOwn(links[0],'pbx_call_id'),false);checks++;
+ console.log(`PASS ${checks} transfer journal assertions: exact reserved SDK, answered dialogue, delivered operation, ordered/deduplicated late binding without reopening or client-provided PBX reference. Fake SDK/HTTP.`);
+})().catch(error=>{console.error(error);process.exitCode=1;});

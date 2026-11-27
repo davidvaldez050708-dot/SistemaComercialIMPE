@@ -691,11 +691,17 @@
                         return true; // Conservar token/operación, observar el nuevo diálogo.
                     const freshSip=Boolean(call?.sipSessionId &&
                         call.sipSessionId!==state.context?.sdkInviteId);
+                    const exactSdk=Boolean(session?.direction==='incoming'&&String(session.id||'')===call?.sipSessionId&&!session.isEnded?.());
+                    const priorJournalOwn=incomingJournal&&[state.callToken,state.context?.sdkSessionId].includes(incomingJournal.recorder.session_id);
+                    const priorTerminal=Boolean(priorJournalOwn&&(incomingJournal.recorder.snapshot().closed||incomingJournal.session?.isEnded?.())||
+                        call?.previousSessionEnded&&call.previousSipSessionId===state.context?.sdkInviteId);
+                    const providerOnly=state.context?.type==='INCOMING'&&!state.context?.sdkInviteId&&exactSdk;
                     // Un INVITE nuevo acredita otro diálogo; un END PBX anterior
                     // puede seguir pendiente. No reemplazar una saliente local.
                     if(state.active&&!state.context?.declineRequested &&
                         !(state.direction==='incoming' && (freshSip||call?.pushInvitation) &&
-                          ['incoming-ringing','finishing','recovering','rejecting'].includes(state.phase))) return false;
+                          (['incoming-ringing','finishing','recovering','rejecting'].includes(state.phase)||
+                           freshSip&&exactSdk&&(priorTerminal||providerOnly)))) return false;
                     // El observador acredita una nueva invitación SDK, no un
                     // ringing PBX atrasado. Liberar solo el rechazo anterior.
                     if (state.context?.declineRequested && (freshSip || call?.pushInvitation)) {
@@ -706,17 +712,23 @@
                     const number = String(call?.caller || '').slice(0, 40);
                     const token = 'sdk-' + Date.now().toString(36) +
                         '-' + Math.random().toString(36).slice(2, 9);
-                    answeredAtMs = 0;
+                    const journalProtocol=incomingJournalProtocol();
+                    incomingJournal=journalProtocol===2?{token,session:null,
+                        recorder:window.IMPE_PHONE_HTTP.createSessionRecorder({session_id:token,direccion:'ENTRANTE',numero:number,
+                            caller_name:String(call?.callerName||'').slice(0,100)})}:null;
+                    const connected=Boolean(exactSdk&&session.isEstablished?.()===true);
+                    answeredAtMs = connected?Date.now():0;
                     muted = false;
                     publish({
                         active: true,
-                        phase: 'incoming-ringing',
-                        status: 'incoming-ringing',
+                        phase: connected?'in-progress':'incoming-ringing',
+                        status: connected?'in-progress':'incoming-ringing',
                         direction: 'incoming',
                         destination: number || 'Número desconocido',
                         calledDid: '',
                         muted: false,
                         duration: 0,
+                        answeredAtMs,
                         requestedAt: Math.floor(Date.now() / 1000),
                         pbxCallId: '',
                         callToken: token,
@@ -724,11 +736,14 @@
                             type: 'SDK_INCOMING',
                             verified: false,
                             callerName: String(call?.callerName || '').slice(0, 100),
+                            sdkSessionId:token,sdkJournalProtocol:journalProtocol,
+                            sdkConnected:connected,
                             sdkInviteId:String(call?.sipSessionId||'')
                         },
                         finalMetadata: null,
                         message: 'Se detectó una llamada entrante. Su registro está pendiente.'
                     });
+                    writeLocalJournal(incomingJournal?.recorder,'start');
                 },
                 onSessionBound: function (evidence={}) {
                     // Una transferencia saliente de Recepción se observa
@@ -747,8 +762,11 @@
                     const prior=String(state.context?.sdkInviteId||'');
                     if(prior&&prior!==id)return;
                     if(!prior)publish({context:{...state.context,sdkInviteId:id}});
+                    bindIncomingJournal(window.zdrmWebPhone?.webCallSession);
                 },
                 onConnected: function (evidence={}) {
+                    if(evidence.sessionId&&state.context?.sdkInviteId&&evidence.sessionId!==state.context.sdkInviteId)return;
+                    bindIncomingJournal(window.zdrmWebPhone?.webCallSession);
                     // La llamada transferida puede recibir su PBX ID ANTES
                     // de que el SDK anuncie audio. La señal local sigue
                     // siendo válida sin inventar un NOTIFY_ANSWER firmado.
@@ -758,8 +776,8 @@
                         state.context?.type === 'INCOMING' &&
                         String(state.pbxCallId || '') !== '';
                     if ((!sdkOnly && !pbxIncoming) || !state.active ||
-                        !['incoming-ringing','answering'].includes(state.phase)) return;
-                    answeredAtMs = Date.now();
+                        !['incoming-ringing','answering','in-progress'].includes(state.phase)) return;
+                    if(answeredAtMs<=0)answeredAtMs = Date.now();
                     publish({
                         phase:'in-progress', status:'in-progress',
                         answeredAtMs:answeredAtMs, duration:0, message:'',
@@ -779,6 +797,11 @@
                     // onIdle procesa la terminación verificada por el SDK.
                 },
                 onIdle: function (evidence={}) {
+                    const record=incomingJournal?.recorder;
+                    if(record&&((evidence.sessionEnded&&evidence.sessionId===record.snapshot().sdk_id)||
+                        (evidence.pushEnded&&!incomingJournal.session&&
+                            [state.callToken,state.context?.sdkSessionId].includes(record.session_id))))
+                        writeLocalJournal(record,'end',state.context?.declineRequested?'declined':'ended');
                     if(evidence.sessionId && state.context?.sdkInviteId &&
                         evidence.sessionId!==state.context.sdkInviteId)return;
                     // Cerrar la interfaz local con END SIP verificable, incluso
@@ -1540,6 +1563,20 @@
      * la finalización de la llamada anterior.
      */
     let outgoingJournal = null;
+    let incomingJournal = null;
+    const incomingDialogJournals = new WeakMap();
+    const incomingJournalProtocol = function () {
+        if(Number(config.sdkJournalProtocol)!==2)return 1;
+        try{
+            const owner=modoEmbebido?window.parent:window.opener;
+            if(owner&&owner!==window){
+                if(Number(owner.IMPE_PHONE_SHELL_CONFIG?.sdkJournalProtocol)!==2)return 1;
+                if(owner.IMPE_PHONE_SHELL_CONFIG?.analystIncomingResults&&
+                    owner.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG?.protocol!==2)return 1;
+            }
+        }catch(_){return 1;}
+        return 2;
+    };
     const journalWarnings = new WeakSet();
     const writeLocalJournal = function (recorder, action, ...args) {
         if(!recorder||!ownsTransport)return;
@@ -1553,6 +1590,37 @@
             journalWarnings.add(recorder);
             if(state.callToken===recorder.session_id)publish({message:'No se pudo conservar una observación local. Mantén abierto el teléfono y revisa el registro antes de salir.'});
         }
+    };
+    const bindIncomingJournal = function (session) {
+        if(incomingJournalProtocol()!==2||state.context?.sdkJournalProtocol===1||!state.active||state.direction!=='incoming'||
+            !session||session!==window.zdrmWebPhone?.webCallSession||session.direction!=='incoming'||
+            session.isEnded?.()||typeof session.on!=='function')return null;
+        const id=String(session.id||'');
+        if(!id||state.context?.sdkInviteId&&state.context.sdkInviteId!==id)return null;
+        let journal=incomingDialogJournals.get(session);
+        if(!journal){
+            const pending=incomingJournal;
+            if(pending&&!pending.session&&pending.token===state.callToken&&!pending.recorder.snapshot().closed)journal=pending;
+            else{
+                const token='sdk-'+(window.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12));
+                journal={token:state.callToken,session:null,
+                    recorder:window.IMPE_PHONE_HTTP.createSessionRecorder({session_id:token,direccion:'ENTRANTE',
+                        numero:String(state.destination||'').replace(/[^+0-9*#]/g,'').slice(0,40),caller_name:String(state.context?.callerName||'').slice(0,100)})};
+            }
+            journal.session=session;incomingDialogJournals.set(session,journal);
+            const recorder=journal.recorder;
+            writeLocalJournal(recorder,'bind',id);writeLocalJournal(recorder,'start');
+            const answered=()=>{if(session.isEstablished?.()===true)writeLocalJournal(recorder,'answered');};
+            session.on('accepted',answered);session.on('confirmed',answered);
+            session.on('ended',()=>writeLocalJournal(recorder,'end'));
+            session.on('failed',()=>writeLocalJournal(recorder,'end','failed'));
+        }
+        if(journal.recorder.snapshot().closed)return null;
+        incomingJournal=journal;
+        if(state.context?.sdkSessionId!==journal.recorder.session_id||state.context?.sdkJournalProtocol!==2)
+            publish({context:{...state.context,sdkSessionId:journal.recorder.session_id,sdkJournalProtocol:2}});
+        if(session.isEstablished?.()===true)writeLocalJournal(journal.recorder,'answered');
+        return journal;
     };
     const fetchDialCheckpoint = async function (destination) {
         const response = await hostRequest(
@@ -2367,7 +2435,14 @@
         external:(op,token,connected,session)=>{
             if(declinedInvitation(String(op.referencia||'')))return;
             answeredAtMs=connected?(state.answeredAtMs||Date.now()):0;
-            publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,sdkInviteId:String(session?.id||state.context?.sdkInviteId||''),sdkSessionId:state.callToken,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
+            const protocol=state.context?.sdkJournalProtocol||incomingJournalProtocol();
+            publish({callToken:token,pbxCallId:'',destination:op.numero,phase:connected?'in-progress':'incoming-ringing',status:connected?'in-progress':'incoming-ringing',answeredAtMs,duration:0,context:{type:'SDK_INCOMING',sdkConnected:connected,sdkInviteId:String(session?.id||state.context?.sdkInviteId||''),sdkSessionId:protocol===1?token:(state.context?.sdkSessionId||state.callToken),sdkJournalProtocol:protocol,transferFrom:op.origen_extension,transferReference:op.referencia,transferOperation:op.id},message:'Recepción entregó la llamada. Ya estás hablando con la persona.'});
+            bindIncomingJournal(session);
+        },
+        journalTransfer:(op,session)=>{
+            // Identidad reservada de la operación; nunca asociar por número SIP.
+            const journal=session&&incomingDialogJournals.get(session);
+            if(journal)writeLocalJournal(journal.recorder,'transfer',op);
         },
         externalSession:(op,token,session,previous)=>{
             // La entrega puede sustituir RTCSession. El ID SIP sólo identifica
@@ -2378,6 +2453,7 @@
                 !previous?.isEnded?.()||session!==window.zdrmWebPhone?.webCallSession||
                 session?.direction!=='incoming'||session.isEnded?.()||!session.id)return false;
             publish({context:{...state.context,sdkInviteId:String(session.id)}});
+            bindIncomingJournal(session);
             return true;
         },
         sourceEnded:(op,token,endedSession)=>{

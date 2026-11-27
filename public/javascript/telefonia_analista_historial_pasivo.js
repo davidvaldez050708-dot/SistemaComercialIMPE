@@ -237,6 +237,28 @@
         } catch (_) { retry(); }
     };
     const postEvent = function (event, call) {
+        // Protocolo2: sólo el host escribe observaciones SDK. La vista espera
+        // su ACK y consulta estado propio; no reproduce ringing/ANSWER/END.
+        // Protocolo1 queda como compatibilidad para una llamada ya iniciada
+        // con un host anterior: el protocolo no cambia a mitad de esa llamada.
+        if(call.writerProtocol===2||call.pbxOnly){
+            if(!['ended','missed','declined'].includes(event))return Promise.resolve(true);
+            chain=chain.catch(()=>false).then(async()=>{
+                if(!finished||finished.id!==call.id)return false;
+                try{
+                    const url=new URL(String(cfg.sdkEndpoint),root.location.href);
+                    url.searchParams.set(call.pbxOnly?'pbx_call_id':'session_id',call.pbxOnly?call.pbxReference:call.id);
+                    const response=await root.IMPE_PHONE_HTTP.request(url.href,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+                    const result=await response.json();if(!response.ok||result.ok!==true)return false;
+                    const row=call.pbxOnly?result.pbx:result.sesion;
+                    if(call.pbxOnly){
+                        if(row?.pbx_call_id!==call.pbxReference||(!row.finalizada&&!row.intento_finalizado))return false;
+                    }else if(row?.session_id!==call.id||!row.fecha_fin)return false;
+                    return row.interna&&!call.transferredCustomer?'INTERNA':true;
+                }catch(_){return false;}
+            });
+            return chain;
+        }
         const data = new URLSearchParams({
             csrf_token: String(cfg.csrf),
             session_id: String(call.id),
@@ -352,6 +374,17 @@
             draw();
         });
     };
+    const journalAcknowledged=id=>{
+        if(finished?.id===id&&finished.writerProtocol===2&&finished.saved!==true)saveFinished(finished);
+    };
+    root.addEventListener('impe:phone-journal-ack',event=>{
+        if(Number(event.detail?.userId)===userId)journalAcknowledged(String(event.detail.sessionId||''));
+    });
+    root.addEventListener('storage',event=>{
+        if(!finished||event.newValue!==null)return;
+        const prefix='impe.phone.sdk.outbox.v2.'+userId+'.'+finished.id+'.';
+        if(String(event.key||'').startsWith(prefix))journalAcknowledged(finished.id);
+    });
     const end = function (lastState) {
         if (!active) return;
         const call = active;
@@ -383,6 +416,9 @@
         }
         finished = {
             ...call,
+            ownerToken:String(lastState?.callToken||call.id),
+            pbxReference:String(lastState?.context?.transferReference||lastState?.pbxCallId||call.pbxReference||''),
+            transferredCustomer:Boolean(lastState?.context?.transferOperation&&lastState?.context?.transferReference),
             answeredAt,
             duration: confirmedLocally ? observed : 0,
             answered: confirmedLocally, saved: null, isInternal: false,
@@ -444,22 +480,29 @@
         if(pbxIncoming && !active){
             let hash=2166136261;
             for(const character of String(state.pbxCallId))hash=Math.imul(hash^character.charCodeAt(0),16777619);
-            const id=validId(state.context?.sdkSessionId)?state.context.sdkSessionId:'sdk-pbx-'+(hash>>>0).toString(36).padStart(8,'0')+'-'+userId;
+            const writerProtocol=Number(state.context?.sdkJournalProtocol||shell.sdkJournalProtocol||1);
+            const sdk=validId(state.context?.sdkSessionId)?state.context.sdkSessionId:'';
+            const id=sdk||(writerProtocol===2?String(state.pbxCallId):'sdk-pbx-'+(hash>>>0).toString(36).padStart(8,'0')+'-'+userId);
             contextAliases = [...new Set([...contextAliases, id])];
-            active={id,number:String(state.destination||''),name:'',answeredAt:0,lastDuration:0,sawConversation:false};
+            active={id,number:String(state.destination||''),name:'',answeredAt:0,lastDuration:0,sawConversation:false,
+                writerProtocol,pbxOnly:writerProtocol===2&&!sdk,pbxReference:String(state.pbxCallId)};
             finished=null;draw();void postEvent('ringing',active);
         }
+        const sdkIdentity=Number(state.context?.sdkJournalProtocol||1)===2&&validId(state.context?.sdkSessionId)?state.context.sdkSessionId:state.callToken;
         const incoming = state.direction === 'incoming' &&
             state.context?.type === 'SDK_INCOMING' &&
-            validId(state.callToken);
+            validId(sdkIdentity);
         if (incoming && state.active) {
-            const id = String(state.callToken);
+            const id = String(sdkIdentity);
+            if(active?.pbxOnly){active.id=id;active.pbxOnly=false;active.writerProtocol=Number(state.context?.sdkJournalProtocol||1);}
             const reportedNumber = String(state.destination || '')
                 .replace(/[^0-9+*#]/g, '').slice(0, 40);
             if (active && active.id !== id) end();
             if (!active) {
                 active = {
                     id, number: reportedNumber,
+                    writerProtocol:Number(state.context?.sdkJournalProtocol||1),pbxOnly:false,
+                    pbxReference:String(state.context?.transferReference||state.pbxCallId||''),
                     name: String(state.context?.callerName || '').slice(0, 100),
                     answeredAt: 0,
                     lastDuration: 0,
@@ -558,17 +601,18 @@
         if (finished?.saved === false) saveFinished(finished);
     });
     const finishIncomingSaved = callId => {
-        if (!finished || finished.id !== callId) return;
+        if (!finished || ![finished.id,finished.pbxReference].includes(callId)) return;
         const completed = finished.id;
+        const ownerToken=finished.ownerToken||completed;
         finished = null;
         root.document.querySelector('[data-analyst-dismiss-call]')?.click();
-        root.IMPE_TELEPHONY_SHELL?.dismissFinishedCall?.(completed);
+        root.IMPE_TELEPHONY_SHELL?.dismissFinishedCall?.(completed,ownerToken);
         draw();panel.hidden = true;
         try {
             const channel = new root.BroadcastChannel('impe-telephony-' + userId);
             channel.postMessage({
                 type:'COMMAND',id:'result-saved-'+completed+'-'+Date.now(),
-                action:'CLEAR_FINISHED',payload:{callToken:completed}
+                action:'CLEAR_FINISHED',payload:{callToken:ownerToken}
             });
             channel.close();
         } catch (_) {}
@@ -578,10 +622,10 @@
             !crm || !shell.incomingResultsUrl) return;
         const url = new URL(String(shell.incomingResultsUrl), root.location.href);
         if (url.origin !== root.location.origin) return;
-        url.searchParams.set('sdk_session_id', finished.id);
+        url.searchParams.set(finished.pbxReference?'pbx_call_id':'sdk_session_id',finished.pbxReference||finished.id);
         const current = finished.id;
         const opened = root.IMPE_ANALYST_RESULT_OVERLAY?.open(url.href, {
-            refs:[current],
+            refs:[current,finished.pbxReference].filter(Boolean),
             onSaved: finishIncomingSaved,
             onDismiss: () => {
                 if (finished?.id !== current) return;
@@ -598,20 +642,20 @@
         if (event.origin !== root.location.origin ||
             event.source !== crm?.contentWindow ||
             event.data?.type !== 'IMPE_ANALYST_RESULT_SAVED' ||
-            !finished || String(event.data.callId || '') !== finished.id) return;
-        finishIncomingSaved(finished.id);
+            !finished || ![finished.id,finished.pbxReference].includes(String(event.data.callId||''))) return;
+        finishIncomingSaved(String(event.data.callId));
     });
     crm?.addEventListener('load', () => {
         if (!finished?.registrationOpen) return;
         try {
             const url = new URL(crm.contentWindow.location.href);
             if (url.origin !== root.location.origin) return;
-            const selected = url.searchParams.get('sdk_session_id');
+            const selected = url.searchParams.get('sdk_session_id')||url.searchParams.get('pbx_call_id');
             const receivedPage = url.searchParams.get('action') === 'llamadasEntrantes' ||
                 (url.searchParams.get('controller') === 'telefonia' &&
                  url.searchParams.get('action') === 'misLlamadas' && url.searchParams.get('vista') === 'recibidas');
             if (!receivedPage ||
-                selected !== finished.id) {
+                ![finished.id,finished.pbxReference].includes(selected)) {
                 // Se abandonó el formulario sin registrarlo: recuperar
                 // el botón Registrar resultado y mantener el pendiente.
                 finished.registrationOpen = false;
@@ -621,6 +665,7 @@
     });
 
     root.IMPE_ANALYST_WEBRTC_JOURNAL_DEBUG = Object.freeze({
+        protocol:2,
         isObserving: () => Boolean(active),
         hasFinalized: () => Boolean(finished),
         saved: () => finished?.saved ?? null

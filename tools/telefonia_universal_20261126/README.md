@@ -1,5 +1,8 @@
 # Telefonía universal — trabajo en curso, no instalar
 
+Para continuar con otro perfil, leer primero [HANDOFF.md](HANDOFF.md): contiene
+el estado de la integración, límites de las pruebas y pendientes concretos.
+
 La base instalada de Hostinger se conserva en el commit local
 `1d8f7da23907fabce398c13d924ef5996d839473`. Las correcciones se preparan
 en `codex/telefonia-universal-20261126`, aisladas de la instalación de XAMPP.
@@ -51,8 +54,9 @@ Las pruebas unitarias portables se ejecutan con Node.js, sin dependencias:
 node tools/telefonia_universal_20261126/run_unit.cjs
 ```
 
-Cubren doce suites de capturas, alias, ACK, sincronización, restauración,
-pendientes, carreras al marcar/colgar y registro saliente del host.
+Cubren quince suites de capturas, alias, ACK, sincronización, restauración,
+pendientes, carreras al marcar/colgar, registro entrante/saliente del host y
+cola de vinculación exacta de transferencias.
 No abren conexiones ni llamadas.
 El laboratorio HTTP/SQL y las pruebas de navegador se mantienen separados.
 

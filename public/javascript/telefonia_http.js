@@ -66,7 +66,7 @@
         const owner = userId();
         if (owner < 1 || !/^sdk-[a-z0-9-]{12,94}$/.test(String(data?.session_id || '')) ||
             !Number.isSafeInteger(data.secuencia) || data.secuencia < 1 || data.secuencia > 2147483647 ||
-            !['ringing','dialed','answered','ended','declined','missed','failed'].includes(data.evento))
+            !['ringing','dialed','answered','ended','declined','missed','failed','transfer_link'].includes(data.evento))
             throw new Error('Evento local de telefonía inválido.');
         // Campos explícitos: nunca persistir cookies, CSRF, credenciales ni datos comerciales.
         const event = {session_id:data.session_id, secuencia:data.secuencia, evento:data.evento};
@@ -76,6 +76,12 @@
                     !Number.isInteger(data[field]) || data[field] < 0 || data[field] > 86400 :
                     typeof data[field] !== 'string') throw new Error('Campo de sesión local inválido.');
                 event[field] = data[field];
+            }
+        }
+        if(data.evento==='transfer_link'){
+            for(const field of ['operacion_id','intento']){
+                if(!Number.isSafeInteger(data[field])||data[field]<1)throw new Error('Operación de transferencia inválida.');
+                event[field]=data[field];
             }
         }
         if (JSON.stringify(event).length > 4096) throw new Error('Evento local demasiado grande.');
@@ -93,7 +99,7 @@
         if(owner<1||!/^sdk-[a-z0-9-]{12,94}$/.test(id)||!['ENTRANTE','SALIENTE'].includes(direction))
             throw new Error('Contexto local de sesión inválido.');
         const number=String(context.numero||''),name=String(context.caller_name||'');
-        let sequence=0,started=false,answered=false,closed=false,sdkId='',answeredAt=0;
+        let sequence=0,started=false,answered=false,closed=false,sdkId='',answeredAt=0,transferKey='';
         const emit=(event,extra={})=>{
             if(owner!==userId())throw new Error('La observación pertenece a otro usuario.');
             const data={session_id:id,secuencia:sequence+1,evento:event,direccion:direction,
@@ -125,6 +131,13 @@
                 if(started||direction!=='SALIENTE'||reason!=='failed')start();
                 emit(reason,answered?{duracion_observada_segundos:Math.min(86400,Math.max(0,Math.floor((Date.now()-answeredAt)/1000)))}:{});
                 closed=true;
+            },
+            transfer(operation){
+                if(direction!=='ENTRANTE'||!started||!answered||!sdkId||
+                    operation?.estado!=='ENTREGADA'||operation.sdk_consulta!==id)return;
+                const operationId=Number(operation.id),attempt=Number(operation.intento),key=operationId+':'+attempt;
+                if(key===transferKey)return;
+                emit('transfer_link',{operacion_id:operationId,intento:attempt});transferKey=key;
             },
             snapshot:()=>({session_id:id,secuencia:sequence,started,answered,closed,sdk_id:sdkId})
         });
@@ -168,6 +181,9 @@
                     if (view.localStorage.getItem(key) === raw) view.localStorage.removeItem(key);
                     deliveryFailures.delete(key);
                     stats.acknowledged++;
+                    if(typeof view.dispatchEvent==='function'&&typeof view.CustomEvent==='function')
+                        view.dispatchEvent(new view.CustomEvent('impe:phone-journal-ack',
+                            {detail:{userId:owner,sessionId:event.session_id,sequence:event.secuencia}}));
                 } catch (_) {
                     const count = (prior?.count || 0) + 1;
                     deliveryFailures.set(key, {count, retryAt:Date.now() + Math.min(60000, 1000 * 2 ** Math.min(count,6))});

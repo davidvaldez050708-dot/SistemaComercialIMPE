@@ -1,0 +1,20 @@
+{
+  "date_mexico_city": "2026-11-27",
+  "status": "work_in_progress_handoff",
+  "installed_baseline": "1d8f7da23907fabce398c13d924ef5996d839473",
+  "portable_unit_suites": {"passed": 15, "failed": 0, "runner": "run_unit.cjs"},
+  "candidate_php_js_syntax_checks": {"passed": 71, "failed": 0},
+  "transfer_link_sql_checks": {"passed": 14, "failed": 0, "test": "integration/transfer_journal_link_sql.php", "target": "private_synthetic_loopback_lab"},
+  "earlier_partial_integration_evidence": {
+    "incoming_host_http_sql_checks_three_roles": 42,
+    "own_pbx_attention_sql_checks": 11,
+    "native_sales_transaction_checks": 18,
+    "note": "Private laboratory harnesses are not all portable or included. See HANDOFF.md; these counts are not complete-call acceptance."
+  },
+  "full_1000_call_acceptance_completed": false,
+  "eight_real_continuous_hours_started": false,
+  "universal_restructure_completed": false,
+  "production_modified": false,
+  "production_migrations_executed": false,
+  "safe_universal_publisher_completed": false
+}

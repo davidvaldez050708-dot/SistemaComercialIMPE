@@ -409,6 +409,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
             'availabilityUrl' => BASE_URL . 'index.php?controller=telefonia&action=disponibilidad',
             'routingCsrf' => (string)$_SESSION['csrf_token'],
             'sesionLocalUrl' => BASE_URL . 'prueba_telefonia/api/sesion_local.php',
+            'sdkJournalProtocol' => 2,
             'homeUrl' => BASE_URL . 'index.php?controller=home&action=index'
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
@@ -445,6 +446,7 @@ if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_byt
         window.IMPE_ANALYST_WEBRTC_JOURNAL = <?= json_encode([
             'enabled' => true,
             'endpoint' => BASE_URL . 'index.php?controller=seguimientoVinculacion&action=eventoEntranteWebrtc',
+            'sdkEndpoint' => BASE_URL . 'prueba_telefonia/api/sesion_local.php',
             'csrf' => (string)$_SESSION['csrf_token']
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>

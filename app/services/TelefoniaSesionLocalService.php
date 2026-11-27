@@ -60,6 +60,38 @@ class TelefoniaSesionLocalService
         $s->bind_param('isssis',$user,$ext,$token,$number,$marker,$since);$s->execute();$s->close();
         return ['session_id'=>$token,'after_id'=>$marker,'server_time'=>time(),'extension'=>$ext];
     }
+    /** Proyección PBX propia para una atención sin diálogo SDK; nunca crea una sesión. */
+    public function obtenerPbxEntrantePropia(int $user,string $reference):array
+    {
+        if(!preg_match('/^[A-Za-z0-9_-]{6,100}$/D',$reference))throw new InvalidArgumentException('Referencia PBX inválida.');
+        $assignment=$this->asignacion($user,'ENTRANTE');$ext=(string)$assignment['extension'];
+        require_once __DIR__.'/../helpers/TelefoniaAsignacionFechaHelper.php';
+        require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
+        require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
+        $since=TelefoniaAsignacionFechaHelper::aMexico((string)($assignment['asignacion_desde']??''));
+        if(TelefoniaLimpiezaGuard::bloqueada($this->db,$reference,$ext))throw new DomainException('La atención no está disponible.');
+        $s=$this->db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=BINARY ? ORDER BY id');
+        $s->bind_param('s',$reference);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        $own=null;
+        foreach($events as $event){
+            if((string)$event['internal']===$ext&&in_array($event['evento'],['NOTIFY_INTERNAL','NOTIFY_ANSWER'],true)&&
+                (string)$event['received_at']>=$since&&($event['call_start']===null||(string)$event['call_start']>=$since)){
+                $own=$event;break;
+            }
+        }
+        if($own===null)throw new DomainException('La referencia no acredita una entrante de tu asignación actual.');
+        $s=$this->db->prepare('SELECT origen_extension,numero,evento_desde FROM telefonia_transferencia_operaciones WHERE destino_usuario=? AND destino_extension=BINARY ? AND referencia=BINARY ? LIMIT 2');
+        $s->bind_param('iss',$user,$ext,$reference);$s->execute();$ops=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        if(count($ops)>1)throw new DomainException('La atención contiene operaciones incompatibles.');
+        $op=$ops[0]??null;
+        $facts=TelefoniaPbxSegmentosService::hechos($events,$ext,(string)($op['origen_extension']??''),(int)($op['evento_desde']??0));
+        $number=(string)($own['caller_id']??'');
+        if($op&&$facts['answer_at']!=='')$number=(string)$op['numero'];
+        return ['pbx_call_id'=>$reference,'extension'=>$ext,'fuente'=>'EVIDENCIA_PBX','zona_horaria'=>'America/Mexico_City',
+            'finalizada'=>(bool)$facts['finalizada'],'intento_finalizado'=>(bool)$facts['intento_finalizado'],
+            'contestada'=>$facts['answer_at']!=='','interna'=>$this->esNumeroInterno($number,$ext),
+            'segundos'=>$facts['segundos'],'answer_at'=>$facts['answer_at'],'end_at'=>$facts['end_at']];
+    }
     public function obtener(int $user,string $id,bool $lock=false):?array
     {
         if($user<1||!self::validarSesion($id))throw new InvalidArgumentException('Sesión telefónica inválida.');
@@ -69,7 +101,7 @@ class TelefoniaSesionLocalService
     public function registrarEvento(int $user,array $data,int $protocol=1):void
     {
         $id=trim((string)($data['session_id']??''));$event=(string)($data['evento']??'');
-        if(!self::validarSesion($id)||!in_array($event,['ringing','dialed','answered','ended','declined','missed','failed'],true))
+        if(!self::validarSesion($id)||!in_array($event,['ringing','dialed','answered','ended','declined','missed','failed','transfer_link'],true))
             throw new InvalidArgumentException('Evento WebRTC inválido.');
         $seq=$protocol>=2?filter_var($data['secuencia']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>2147483647]]):0;
         if($protocol>=2&&!is_int($seq))throw new InvalidArgumentException('Secuencia de sesión inválida.');
@@ -79,6 +111,15 @@ class TelefoniaSesionLocalService
         if($sip!==''&&!preg_match('/^[A-Za-z0-9@._:+-]{1,180}$/D',$sip))throw new InvalidArgumentException('Diálogo SDK inválido.');
         $seconds=filter_var($data['duracion_observada_segundos']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>86400]]);
         $hash=hash('sha256',json_encode([$event,$number,$name,$sip,$seconds],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
+        $operation=$attempt=null;
+        if($event==='transfer_link'){
+            if($protocol<2)throw new InvalidArgumentException('Este vínculo requiere el registro común.');
+            $operation=filter_var($data['operacion_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+            $attempt=filter_var($data['intento']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+            if(!is_int($operation)||!is_int($attempt))throw new InvalidArgumentException('Operación de transferencia inválida.');
+            // Mantener intacto el hash de los eventos antiguos para sus reintentos.
+            $hash=hash('sha256',$hash.':'.$operation.':'.$attempt);
+        }
         $this->db->begin_transaction();
         try{
             $row=$this->obtener($user,$id,true);
@@ -107,6 +148,7 @@ class TelefoniaSesionLocalService
             if($protocol>=2 && $seq!==(int)$row['ultima_secuencia']+1)
                 throw new DomainException('Falta confirmar un evento anterior de esta sesión.');
             $terminal=$row['fecha_fin']!==null;$values=[];
+            if($event==='transfer_link')$values=$this->vinculoTransferencia($user,$row,$a,$operation,$attempt);
             if(!$terminal){
                 if($event==='dialed'){
                     if($direction!=='SALIENTE')throw new DomainException('Esta sesión no es saliente.');
@@ -136,5 +178,32 @@ class TelefoniaSesionLocalService
             }
             $this->db->commit();
         }catch(Throwable $error){$this->db->rollback();throw $error;}
+    }
+    /** Sólo el diálogo reservado por la operación puede recibir su referencia.
+     * Funciona después del END local, sin reabrirlo ni acreditar un resultado.
+     */
+    private function vinculoTransferencia(int $user,array $row,array $assignment,int $id,int $attempt):array
+    {
+        if($row['direccion']!=='ENTRANTE'||empty($row['sdk_id'])||empty($row['fecha_atendida']))
+            throw new DomainException('Falta la observación del diálogo entrante atendido.');
+        $s=$this->db->prepare('SELECT * FROM telefonia_transferencia_operaciones WHERE id=? AND intento=? AND destino_usuario=? FOR UPDATE');
+        $s->bind_param('iii',$id,$attempt,$user);$s->execute();$op=$s->get_result()->fetch_assoc();$s->close();
+        if(!$op||$op['destino_extension']!==$row['extension']||$op['sdk_consulta']!==$row['session_id']||
+            $op['estado']!=='ENTREGADA'||($op['modo']==='CONSULTADA'&&empty($op['entregada_at'])))
+            throw new DomainException('La operación no acredita la entrega a este diálogo.');
+        if(!empty($row['pbx_call_id'])&&$row['pbx_call_id']!==$op['referencia'])
+            throw new DomainException('El diálogo ya pertenece a otra referencia PBX.');
+        require_once __DIR__.'/../helpers/TelefoniaAsignacionFechaHelper.php';
+        require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
+        if(TelefoniaLimpiezaGuard::bloqueada($this->db,$op['referencia'],$row['extension']))
+            throw new DomainException('La atención no está disponible.');
+        $since=TelefoniaAsignacionFechaHelper::aMexico((string)($assignment['asignacion_desde']??''));
+        $s=$this->db->prepare("SELECT id FROM telefonia_zadarma_eventos WHERE pbx_call_id=BINARY ? AND internal=BINARY ? AND evento='NOTIFY_ANSWER' AND id>? AND received_at>=? AND (call_start IS NULL OR call_start>=?) ORDER BY id LIMIT 1");
+        $s->bind_param('ssiss',$op['referencia'],$row['extension'],$op['evento_desde'],$since,$since);
+        $s->execute();$answer=$s->get_result()->fetch_assoc();$s->close();
+        if(!$answer)throw new DomainException('Falta evidencia PBX de respuesta propia en este intento.');
+        if(!empty($row['pbx_inicio_evento'])&&(int)$row['pbx_inicio_evento']!==(int)$answer['id'])
+            throw new DomainException('El diálogo ya está asociado a otro tramo.');
+        return ['pbx_call_id'=>$op['referencia'],'pbx_inicio_evento'=>(int)$answer['id']];
     }
 }

@@ -1,6 +1,6 @@
 /* Observa el timbrado del widget y consulta la sesión SIP entrante existente.
  * No modifica métodos del SDK ni inventa NOTIFY_INTERNAL ni PBX call IDs.
- * Habilitar exclusivamente en el host embebido del Analista.
+ * Compartido por los receptores autorizados del único host embebido.
  */
 (function (root) {
     'use strict';
@@ -97,7 +97,7 @@
             const session = readSession();
             // INVITE real no depende de que Zadarma dibuje sus clases CSS.
             const liveInvite=session&&!session.isEnded()&&!session.isEstablished();
-            const call=domCall||(liveInvite?{
+            const call=domCall||(session&&!session.isEnded()?{
                 caller:String(session.remote_identity?.uri?.user||'').slice(0,40),
                 callerName:String(session.remote_identity?.display_name||'').slice(0,100)
             }:null);
@@ -128,7 +128,7 @@
             // En PUSH el SDK puede retirar y restaurar ringing antes del END PBX.
             const freshPush = domCall && !wasDomRinging &&
                 (!observedSession || observedSession.isEnded());
-            if (call && (!seenIncoming || (newSession && liveInvite && observedSession) || freshPush ||
+            if (call && (!seenIncoming || (newSession && observedSession) || freshPush ||
                 (idleReported && (!wasDomRinging || newSession || pushInvite)))) {
                 seenIncoming = true;
                 ringing = true;
@@ -137,9 +137,13 @@
                 idleReported = false;
                 connectedReported = false;
                 acceptanceRequestedUntil = 0;
+                const previousSession=observedSession;
                 observedSession = session && !session.isEnded() ? session : null;
                 watchSession(observedSession);
-                if (session?.id && liveInvite) call.sipSessionId=String(session.id);
+                if (session?.id && !session.isEnded()) call.sipSessionId=String(session.id);
+                if(previousSession&&previousSession!==observedSession&&previousSession.isEnded()){
+                    call.previousSessionEnded=true;call.previousSipSessionId=String(previousSession.id||'');
+                }
                 if(pushInvite)call.pushInvitation=true;
                 if (hooks.onRinging(call) === false) {
                     // El host aún no puede publicarla: reintentar, no consumirla.
