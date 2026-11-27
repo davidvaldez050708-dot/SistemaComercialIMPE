@@ -1,0 +1,164 @@
+{
+  "patches": [
+    {
+      "path": "app/models/WhatsAppModel.php",
+      "before": "0e8046ac823e56417a0631894cf6f6f2d6e0bb7d",
+      "hunks": [
+        {
+          "old": "require_once __DIR__.'/../services/WhatsAppAsignacionService.php';",
+          "new": "require_once __DIR__.'/../services/WhatsAppAsignacionService.php';\nrequire_once __DIR__.'/../services/WhatsAppPresentacionService.php';"
+        },
+        {
+          "old": "$sql = $this->consultaConversacionesBase() . \"\n                WHERE c.activo = 1\n                  AND EXISTS (SELECT 1 FROM whatsapp_mensajes visible WHERE visible.conversacion_id=conv.id)\";",
+          "new": "$sql = $this->consultaConversacionesBase(true) . \"\n                WHERE c.activo = 1\n                  AND EXISTS (SELECT 1 FROM whatsapp_mensajes visible WHERE visible.conversacion_id=conv.id)\";"
+        },
+        {
+          "old": "        return $this->resultadoArreglo($stmt->get_result());\n    }\n\n    public function obtenerConversacion(",
+          "new": "        return WhatsAppPresentacionService::ordenar($this->resultadoArreglo($stmt->get_result()));\n    }\n\n    public function obtenerConversacion("
+        },
+        {
+          "old": "        return $this->resultadoArreglo($stmt->get_result());\n    }\n\n    public function obtenerEstadosMensajesSalida(",
+          "new": "        $rows=$this->resultadoArreglo($stmt->get_result());\n        foreach($rows as &$row)$row['fecha_visible']=WhatsAppPresentacionService::horaVisible($row);\n        unset($row);\n        return $rows;\n    }\n\n    public function obtenerEstadosMensajesSalida("
+        },
+        {
+          "old": "        $sql = \"INSERT INTO whatsapp_mensajes (\n                    conversacion_id,\n                    wamid,\n                    direccion,\n                    tipo,\n                    contenido,\n                    estado,\n                    error_codigo,\n                    error_detalle,\n                    usuario_id,\n                    mensaje_meta,\n                    enviado_at\n                )",
+          "new": "        $fechaLocal=(new DateTimeImmutable('now',new DateTimeZone('America/Mexico_City')))->format('Y-m-d H:i:s');\n        $sql = \"INSERT INTO whatsapp_mensajes (\n                    conversacion_id,\n                    wamid,\n                    direccion,\n                    tipo,\n                    contenido,\n                    estado,\n                    error_codigo,\n                    error_detalle,\n                    usuario_id,\n                    mensaje_meta,\n                    enviado_at,\n                    created_at\n                )"
+        },
+        {
+          "old": "                    ?,\n                    ?,\n                    NOW()\n                )\";\n\n        $stmt = $this->connection->prepare($sql);\n        $conversacionId = (int)$conversacionId;",
+          "new": "                    ?,\n                    ?,\n                    ?,\n                    UTC_TIMESTAMP()\n                )\";\n\n        $stmt = $this->connection->prepare($sql);\n        $conversacionId = (int)$conversacionId;"
+        },
+        {
+          "old": "            'issssssis',\n            $conversacionId,\n            $wamid,\n            $tipo,\n            $contenido,\n            $estado,\n            $errorCodigo,\n            $errorDetalle,\n            $usuarioId,\n            $meta",
+          "new": "            'issssssiss',\n            $conversacionId,\n            $wamid,\n            $tipo,\n            $contenido,\n            $estado,\n            $errorCodigo,\n            $errorDetalle,\n            $usuarioId,\n            $meta,\n            $fechaLocal"
+        },
+        {
+          "old": "            $contenido,\n            false\n        );\n\n        return (int)$this->connection->insert_id;",
+          "new": "            $contenido,\n            false,\n            $fechaLocal\n        );\n\n        return (int)$this->connection->insert_id;"
+        },
+        {
+          "old": "\"INSERT INTO whatsapp_mensajes(conversacion_id,wamid,direccion,tipo,contenido,estado,enviado_at)\n                     VALUES (?,?,'ENTRANTE',?,?,'RECIBIDO',?)\"",
+          "new": "\"INSERT INTO whatsapp_mensajes(conversacion_id,wamid,direccion,tipo,contenido,estado,enviado_at,created_at)\n                     VALUES (?,?,'ENTRANTE',?,?,'RECIBIDO',?,UTC_TIMESTAMP())\""
+        },
+        {
+          "old": "    private function consultaConversacionesBase()\n    {",
+          "new": "    private function consultaConversacionesBase(bool $conResumen=false)\n    {\n        $extra=$conResumen?\", entr.id entrada_id,entr.contenido entrada_contenido,entr.enviado_at entrada_enviado,entr.created_at entrada_creado,\n                    sal.id salida_id,sal.contenido salida_contenido,sal.enviado_at salida_enviado,sal.created_at salida_creado\":\"\";\n        $joins=$conResumen?\" LEFT JOIN whatsapp_mensajes entr ON entr.id=(\n                      SELECT mi.id FROM whatsapp_mensajes mi WHERE mi.conversacion_id=conv.id AND mi.direccion='ENTRANTE'\n                      ORDER BY mi.enviado_at DESC,mi.id DESC LIMIT 1)\n                    LEFT JOIN whatsapp_mensajes sal ON sal.id=(\n                      SELECT mo.id FROM whatsapp_mensajes mo WHERE mo.conversacion_id=conv.id AND mo.direccion='SALIENTE'\n                      ORDER BY mo.created_at DESC,mo.id DESC LIMIT 1)\":\"\";\n"
+        },
+        {
+          "old": "                    COALESCE(m.nombre, '') AS aliado_municipio\n                FROM whatsapp_conversaciones conv",
+          "new": "                    COALESCE(m.nombre, '') AS aliado_municipio\n                    $extra\n                FROM whatsapp_conversaciones conv"
+        },
+        {
+          "old": "                    ON m.id = aliado.municipio_id\";",
+          "new": "                    ON m.id = aliado.municipio_id\".$joins;"
+        },
+        {
+          "old": "    private function actualizarResumenConversacion($conversacionId, $contenido, $incrementarNoLeidos)\n    {\n        $sql = \"UPDATE whatsapp_conversaciones\n                SET ultimo_mensaje_at = NOW(),\n                    ultimo_mensaje_preview = ?,\n                    no_leidos = no_leidos + ?,\n                    updated_at = NOW()\n                WHERE id = ?\";",
+          "new": "    private function actualizarResumenConversacion($conversacionId, $contenido, $incrementarNoLeidos, $fechaLocal)\n    {\n        $sql = \"UPDATE whatsapp_conversaciones\n                SET ultimo_mensaje_preview=CASE WHEN ultimo_mensaje_at IS NULL OR ultimo_mensaje_at<=? THEN ? ELSE ultimo_mensaje_preview END,\n                    ultimo_mensaje_at=GREATEST(COALESCE(ultimo_mensaje_at,?),?),\n                    no_leidos = no_leidos + ?,\n                    updated_at = UTC_TIMESTAMP()\n                WHERE id = ?\";"
+        },
+        {
+          "old": "$stmt->bind_param('sii', $preview, $incremento, $conversacionId);",
+          "new": "$stmt->bind_param('ssssii', $fechaLocal, $preview, $fechaLocal, $fechaLocal, $incremento, $conversacionId);"
+        }
+      ]
+    },
+    {
+      "path": "app/services/WhatsAppAvisosService.php",
+      "before": "94e85bc206080dedad6bd2d467ab150eb502fef5",
+      "hunks": [
+        {
+          "old": "require_once __DIR__.'/WhatsAppContextoService.php';",
+          "new": "require_once __DIR__.'/WhatsAppContextoService.php';\nrequire_once __DIR__.'/WhatsAppPresentacionService.php';"
+        },
+        {
+          "old": "SELECT conv.id,COALESCE(NULLIF(conv.nombre_contacto,''),'Contacto') AS nombre,\n            m.id AS entrada_id, LEFT(COALESCE(m.contenido,''),160) AS mensaje,conv.no_leidos,m.created_at AS ultimo_mensaje_at",
+          "new": "SELECT conv.id,conv.nombre_contacto,conv.telefono_contacto,\n            (SELECT p.nombre_completo FROM whatsapp_conversacion_prospectos w JOIN prospectos_comerciales p ON p.id=w.prospecto_id WHERE w.conversacion_id=conv.id LIMIT 1) AS prospecto_nombre,\n            (SELECT s.nombre_entidad FROM seguimientos_vinculacion s WHERE s.id=conv.aliado_seguimiento_id) AS aliado_nombre,\n            m.id AS entrada_id, LEFT(COALESCE(m.contenido,''),160) AS mensaje,conv.no_leidos,m.enviado_at,m.created_at"
+        },
+        {
+          "old": "'nombre'=>(string)$r['nombre']",
+          "new": "'nombre'=>WhatsAppPresentacionService::nombre($r)"
+        },
+        {
+          "old": "'fecha'=>$r['ultimo_mensaje_at']",
+          "new": "'fecha'=>WhatsAppPresentacionService::horaVisible(['direccion'=>'ENTRANTE','enviado_at'=>$r['enviado_at'],'created_at'=>$r['created_at']])"
+        }
+      ]
+    },
+    {
+      "path": "app/controllers/WhatsAppController.php",
+      "before": "4e4abbf09f5c3c657c5d0ae21b013151381489bf",
+      "hunks": [
+        {
+          "old": "    public function conversaciones()\n    {",
+          "new": "    public function listaViva(): void\n    {\n        header('Cache-Control: private, no-store, max-age=0');\n        $this->validarPermiso('whatsapp.ver');\n        if(strtoupper((string)($_SERVER['REQUEST_METHOD']??'GET'))!=='GET')$this->responder(['ok'=>false],405);\n        $usuarioId=(int)$_SESSION['usuario_id'];\n        $gestionar=WhatsAppContextoService::lecturaGlobal();\n        if(session_status()===PHP_SESSION_ACTIVE)session_write_close();\n        $modelo=new WhatsAppModel();\n        $this->validarEstructura($modelo);\n        $conversaciones=$modelo->obtenerConversaciones($usuarioId,$gestionar);\n        $conversacionSeleccionada=['id'=>(int)($_GET['conversacion_id']??0)];\n        $texto=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');\n        $hora=static function($v){if(!$v)return '';try{return (new DateTime((string)$v))->format('H:i');}catch(Throwable $e){return '';}};\n        ob_start();\n        require __DIR__.'/../views/whatsapp/lista_conversaciones.php';\n        $html=ob_get_clean();\n        $this->responder(['ok'=>true,'html'=>$html,'total'=>count($conversaciones)]);\n    }\n\n    public function conversaciones()\n    {"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/recordatorios.js",
+      "before": "5200a76bc6ec477cf2c62c30dfe0b91622187598",
+      "hunks": [
+        {
+          "old": "            if (whatsapp) {\n                toast.dataset.whatsappConversation = String(waId);",
+          "new": "            if (whatsapp) {\n                const copy=toast.querySelector('.reminder-toast-copy');\n                const detail=copy?.querySelector('span');\n                if(detail){\n                    const contact=document.createElement('span');\n                    contact.className='wa-toast-contact';\n                    contact.textContent=String(aviso.whatsapp_nombre||'Contacto');\n                    detail.textContent=String(aviso.whatsapp_mensaje||'Nuevo mensaje');\n                    copy.insertBefore(contact,detail);\n                }\n                toast.dataset.whatsappConversation = String(waId);"
+        },
+        {
+          "old": "titulo:'Nuevo mensaje de WhatsApp',mensaje:nombre+' · '+mensaje+(otros>0?' · Más conversaciones pendientes':'')",
+          "new": "titulo:'Nuevo mensaje de WhatsApp',whatsapp_nombre:nombre,whatsapp_mensaje:mensaje+(otros>0?' · Más conversaciones pendientes':''),mensaje:''"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/whatsapp.js",
+      "before": "a5ea390ff8125db3acabedf13454e22c3e2508fe",
+      "hunks": [
+        {
+          "old": "    const conversationItems = Array.from(\n        root.querySelectorAll('[data-whatsapp-conversation-item]')\n    );",
+          "new": "    const conversationList=root.querySelector('[data-whatsapp-conversation-list]');\n    let listTimer=null,listBusy=false,listStopped=false,listSignature='';"
+        },
+        {
+          "old": "            message.enviado_at || message.created_at || ''",
+          "new": "            message.fecha_visible || message.enviado_at || message.created_at || ''"
+        },
+        {
+          "old": "    searchInput?.addEventListener('input', function () {\n        const query = normalize(searchInput.value);\n\n        conversationItems.forEach(function (item) {\n            const matches =\n                query === '' ||\n                normalize(item.dataset.search || '').includes(query);\n\n            item.classList.toggle('d-none', !matches);\n        });\n    });",
+          "new": "    const applyListSearch=()=>{\n        const query=normalize(searchInput?.value||'');\n        root.querySelectorAll('[data-whatsapp-conversation-item]').forEach(item=>{\n            item.classList.toggle('d-none',query!==''&&!normalize(item.dataset.search||'').includes(query));\n        });\n    };\n    searchInput?.addEventListener('input',applyListSearch);\n    async function pollList(){\n        if(!conversationList||listBusy||listStopped||document.hidden)return;\n        listBusy=true;\n        const ctrl=new AbortController();\n        const timeout=setTimeout(()=>ctrl.abort(),8000);\n        try{\n            const res=await fetch(endpoint('listaViva',{conversacion_id:conversationId}),{credentials:'same-origin',cache:'no-store',signal:ctrl.signal,headers:{'X-Requested-With':'fetch'}});\n            if(res.status===401||res.status===403){\n                listStopped=true;conversationList.replaceChildren();return;\n            }\n            if(!res.ok)return;\n            const data=await res.json();\n            if(!data.ok||typeof data.html!=='string'||!Number.isInteger(data.total)||data.total<0||document.hidden)return;\n            if(listSignature!==data.html){\n                const focused=document.activeElement?.closest('[data-whatsapp-conversation-item]')?.dataset.conversationId;\n                const top=conversationList.scrollTop;\n                // Fragmento PHP propio y escapado; no ejecutar scripts ni atributos de eventos.\n                const doc=new DOMParser().parseFromString(data.html,'text/html');\n                if(doc.querySelector('script,iframe,object,embed')||Array.from(doc.querySelectorAll('*')).some(n=>Array.from(n.attributes).some(a=>/^on/i.test(a.name))))return;\n                conversationList.replaceChildren(...Array.from(doc.body.childNodes));\n                listSignature=data.html;\n                applyListSearch();conversationList.scrollTop=top;\n                if(focused)Array.from(conversationList.querySelectorAll('[data-whatsapp-conversation-item]')).find(n=>n.dataset.conversationId===focused)?.focus({preventScroll:true});\n            }\n            const total=root.querySelector('[data-whatsapp-list-count]');\n            if(total)total.textContent=String(data.total)+' activas';\n        }catch{}finally{clearTimeout(timeout);listBusy=false;}\n    }\n    if(conversationList){\n        const scheduleList=()=>{clearInterval(listTimer);if(!document.hidden&&!listStopped){pollList();listTimer=setInterval(pollList,10000);}};\n        document.addEventListener('visibilitychange',scheduleList);\n        window.addEventListener('pagehide',()=>clearInterval(listTimer));\n        window.addEventListener('pageshow',scheduleList);\n        scheduleList();\n    }"
+        }
+      ]
+    },
+    {
+      "path": "app/views/whatsapp/chat.php",
+      "before": "ddb37247a14756464b2258bc039c761866e7d327",
+      "hunks": [
+        {
+          "old": "                                                $mensaje['enviado_at'] ??",
+          "new": "                                                $mensaje['fecha_visible'] ??\n                                                $mensaje['enviado_at'] ??"
+        }
+      ]
+    },
+    {
+      "path": "public/css/whatsapp_avisos_globales.css",
+      "before": "da355126a6ca6e9de1006df670742f81f19c57b7",
+      "hunks": [
+        {
+          "old": "/* Layout only. Colors, badges, typography and toasts belong to recordatorios.css. */",
+          "new": "/* Layout only. Colors, badges, typography and toasts belong to recordatorios.css. */\n.reminder-toast[data-whatsapp-conversation] .wa-toast-contact{font-weight:800;color:var(--color-text-primary)}\n.whatsapp-conversation-item.is-unread .whatsapp-conversation-bottom>span{font-weight:700;color:var(--color-text-primary)}\n"
+        }
+      ]
+    }
+  ],
+  "index": {
+    "path": "app/views/whatsapp/index.php",
+    "before": "031a5034e2f529c4c799aecd61903aefdab5dcd9"
+  },
+  "new_files": {
+    "app/services/WhatsAppPresentacionService.php": "WhatsAppPresentacionService.php"
+  },
+  "guards": {
+    "app/services/WhatsAppContextoService.php": "1bea17bb7cc07d2ab7c1809b6e0aca3192ad500a",
+    "app/services/WhatsAppAsignacionService.php": "aab8f8395f565f9303379a27e4017b5f9b6a5636",
+    "public/javascript/whatsapp_avisos_globales.js": "f2137c7c2f3844accc02c5a3331bc02d85f20674",
+    "public/css/recordatorios.css": "e9776d79d1c369d531fec2074a04726067e34387",
+    "public/javascript/whatsapp_contextual.js": "84cdcc24b8515f3aa8c9795cc33fff6fda9a1dc2"
+  }
+}
