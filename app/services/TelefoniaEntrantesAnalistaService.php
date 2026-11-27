@@ -25,30 +25,6 @@ class TelefoniaEntrantesAnalistaService
     {
         $this->db = $connection ?? (new Database())->connect();
         $this->eventos = new ZadarmaWebhookEventStoreService($this->db);
-        $this->asegurarEstructura();
-    }
-
-    private function asegurarEstructura(): void
-    {
-        $sql = "CREATE TABLE IF NOT EXISTS telefonia_analista_entrantes (
-            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            usuario_id INT NOT NULL,
-            extension VARCHAR(12) NOT NULL,
-            pbx_call_id VARCHAR(100) NOT NULL,
-            estado VARCHAR(24) NOT NULL DEFAULT 'PENDIENTE',
-            seguimiento_id INT NULL,
-            interaccion_id INT NULL,
-            observacion VARCHAR(500) NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            UNIQUE KEY uk_analista_llamada (usuario_id, pbx_call_id),
-            KEY idx_analista_entrantes_estado (usuario_id, estado, updated_at),
-            KEY idx_analista_entrantes_expediente (seguimiento_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci";
-        if (!$this->db->query($sql)) {
-            throw new RuntimeException('No fue posible preparar las llamadas recibidas.');
-        }
     }
 
     private function extensionActual(int $usuarioId): array
@@ -499,7 +475,7 @@ class TelefoniaEntrantesAnalistaService
      * transacción que el registro de clasificación. No genera "verificaciones
      * efectivas": siguen exigiendo evidencia del flujo institucional.
      */
-    public function registrar(int $usuarioId, array $datos): array
+    public function registrar(int $usuarioId, array $datos, ?callable $confirmar=null): array
     {
         foreach ($datos as $valor) if (!is_scalar($valor) && $valor!==null) throw new InvalidArgumentException('Los datos de la atención no son válidos.');
         $idSdk = trim((string)($datos['sdk_session_id'] ?? ''));
@@ -542,9 +518,11 @@ class TelefoniaEntrantesAnalistaService
                         seguimiento_id=VALUES(seguimiento_id),interaccion_id=VALUES(interaccion_id)");
                     $q->bind_param('issii',$usuarioId,$ext,$id,$seguimientoId,$interaccionId);$q->execute();$q->close();
                 }
-                $this->db->commit();
-                return ['estado'=>'VINCULADA','seguimiento_id'=>(int)$vinculo['seguimiento_id'],
+                $respuesta=['estado'=>'VINCULADA','seguimiento_id'=>(int)$vinculo['seguimiento_id'],
                     'interaccion_id'=>(int)$vinculo['interaccion_id'],'verificacion_confirmada'=>$ok];
+                if($confirmar)$confirmar('INTERACCION_VINCULACION',(int)$vinculo['interaccion_id'],$respuesta);
+                $this->db->commit();
+                return $respuesta;
             } catch (Throwable $e) {$this->db->rollback();throw $e;}
         }
         $decision = strtolower(trim((string)($datos['decision'] ?? '')));
@@ -603,7 +581,6 @@ class TelefoniaEntrantesAnalistaService
         $model = new SeguimientoVinculacionModel($this->db);
         $extension = (string)$call['extension'];
         $evidenciaStore=new TelefoniaVerificacionEvidenciaService($this->db);
-        $evidenciaStore->asegurarEstructura();
         $this->db->begin_transaction();
         try {
             if (!$sdk && $aliasSdk!=='') {
@@ -645,8 +622,10 @@ class TelefoniaEntrantesAnalistaService
                 throw new DomainException('La llamada ya está vinculada. Actualiza el historial.');
             }
             if ($registro['estado'] === 'SIN_IDENTIFICAR' && $decision === 'sin_identificar') {
+                $respuesta=['estado'=>'SIN_IDENTIFICAR','seguimiento_id'=>0];
+                if($confirmar)$confirmar($sdk?'ATENCION_SDK_ANALISTA':'ATENCION_PBX_ANALISTA',(int)$registro['id'],$respuesta);
                 $this->db->commit();
-                return ['estado' => 'SIN_IDENTIFICAR', 'seguimiento_id' => 0];
+                return $respuesta;
             }
 
             if ($decision === 'sin_identificar') {
@@ -660,8 +639,10 @@ class TelefoniaEntrantesAnalistaService
                 $stmt->bind_param('ssi', $estadoRegistro, $notaBreve, $registroId);
                 $stmt->execute();
                 $stmt->close();
+                $respuesta=['estado'=>$estadoRegistro,'seguimiento_id'=>0];
+                if($confirmar)$confirmar($sdk?'ATENCION_SDK_ANALISTA':'ATENCION_PBX_ANALISTA',$registroId,$respuesta);
                 $this->db->commit();
-                return ['estado' => $estadoRegistro, 'seguimiento_id' => 0];
+                return $respuesta;
             }
 
             $atencion=$this->registrarAtencionEnExpediente($usuarioId,$call,$datos,$sdk,$id,$aliasSdk);
@@ -681,15 +662,16 @@ class TelefoniaEntrantesAnalistaService
             $stmt->bind_param('siii', $estadoRegistro, $seguimientoId, $interaccionId, $registroId);
             $stmt->execute();
             $stmt->close();
-            $this->db->commit();
-
-            return [
+            $respuesta=[
                 'estado' => $estadoRegistro,
                 'seguimiento_id' => $seguimientoId,
                 'interaccion_id' => $interaccionId,
                 'verificacion_confirmada'=>$atencion['verificacion_confirmada'],
                 'verificacion_pendiente'=>$atencion['verificacion_pendiente']
             ];
+            if($confirmar)$confirmar('INTERACCION_VINCULACION',(int)$interaccionId,$respuesta);
+            $this->db->commit();
+            return $respuesta;
         } catch (Throwable $e) {
             $this->db->rollback();
             throw $e;

@@ -1293,7 +1293,6 @@ class SeguimientoVinculacionModel
     public function registrarInteraccionManual($seguimientoId, $usuarioId, $datos, $transaccionExterna = false)
     {
         $evidenciaStore=new TelefoniaVerificacionEvidenciaService($this->connection);
-        if (!$transaccionExterna && !empty($datos['verificacion_detalles'])) $evidenciaStore->asegurarEstructura();
         $this->ultimoErrorInteraccion = '';
         $this->ultimaInteraccionCreadaId = 0;
         $etapaPersistencia = 'guardar la interacción';

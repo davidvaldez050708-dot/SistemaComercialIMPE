@@ -616,22 +616,26 @@
         resultForm?.addEventListener('submit', async function (event) {
             event.preventDefault();
             if (savingResult || !resultCallId || !resultForm.reportValidity()) return;
+            let capture;
+            try{capture=window.IMPE_CALL_DRAFTS.prepareSubmission(Number(window.IMPE_CURRENT_USER_ID),[resultCallId],{
+                csrf_token:root.dataset.resultCsrf||'',pbx_call_id:resultCallId,
+                resultado:resultSelect.value,nota:resultNote.value.trim()
+            },{adaptador:'RECEPCION'});}
+            catch(error){explicarDevolucion('No se pudo conservar la captura. Mantén abierto el formulario.',true);return;}
             savingResult = true;
             resultSave.disabled = true;
             resultSelect.disabled = true;
             resultNote.disabled = true;
             resultDialog.querySelectorAll('[data-bs-dismiss="modal"]').forEach(b=>b.disabled=true);
             try {
-                const body = new URLSearchParams({
-                    csrf_token:root.dataset.resultCsrf || '', pbx_call_id:resultCallId,
-                    resultado:resultSelect.value, nota:resultNote.value.trim()
-                });
+                const body = new URLSearchParams(capture.values);
                 const response = await window.IMPE_PHONE_HTTP.request(root.dataset.resultUrl, {
                     method:'POST', credentials:'same-origin', cache:'no-store', body,
                     headers:{Accept:'application/json'}
                 });
                 const payload = await response.json();
                 if (!response.ok || !payload.ok) throw new Error(payload.mensaje || 'No se pudo guardar.');
+                void window.IMPE_CALL_DRAFTS.remove(Number(window.IMPE_CURRENT_USER_ID),capture.ids,root.dataset.resultCsrf||'',capture.revision).catch(()=>{});
                 const call = calls.find(c=>c.pbx_call_id===resultCallId);
                 if (call) Object.assign(call,payload.registro,{requiere_resultado:false});
                 if(window.parent!==window)window.parent.postMessage({type:'IMPE_RECEPTION_RESULT_SAVED',id:resultCallId},window.location.origin);

@@ -33,13 +33,53 @@ final class TelefoniaBorradorService
     }
     public function leer(int $usuario,string $id): ?array
     {
-        try {
-            $stmt=$this->db->prepare('SELECT datos_json FROM telefonia_borradores WHERE usuario_id=? AND referencia=BINARY ?');
-            if (!$stmt) {if ((int)$this->db->errno===1146) return null;throw new RuntimeException('No se pudo recuperar el borrador.');}
-            $stmt->bind_param('is',$usuario,$id);$stmt->execute();$row=$stmt->get_result()->fetch_assoc();$stmt->close();
-            $data=$row?json_decode($row['datos_json'],true):null;
-            return empty($data['closed'])?$data:null;
-        } catch (mysqli_sql_exception $e) {if ($e->getCode()===1146) return null;throw $e;}
+        $ids=$this->resolverReferencias($usuario,[$id]);
+        $marks=implode(',',array_fill(0,count($ids),'?'));
+        $q=$this->db->prepare("SELECT datos_json FROM telefonia_borradores WHERE usuario_id=? AND BINARY referencia IN ($marks)");
+        $args=[$usuario,...$ids];$q->bind_param('i'.str_repeat('s',count($ids)),...$args);$q->execute();$rows=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
+        $records=[];
+        foreach($rows as $row){$data=json_decode($row['datos_json'],true);if(is_array($data)&&isset($data['saved_at']))$records[]=$data;}
+        if(!$records)return null;
+        usort($records,static fn($a,$b)=>(int)$a['saved_at']<=>(int)$b['saved_at']);
+        $merged=[];$revisions=[];$receipts=[];$latest=[];
+        foreach($records as $record){
+            $at=(int)$record['saved_at'];
+            foreach((array)($record['valores']??[]) as $field=>$value){
+                if(isset($revisions[$at][$field])&&$revisions[$at][$field]!==$value)
+                    throw new DomainException('Dos capturas de la misma revisión difieren. Se conservaron ambas para revisión.');
+                $revisions[$at][$field]=$value;
+            }
+            foreach((array)($record['aplicaciones']??[]) as $key=>$receipt){
+                if(isset($receipts[$key])&&$receipts[$key]!==$receipt)throw new DomainException('Las confirmaciones requieren revisión.');
+                $receipts[$key]=$receipt;
+            }
+            $merged=array_replace($merged,(array)($record['valores']??[]));
+            // En la misma revisión un recibo confirmado prevalece sobre su borrador.
+            if((int)($latest['saved_at']??0)!==$at||empty($latest['closed']))$latest=$record;
+        }
+        $latest['ids']=$ids;$latest['valores']=$merged;
+        if($receipts)$latest['aplicaciones']=$receipts;
+        return $latest;
+    }
+
+    /** Alias derivados sólo de sesiones del mismo usuario y vínculos PBX
+     * persistidos. Nunca buscar por teléfono, nombre, tiempo o extensión ajena.
+     */
+    public function resolverReferencias(int $usuario,array $ids):array
+    {
+        $ids=self::validarReferencias($usuario,$ids);
+        $marks=implode(',',array_fill(0,count($ids),'?'));
+        $q=$this->db->prepare("SELECT session_id,pbx_call_id FROM telefonia_analista_webrtc_sesiones WHERE usuario_id=? AND (BINARY session_id IN ($marks) OR BINARY pbx_call_id IN ($marks)) LIMIT 33");
+        $args=[$usuario,...$ids,...$ids];$q->bind_param('i'.str_repeat('s',count($ids)*2),...$args);$q->execute();$rows=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
+        $pbx=[];
+        foreach($rows as $row){$ids[]=$row['session_id'];if(!empty($row['pbx_call_id']))$pbx[$row['pbx_call_id']]=true;}
+        if(count($pbx)>1)throw new DomainException('Las referencias pertenecen a llamadas PBX distintas. No se unieron.');
+        if($pbx){
+            $reference=(string)array_key_first($pbx);$ids[]=$reference;
+            $q=$this->db->prepare('SELECT session_id FROM telefonia_analista_webrtc_sesiones WHERE usuario_id=? AND pbx_call_id=BINARY ? LIMIT 33');
+            $q->bind_param('is',$usuario,$reference);$q->execute();$ids=array_merge($ids,array_column($q->get_result()->fetch_all(MYSQLI_ASSOC),'session_id'));$q->close();
+        }
+        return self::validarReferencias($usuario,array_values(array_unique($ids)));
     }
     /** Sólo captura del usuario; no acredita llamadas ni modifica indicadores. */
     public function pendientes(int $usuario): array
@@ -54,11 +94,20 @@ final class TelefoniaBorradorService
         return $out;
     }
 
-    private static function validarReferencias(int $usuario,array $ids): array
+    public static function validarReferencias(int $usuario,array $ids): array
     {
-        if($usuario<1||!$ids||count($ids)>3)throw new InvalidArgumentException('Referencias inválidas.');
+        if($usuario<1||!$ids||count($ids)>32)throw new InvalidArgumentException('Referencias inválidas.');
         foreach($ids as $id)if(!is_string($id)||!self::validarId($id))throw new InvalidArgumentException('Llamada inválida.');
         $ids=array_values(array_unique($ids));sort($ids,SORT_STRING);return $ids;
+    }
+
+    private static function mismoContenido(array $a,array $b):bool
+    {
+        $sort=static function(array $v)use(&$sort):array{
+            foreach($v as &$item)if(is_array($item))$item=$sort($item);unset($item);
+            if(!array_is_list($v))ksort($v,SORT_STRING);return $v;
+        };
+        return json_encode($sort($a),JSON_THROW_ON_ERROR)===json_encode($sort($b),JSON_THROW_ON_ERROR);
     }
 
     private static function limpiarContexto(array $contexto,int $revision):array
@@ -81,7 +130,7 @@ final class TelefoniaBorradorService
 
     public function guardar(int $usuario,array $ids,array $datos,int $revision,array $contexto=[]): array
     {
-        $ids=self::validarReferencias($usuario,$ids);$datos=self::limpiar($datos);
+        $ids=$this->resolverReferencias($usuario,$ids);$datos=self::limpiar($datos);
         if($revision<1)throw new InvalidArgumentException('Revisión inválida.');
         $contexto=self::limpiarContexto($contexto,$revision);
         $this->db->begin_transaction();
@@ -119,13 +168,14 @@ final class TelefoniaBorradorService
             }
             // Cada formulario aporta sus campos. No borra los que pertenecen
             // a otro adaptador de la MISMA llamada. Un vacío explícito sí limpia.
-            $saved=['saved_at'=>$revision,'valores'=>array_replace($merged,$datos)];
+            $saved=['ids'=>$ids,'saved_at'=>$revision,'valores'=>array_replace($merged,$datos)];
             if($contexto)$saved['contexto']=array_replace((array)($latest['contexto']??[]),$contexto);
             elseif(!empty($latest['contexto']))$saved['contexto']=$latest['contexto'];
             if($receipts)$saved['aplicaciones']=$receipts;
             $json=json_encode($saved,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
             foreach($previous as $data){
-                if((int)($data['saved_at']??0)===$revision && json_encode($data,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)!==$json)
+                $compare=$data;$compare['ids']=$ids;
+                if((int)($data['saved_at']??0)===$revision && !self::mismoContenido($compare,$saved))
                     throw new DomainException('Existe otra captura con la misma revisión. No se reemplazó.');
             }
             foreach($ids as $id){
@@ -137,7 +187,7 @@ final class TelefoniaBorradorService
     }
     public function eliminar(int $usuario,array $ids,?int $revision=null): void
     {
-        $ids=self::validarReferencias($usuario,$ids);
+        $ids=$this->resolverReferencias($usuario,$ids);
         $this->db->begin_transaction();
         try{
             foreach($ids as $id){
@@ -169,17 +219,23 @@ final class TelefoniaBorradorService
      * adaptador comercial, nunca de un valor suministrado por el navegador.
      */
     public function confirmarAplicacionEnTransaccion(int $usuario,array $ids,int $revision,
-        string $requestId,string $adaptador,string $tipo,int $nativeId,array $valores=[]):array
+        string $requestId,string $adaptador,string $tipo,int $nativeId,array $valores=[],array $respuesta=[],string $huellaPeticion=''):array
     {
-        $ids=self::validarReferencias($usuario,$ids);$valores=self::limpiar($valores);
+        $ids=$this->resolverReferencias($usuario,$ids);$valores=self::limpiar($valores);
         $types=['VENTAS'=>'RESULTADO_VENTAS','RECEPCION'=>'ATENCION_RECEPCION',
             'ANALISTA'=>'INTERACCION_VINCULACION','SEGUIMIENTO'=>'INTERACCION_VINCULACION'];
         if($revision<1||$nativeId<1||!preg_match('/^[a-zA-Z0-9_-]{12,100}$/D',$requestId)||
-            ($types[$adaptador]??null)!==$tipo)
+            (($types[$adaptador]??null)!==$tipo && !($adaptador==='ANALISTA' && in_array($tipo,['ATENCION_SDK_ANALISTA','ATENCION_PBX_ANALISTA'],true))))
             throw new InvalidArgumentException('Confirmación de captura inválida.');
         $canonical=$valores;ksort($canonical);
         $receipt=['request_id'=>$requestId,'revision'=>$revision,'adaptador'=>$adaptador,'tipo'=>$tipo,'id'=>$nativeId,
             'huella'=>hash('sha256',json_encode($canonical,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR))];
+        if($huellaPeticion!==''){
+            if(!preg_match('/^[a-f0-9]{64}$/D',$huellaPeticion)||strlen(json_encode($respuesta,JSON_THROW_ON_ERROR))>65536)
+                throw new InvalidArgumentException('Respuesta de confirmación inválida.');
+            $receipt['peticion_huella']=$huellaPeticion;
+            $receipt['respuesta']=$respuesta;
+        }
         $rows=[];$existing=null;
         // Mantener el mismo orden de locks que guardar/eliminar. Validar el
         // conjunto completo antes de escribir cualquiera de sus alias.
@@ -204,7 +260,7 @@ final class TelefoniaBorradorService
         foreach($rows as $id=>$prior){
             if(isset($prior['aplicaciones'][$requestId]))continue;
             $newer=(int)($prior['saved_at']??0)>$revision;
-            $saved=$prior;
+            $saved=$prior;$saved['ids']=$ids;
             $saved['aplicaciones'][$requestId]=$receipt;
             // Un ACK del envío anterior no borra ni cierra una edición nueva.
             if(!$newer){
@@ -223,7 +279,7 @@ final class TelefoniaBorradorService
 
     public function leerAplicacion(int $usuario,array $ids,string $requestId):?array
     {
-        $ids=self::validarReferencias($usuario,$ids);$found=null;
+        $ids=$this->resolverReferencias($usuario,$ids);$found=null;
         if(!preg_match('/^[a-zA-Z0-9_-]{12,100}$/D',$requestId))throw new InvalidArgumentException('Intento inválido.');
         foreach($ids as $id){
             $s=$this->db->prepare('SELECT datos_json FROM telefonia_borradores WHERE usuario_id=? AND referencia=BINARY ?');

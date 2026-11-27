@@ -341,8 +341,12 @@ class SeguimientoVinculacionController
 
         require_once __DIR__ . '/../services/TelefoniaEntrantesAnalistaService.php';
         try {
-            $resultado = (new TelefoniaEntrantesAnalistaService())
-                ->registrar((int)$_SESSION['usuario_id'], $_POST);
+            require_once __DIR__.'/../services/TelefoniaResultadoConfirmacion.php';
+            $db=Database::compartida();$usuario=(int)$_SESSION['usuario_id'];
+            $resultado=(new TelefoniaResultadoConfirmacion($db))->ejecutar($usuario,'ANALISTA',$_POST,
+                static function(array $datos,?callable $confirmar)use($db,$usuario):array{
+                    return (new TelefoniaEntrantesAnalistaService($db))->registrar($usuario,$datos,$confirmar);
+                });
             $this->responderJson([
                 'ok' => true,
                 'mensaje' => $resultado['estado'] === 'SIN_IDENTIFICAR'

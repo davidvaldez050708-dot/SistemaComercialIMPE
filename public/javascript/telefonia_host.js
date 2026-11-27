@@ -1356,6 +1356,9 @@
             return;
         }
 
+        if(state.active&&state.direction==='incoming'&&state.context?.sdkJournalProtocol===2&&
+            state.context?.sdkSessionId&&state.pbxCallId!==pbxCallId&&
+            String(state.context?.transferReference||'')!==pbxCallId)return;
         const samePbxCall = state.direction === 'incoming' &&
             String(state.pbxCallId || '') === pbxCallId;
         // Si el PBX adopta una transferencia activa del Asesor, conservar
@@ -1610,7 +1613,11 @@
             journal.session=session;incomingDialogJournals.set(session,journal);
             const recorder=journal.recorder;
             writeLocalJournal(recorder,'bind',id);writeLocalJournal(recorder,'start');
-            const answered=()=>{if(session.isEstablished?.()===true)writeLocalJournal(recorder,'answered');};
+            const answered=()=>{if(session.isEstablished?.()===true){
+                writeLocalJournal(recorder,'bind',id,window.IMPE_PHONE_HTTP.dialogIdentity(session));
+                writeLocalJournal(recorder,'answered');
+                if(journal.predecessor)writeLocalJournal(recorder,'successor',journal.predecessor.recorder.snapshot(),journal.operation,journal.replaces);
+            }};
             session.on('accepted',answered);session.on('confirmed',answered);
             session.on('ended',()=>writeLocalJournal(recorder,'end'));
             session.on('failed',()=>writeLocalJournal(recorder,'end','failed'));
@@ -1619,7 +1626,11 @@
         incomingJournal=journal;
         if(state.context?.sdkSessionId!==journal.recorder.session_id||state.context?.sdkJournalProtocol!==2)
             publish({context:{...state.context,sdkSessionId:journal.recorder.session_id,sdkJournalProtocol:2}});
-        if(session.isEstablished?.()===true)writeLocalJournal(journal.recorder,'answered');
+        if(session.isEstablished?.()===true){
+            writeLocalJournal(journal.recorder,'bind',id,window.IMPE_PHONE_HTTP.dialogIdentity(session));
+            writeLocalJournal(journal.recorder,'answered');
+            if(journal.predecessor)writeLocalJournal(journal.recorder,'successor',journal.predecessor.recorder.snapshot(),journal.operation,journal.replaces);
+        }
         return journal;
     };
     const fetchDialCheckpoint = async function (destination) {
@@ -1669,6 +1680,7 @@
         if (state.checkpointReady) {
             params.set('after_id', String(state.afterEventId || 0));
         }
+        if(/^sdk-[a-z0-9-]{12,94}$/.test(String(state.context?.sdkSessionId||'')))params.set('session_id',state.context.sdkSessionId);
 
         if (forceFinal) {
             params.set('final', '1');
@@ -2442,7 +2454,11 @@
         journalTransfer:(op,session)=>{
             // Identidad reservada de la operación; nunca asociar por número SIP.
             const journal=session&&incomingDialogJournals.get(session);
-            if(journal)writeLocalJournal(journal.recorder,'transfer',op);
+            if(journal){
+                if(journal.predecessor){journal.operation=op;
+                    writeLocalJournal(journal.recorder,'successor',journal.predecessor.recorder.snapshot(),op,journal.replaces);
+                }else writeLocalJournal(journal.recorder,'transfer',op);
+            }
         },
         externalSession:(op,token,session,previous)=>{
             // La entrega puede sustituir RTCSession. El ID SIP sólo identifica
@@ -2450,10 +2466,18 @@
             if(!state.active||state.direction!=='incoming'||state.callToken!==token||
                 String(state.context?.transferOperation||'')!==String(op.id)||
                 String(state.context?.transferReference||'')!==String(op.referencia)||
-                !previous?.isEnded?.()||session!==window.zdrmWebPhone?.webCallSession||
+                !previous||session!==window.zdrmWebPhone?.webCallSession||
                 session?.direction!=='incoming'||session.isEnded?.()||!session.id)return false;
+            const prior=incomingDialogJournals.get(previous);
+            const proof=window.IMPE_PHONE_HTTP.replacesIdentity(session._request);
+            if(!prior||!proof||JSON.stringify(proof)!==prior.recorder.snapshot().sdk_dialogo)return false;
+            const replacement={journal:prior,replaces:proof};
             publish({context:{...state.context,sdkInviteId:String(session.id)}});
-            bindIncomingJournal(session);
+            const journal=bindIncomingJournal(session);
+            if(!journal)return false;
+            journal.predecessor=replacement.journal;journal.operation=op;journal.replaces=replacement.replaces;
+            if(session.isEstablished?.()===true)
+                writeLocalJournal(journal.recorder,'successor',journal.predecessor.recorder.snapshot(),op,journal.replaces);
             return true;
         },
         sourceEnded:(op,token,endedSession)=>{

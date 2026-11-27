@@ -5,7 +5,7 @@
     const valid=id=>/^[a-zA-Z0-9_-]{6,100}$/.test(String(id||''));
     const refs=ids=>{
         const selected=[...new Set(ids.filter(valid))];
-        if(selected.length>3)throw new Error('Hay demasiadas referencias para esta captura. Conserva el formulario abierto.');
+        if(selected.length>32)throw new Error('Hay demasiadas referencias para esta captura. Conserva el formulario abierto.');
         return selected;
     };
     const key=(user,id)=>'impe:crm:call-draft:'+Number(user)+':'+id;
@@ -231,19 +231,27 @@
         },
         async read(user,ids) {
             own(user);
-            const found=refs(ids).map(id=>localRead(user,id)).filter(fresh);
+            const found=[];
             for(const id of refs(ids)) {
                 try {
                     const url=new URL(endpoint);url.searchParams.set('id',id);
                     const res=await window.IMPE_PHONE_HTTP.request(url,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
                     const data=await res.json();
+                    if(res.status===409){const error=new Error(data.mensaje||'La captura requiere revisión.');error.code='DRAFT_CONFLICT';throw error;}
+                    if(res.ok&&data.ok&&data.borrador?.closed){
+                        const group=refs([...(data.borrador.ids||[]),...expandRefs(user,[id])]);
+                        const previous=new Map(group.map(ref=>[ref,localRead(user,ref)?.saved_at]));
+                        const closedRevision=Number(data.borrador.closed_revision||data.borrador.saved_at);
+                        markClosePending(user,group,closedRevision);
+                        clearClosed(user,group,closedRevision,previous);
+                    }
                     if(res.ok&&data.ok&&fresh(data.borrador)){
                         found.push(data.borrador);
                         if(Number(data.borrador.saved_at)>Number(localRead(user,id)?.saved_at||0))try{
-                            localStorage.setItem(key(user,id),JSON.stringify({...data.borrador,ids:expandRefs(user,[id]),call_id:id,pending_sync:false}));
+                            localStorage.setItem(key(user,id),JSON.stringify({...data.borrador,ids:refs([...(data.borrador.ids||[]),...expandRefs(user,[id])]),call_id:id,pending_sync:false}));
                         }catch(_){}
                     }
-                } catch (_) {}
+                } catch (error) {if(error?.code==='DRAFT_CONFLICT')throw error;}
             }
             found.push(...refs(ids).map(id=>localRead(user,id)).filter(fresh));
             found.sort((a,b)=>Number(b.saved_at)-Number(a.saved_at));
@@ -300,11 +308,33 @@
             }).finally(()=>{state.flight=null;});
             return state.flight;
         },
+        prepareSubmission(user,ids,values,contexto={}) {
+            own(user);ids=expandRefs(user,ids);
+            const clean={...values};delete clean.csrf_token;delete clean.captura_confirmacion;
+            const canonical=JSON.stringify([contexto.adaptador||'',Object.keys(clean).sort().map(k=>[k,clean[k]])]);
+            const keys=ids.map(id=>`impe:call-approved:${user}:${id}`);
+            let approved=null;
+            for(const key of keys){
+                try{const old=JSON.parse(localStorage.getItem(key)||'null');
+                    if(old?.canonical===canonical&&old?.request_id&&old?.revision>0){approved=old;break;}
+                }catch(_){}
+            }
+            if(!approved){
+                const draft=localSave(user,ids,clean,contexto);
+                const random=new Uint8Array(24);window.crypto.getRandomValues(random);
+                approved={canonical,ids:draft.ids,revision:draft.saved_at,
+                    request_id:Array.from(random,n=>n.toString(16).padStart(2,'0')).join('')};
+            }
+            // Nunca conservar CSRF, claves del proveedor o credenciales en el intento.
+            for(const key of keys)localStorage.setItem(key,JSON.stringify(approved));
+            const meta={ids:approved.ids,revision:approved.revision,request_id:approved.request_id};
+            return {values:{...values,captura_confirmacion:JSON.stringify(meta)},revision:approved.revision,ids:approved.ids};
+        },
         beginSave(user,ids,form,contexto) {
-            const values=Object.fromEntries(new FormData(form)),draft=localSave(user,ids,formValues(form),contexto);
+            const capture=this.prepareSubmission(user,ids,Object.fromEntries(new FormData(form)),contexto);
             const controls=[...form.querySelectorAll('button,input,select,textarea')].map(el=>[el,el.disabled]);
             for(const [el]of controls)el.disabled=true;
-            return {values,revision:draft.saved_at,ids:draft.ids,release(){for(const[el,disabled]of controls)el.disabled=disabled;}};
+            return {...capture,release(){for(const[el,disabled]of controls)el.disabled=disabled;}};
         },
         async remove(user,ids,csrf,revision) {
             own(user);ids=expandRefs(user,ids);
@@ -314,6 +344,12 @@
             await request({csrf_token:csrf,ids,accion:'eliminar',...(expected?{revision:expected}:{})});
             own(user);
             if(expected!==null)clearClosed(user,ids,expected,previous);
+            for(const id of ids){
+                const key=`impe:call-approved:${user}:${id}`;
+                try{const approved=JSON.parse(localStorage.getItem(key)||'null');
+                    if(approved?.revision===expected)localStorage.removeItem(key);
+                }catch(_){}
+            }
         }
 
     };
@@ -325,7 +361,9 @@
         contactosUnificados.delete(form);
         const cycle=(Number(form.dataset.draftCycle)||0)+1;form.dataset.draftCycle=String(cycle);
         let changed=false;const dirty=()=>{changed=true;};form.addEventListener('input',dirty,{once:true});
-        const values=await window.IMPE_CALL_DRAFTS.read(Number(window.IMPE_CURRENT_USER_ID||0),ids);
+        let values;
+        try{values=await window.IMPE_CALL_DRAFTS.read(Number(window.IMPE_CURRENT_USER_ID||0),ids);}
+        catch(error){window.IMPE_TELEPHONY_NOTIFY?.(error.message,true);form.removeEventListener('input',dirty);return;}
         form.removeEventListener('input',dirty);
         if(!values||changed||form.dataset.draftCycle!==String(cycle))return;
         const institutional=!event.detail?.adaptador||['ANALISTA','SEGUIMIENTO'].includes(event.detail.adaptador);

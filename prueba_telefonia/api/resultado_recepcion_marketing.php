@@ -36,9 +36,13 @@ foreach (['pbx_call_id','resultado','nota'] as $campo) {
     }
 }
 try {
-    $registro = (new TelefoniaRecepcionMarketingService())->guardarResultado(
-        $usuarioId,trim($_POST['pbx_call_id']),trim($_POST['resultado']),trim($_POST['nota'])
-    );
+    require_once $root.'/app/services/TelefoniaResultadoConfirmacion.php';
+    $db=Database::compartida();
+    $registro=(new TelefoniaResultadoConfirmacion($db))->ejecutar($usuarioId,'RECEPCION',$_POST,
+        static function(array $datos,?callable $confirmar)use($db,$usuarioId):array{
+            return (new TelefoniaRecepcionMarketingService($db))->guardarResultado($usuarioId,
+                trim($datos['pbx_call_id']),trim($datos['resultado']),trim($datos['nota']),$confirmar);
+        });
     responderResultadoRecepcion(['ok'=>true,'registro'=>$registro]);
 } catch (InvalidArgumentException $e) {
     responderResultadoRecepcion(['ok'=>false,'mensaje'=>$e->getMessage()],422);

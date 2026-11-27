@@ -46,12 +46,12 @@
   const adoptExternalSession=session=>{
    const previous=tracked?.session, state=api.read();
    if(!tracked||tracked.source||tracked.op.estado!=='ENTREGADA'||!state.active||
-      state.callToken!==tracked.token||!previous?.isEnded?.()||!session||
+      state.callToken!==tracked.token||!previous||!session||
       session===previous||session!==root.zdrmWebPhone?.webCallSession||session.isEnded?.()||
       session.direction!=='incoming')return false;
-   const remote=String(session.remote_identity?.uri?.user||'').replace(/\D/g,'');
-   if(!remote||![tracked.op.origen_extension,String(tracked.op.numero).replace(/\D/g,'')].includes(remote))return false;
-   if(api.externalSession?.(tracked.op,tracked.token,session,previous)===false)return false;
+   // Sólo el host puede acreditar la arista Replaces del diálogo anterior.
+   // Número/origen SIP y proximidad temporal no identifican un sucesor.
+   if(typeof api.externalSession!=='function'||api.externalSession(tracked.op,tracked.token,session,previous)!==true)return false;
    tracked.session=session;endedReported=false;apply(tracked.op);return true;
   };
   const tick=async()=>{

@@ -140,3 +140,61 @@ node tools/telefonia_universal_20261126/run_unit.cjs
 Conservar las modificaciones originales de otros checkouts. No reutilizar como
 payload las exploraciones antiguas `work/impe` o `work/before`. Este relevo y el
 README de esta carpeta describen un candidato incompleto, no una versión liberada.
+
+## Continuación autónoma desde 83dad082 — checkpoint local (no liberado)
+
+Se continúa en el mismo motor; no hubo publicación, SQL productivo ni llamadas reales.
+Los once pendientes anteriores describen el punto de partida, no todos siguen intactos:
+
+- Preparador `lab/prepare.py`, copia privada en loopback:3308, configuración sintética,
+  proveedor bloqueado y usuario de aplicación DML sin CREATE/ALTER/DROP. `lab/sync.py`
+  copia únicamente código y registra SHA256. `run_sql.py` reproduce pruebas nativas.
+- Confirmación común `TelefoniaResultadoConfirmacion`: comando explícitamente aprobado,
+  request_id durable, revisión y recibo/respuesta en la MISMA transacción nativa.
+  Integrado en Ventas, Recepción y registrarLlamadaEntrante del Analista. NO afirmar
+  todavía que todos los endpoints de Seguimiento/devoluciones están integrados.
+- Ventas: puente de embudo dentro de la transacción del resultado; ya no se silencia
+  un error postcommit dejando un resultado huérfano. Fixture real de servicios nativos
+  prueba creación/contacto/evidencias de Vinculación y movimiento del embudo V1,
+  recuperación de respuesta y rollback. Falta ampliar V3 y concurrencia.
+- DDL retirado del constructor entrante y guardado de Recepción. Se retiran llamadas
+  a preparar evidencias de rutas activas. Esquemas explícitos `schema_recepcion.sql`,
+  `schema_atencion_analista.sql`, `schema_evidencias.sql`, `schema_sucesores.sql`.
+- EventStore conserva id/has_duration y delega los hechos entrantes al reductor común.
+  Se está comprobando el nuevo fence de devolución explícita para no heredar END.
+- Salientes modernas usan session_id persistido para resolver destino y marcador;
+  comparación de número completo (variantes mexicanas explícitas), propietario,
+  ambigüedad y fence de siguiente intención. No es prueba de un identificador PBX
+  transmitido por el SDK; falta validar contrato/orden tardío completo en laboratorio HTTP.
+- Sucesor físico: Replaces debe coincidir en call-id y ambos tags con el diálogo anterior.
+  El sucesor usa otra sesión local y una arista durable; nunca se reabre la anterior.
+  Cola con dependencia de ACK. Se elimina heurística de teléfono del adoptador.
+  Recuperación servidor de una reserva SDK ya persistida después de END; si nunca
+  llegó a existir esa reserva no se inventa por teléfono/tiempo. Falta cerrar ese flujo.
+  Referencia primaria del contrato: https://jssip.net/documentation/3.4.x/api/session/#replaces
+- Borradores: grupo de alias derivado de sesiones/PBX del mismo usuario, JSON con ids,
+  hasta 32 referencias acotadas, recuperación por sucesores y cierre con tombstone.
+  Conflictos iguales de revisión se conservan para revisión. Falta completar deduplicación
+  de pendientes remotos y auditar todos los adaptadores/casos concurrentes.
+- Proveedor: presupuesto vacío/corrupto falla cerrado; TLS obligatorio; limpieza paginada
+  que alcanza todas las páginas sin borrar presupuestos/archivos ajenos. Falta conectar
+  mantenimiento CLI conservador, probar concurrencia y comprobar TLS del alojamiento.
+
+Evidencia: 17 suites JS; 18 SQL Ventas, 15 recibos tres adaptadores (clasificación simple
+Analista), 11 integración nativa institución/embudo, 7 intención saliente y 31 acumuladas
+transferencia/sucesores/captura canónica. No sumar suites anidadas como pruebas distintas.
+8 checks de proveedor con transporte falso. No equivalen a llamadas completas.
+
+Pendientes críticos que aún impiden liberar: controlador/modal universal real (siguen
+adaptadores UI anteriores), endpoints de Seguimiento/devoluciones con recibo atómico,
+reconciliación sin reserva temprana, pruebas V3/permisos/grabaciones/concurrencia,
+compatibilidad con Supervisión de personal, CHECK contra archivos/esquema personalizados,
+publicador/reversión, 1,000 ciclos completos HTTP/SDK/PBX/comercial y ocho horas reales
+continuas con reloj monotónico sobre código estable. No están iniciadas esas ocho horas.
+
+Laboratorio vivo de esta sesión (fuera del repo, NO publicar credenciales):
+`C:/Users/chill/AppData/Local/Temp/impe-phone-lab-ahii8exu`, mysqld PID 34448,
+3308. Hay otro mysqld ajeno (PID 49020): no detenerlo. Credenciales sólo en el
+JSON privado del laboratorio. Nunca copiarlas a Git ni imprimirlas.
+Supervisión independiente sigue en `../impe-supervision-personal`, commit
+76ed8c0c440caf54b90485442d64f975e8fdd58e; no se ha fusionado ni sobrescrito.

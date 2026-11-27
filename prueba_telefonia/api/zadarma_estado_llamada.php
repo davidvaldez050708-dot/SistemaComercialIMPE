@@ -225,13 +225,19 @@ $inicioAmbiguo = false;
 
 try {
     $eventStore = new ZadarmaWebhookEventStoreService(Database::compartida());
-    $inicioPersistido = $eventStore->buscarInicioSalienteReciente(
-        $extension,
-        $destino,
-        $desde,
-        $despuesDeId,
-        $inicioAmbiguo
-    );
+    $sessionId=trim((string)($_GET['session_id']??''));
+    if($sessionId!==''){
+        require_once $rootPath.'/app/services/TelefoniaSesionLocalService.php';
+        $journal=new TelefoniaSesionLocalService(Database::compartida());
+        $intent=$journal->obtener($usuarioId,$sessionId);
+        if(!$intent)throw new DomainException('La intención de llamada no está disponible.');
+        $resolved=$journal->resolverSalientePreparada($usuarioId,$sessionId);
+        $inicioPersistido=$resolved['inicio'];
+        $inicioAmbiguo=$resolved['identificacion']==='AMBIGUA';
+        $destino=(string)$intent['numero_origen'];$despuesDeId=(int)$intent['evento_desde'];$conMarcaDeAgua=true;
+    }else{
+        $inicioPersistido=$eventStore->buscarInicioSalienteReciente($extension,$destino,$desde,$despuesDeId,$inicioAmbiguo);
+    }
 
     if ($inicioPersistido) {
         $pbxCallId = trim((string)($inicioPersistido['pbx_call_id'] ?? ''));
@@ -243,6 +249,7 @@ try {
     }
 } catch (Throwable $errorStore) {
     if ($conMarcaDeAgua && Database::responderFalloTemporal($errorStore)) exit;
+    if(!empty($_GET['session_id']))responderJson(['ok'=>false,'mensaje'=>'No se pudo verificar la intención de llamada. Se conserva pendiente.'],503);
     error_log('[zadarma_estado_store] ' . $errorStore->getMessage());
 }
 

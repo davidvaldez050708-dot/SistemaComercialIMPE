@@ -276,7 +276,6 @@ class InteraccionRutaService
         }
 
         $evidenciaStore=new TelefoniaVerificacionEvidenciaService($this->connection);
-        if ($detallesVerificacion) $evidenciaStore->asegurarEstructura();
         $this->connection->begin_transaction();
         $etapaPersistencia = 'guardar la interacción';
 

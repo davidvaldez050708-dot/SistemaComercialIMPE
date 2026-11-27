@@ -8,6 +8,7 @@ require_once __DIR__.'/../helpers/TelefoniaAsignacionFechaHelper.php';
 final class TelefoniaTransferenciaOperacionService
 {
     private mysqli $db;
+    private array $conciliadas=[];
     public function __construct(?mysqli $db=null){$this->db=$db??(new Database())->connect();}
     private function fila(string $sql,array $args=[]): ?array {
         $s=$this->db->prepare($sql);
@@ -163,12 +164,21 @@ final class TelefoniaTransferenciaOperacionService
         $s=$this->db->prepare('SELECT id,evento,internal,disposition,duration,received_at,payload_json FROM telefonia_zadarma_eventos WHERE pbx_call_id=BINARY ? ORDER BY id');
         $s->bind_param('s',$ref);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();return $events;
     }
+    private function recuperarDiario(array $r):array {
+        $key=$r['id'].':'.$r['intento'];
+        if($r['estado']==='ENTREGADA'&&(int)($r['protocolo']??1)>=2&&!empty($r['sdk_consulta'])&&!isset($this->conciliadas[$key])){
+            require_once __DIR__.'/TelefoniaSesionLocalService.php';
+            $this->conciliadas[$key]=true;
+            (new TelefoniaSesionLocalService($this->db))->conciliarTransferenciaPersistida($r);
+        }
+        return $r;
+    }
     private function actualizar(array $r,int $user): array {
         $events=$this->eventosDeOperacion((string)$r['referencia']);
         [$patch,$globalEnd]=$this->evaluarEventos($r,$events);
         $changed=array_filter($patch,static fn($value,$key)=>($r[$key]??null)!==$value,ARRAY_FILTER_USE_BOTH);
         // Los sondeos estables son lecturas: no actualizan timestamps ni toman bloqueo de fila.
-        if(!$changed){$r['llamada_finalizada']=$globalEnd;return $r;}
+        if(!$changed){$r['llamada_finalizada']=$globalEnd;return $this->recuperarDiario($r);}
         $this->db->begin_transaction();
         try{
             // La misma ID puede tener otro intento o destinatario al volver a consultar.
@@ -180,7 +190,7 @@ final class TelefoniaTransferenciaOperacionService
             $changed=array_filter($patch,static fn($value,$key)=>($current[$key]??null)!==$value,ARRAY_FILTER_USE_BOTH);
             if($changed)$this->guardar((int)$current['id'],$changed);
             $r=array_merge($current,$changed);$r['llamada_finalizada']=$globalEnd;
-            $this->db->commit();return $r;
+            $this->db->commit();return $this->recuperarDiario($r);
         }catch(Throwable $e){$this->db->rollback();throw $e;}
     }
     public function accion(int $user,int $id,string $action,int $intento=0,int $protocolo=1): array {

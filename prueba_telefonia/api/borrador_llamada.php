@@ -35,7 +35,7 @@ try {
     $token=$input['csrf_token'] ?? null;$expected=(string)($_SESSION['csrf_token'] ?? '');
     if (!is_string($token) || $expected==='' || !hash_equals($expected,$token)) responderBorrador(['ok'=>false,'mensaje'=>'Actualiza la página antes de guardar.'],403);
     $ids=$input['ids'] ?? null;
-    if (!is_array($ids) || !$ids || count($ids)>3) throw new InvalidArgumentException('Referencias de llamada inválidas.');
+    if (!is_array($ids) || !$ids || count($ids)>32) throw new InvalidArgumentException('Referencias de llamada inválidas.');
     foreach ($ids as $id) if (!is_string($id) || !TelefoniaBorradorService::validarId($id)) throw new InvalidArgumentException('Llamada inválida.');
     if (($input['accion'] ?? '')==='eliminar') {$closeRevision=$input['revision']??null;if($closeRevision!==null&&(!is_int($closeRevision)||$closeRevision<1))throw new InvalidArgumentException('Revisión inválida.');$service->eliminar($usuario,$ids,$closeRevision);responderBorrador(['ok'=>true]);}
     if (!is_array($input['valores'] ?? null)) throw new InvalidArgumentException('Borrador inválido.');

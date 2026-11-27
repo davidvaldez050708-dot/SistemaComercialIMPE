@@ -459,7 +459,7 @@ class TelefoniaRecepcionMarketingService
     }
 
     public function guardarResultado(int $usuarioId, string $pbxCallId,
-        string $resultado, string $nota): array
+        string $resultado, string $nota, ?callable $confirmar=null): array
     {
         self::validarResultado($resultado, $nota);
         if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/D', $pbxCallId)) {
@@ -481,17 +481,8 @@ class TelefoniaRecepcionMarketingService
         if (!self::requiereResultado($propia)) {
             throw new DomainException('Esta llamada ya tiene un cierre automático: transferida o sin respuesta.');
         }
-        if (!$this->db->query("CREATE TABLE IF NOT EXISTS telefonia_recepcion_resultados (
-            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-            usuario_id INT NOT NULL, extension VARCHAR(12) NOT NULL,
-            pbx_call_id VARCHAR(100) NOT NULL, resultado VARCHAR(30) NOT NULL,
-            nota VARCHAR(500) NOT NULL DEFAULT '',
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY uk_recepcion_resultado (usuario_id,extension,pbx_call_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci")) {
-            throw new RuntimeException('No se pudo preparar el registro de resultados.');
-        }
+        $this->db->begin_transaction();
+        try {
         $ext = $recepcion['extension'];
         $stmt = $this->db->prepare('INSERT INTO telefonia_recepcion_resultados
             (usuario_id,extension,pbx_call_id,resultado,nota) VALUES (?,?,?,?,?)');
@@ -512,12 +503,17 @@ class TelefoniaRecepcionMarketingService
         } finally {
             $stmt->close();
         }
+        $nativeId=(int)$this->db->insert_id;
         $guardada = self::aplicarPoliticaGrabacion(array_merge($propia,['resultado'=>$resultado]));
-        return ['resultado'=>$resultado,'resultado_etiqueta'=>self::resultadosPermitidos()[$resultado],
+        $registro=['resultado'=>$resultado,'resultado_etiqueta'=>self::resultadosPermitidos()[$resultado],
             'nota'=>$nota, 'excluir_grabacion'=>$guardada['excluir_grabacion'],
             'tiene_grabacion'=>$guardada['tiene_grabacion'],
             'grabacion_transferida'=>$guardada['grabacion_transferida'],
             'grabacion_salida_pendiente'=>$guardada['grabacion_salida_pendiente']];
+        if($confirmar)$confirmar('ATENCION_RECEPCION',$nativeId,$registro);
+        $this->db->commit();
+        return $registro;
+        } catch(Throwable $error) {$this->db->rollback();throw $error;}
     }
 
 }

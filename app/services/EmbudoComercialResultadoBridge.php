@@ -11,9 +11,8 @@ require_once __DIR__.'/../helpers/PermissionHelper.php';
  * aunque el almacén conserve el mismo destino con +52; solo se permite
  * ese caso, exclusivamente si el país declarado es México.
  *
- * TelefoniaResultadoVentasService confirma y guarda primero el resultado PBX.
- * Este puente opera dentro de una transacción comercial separada,
- * sin modificar el resultado telefónico ante errores del embudo.
+ * El llamador mantiene la misma transacción del resultado telefónico.
+ * Este puente no abre, confirma ni revierte transacciones por su cuenta.
  */
 final class EmbudoComercialResultadoBridge
 {

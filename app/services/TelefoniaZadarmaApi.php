@@ -116,9 +116,9 @@ class TelefoniaZadarmaApi extends \Zadarma_API\Api
             }
             // Reservar el cupo antes de liberar el candado: entre procesos no
             // se duplica el último cupo. No se mantiene durante la petición HTTP.
-            $budget=$this->impeLock($directory.'/'.$account.'-budget.json');
+            $budget=$this->impeBudgetLock($directory.'/'.$account.'-budget.json');
             try{
-                $now=microtime(true);$state=$this->impeRead($budget);
+                $now=microtime(true);$state=$this->impeRead($budget,true);
                 $recent=static fn($times)=>array_values(array_filter((array)$times,static fn($t)=>is_numeric($t)&&$t>$now-60));
                 $all=$recent($state['all']??[]);$stats=$recent($state['statistics']??[]);
                 if((float)($state['pause_until']??0)>$now || count($all)>=100 || ($statistics&&count($stats)>=3))
@@ -135,8 +135,8 @@ class TelefoniaZadarmaApi extends \Zadarma_API\Api
             }finally{flock($budget,LOCK_UN);fclose($budget);}
             $wire=$this->impeTransport?($this->impeTransport)($request):$this->impeCurl($request);
             if((int)($wire['status']??0)===429){
-                $budget=$this->impeLock($directory.'/'.$account.'-budget.json');
-                try{$state=$this->impeRead($budget);$state['pause_until']=microtime(true)+60;$this->impeWrite($budget,$state);}
+                $budget=$this->impeBudgetLock($directory.'/'.$account.'-budget.json');
+                try{$state=$this->impeRead($budget,true);$state['pause_until']=microtime(true)+60;$this->impeWrite($budget,$state);}
                 finally{flock($budget,LOCK_UN);fclose($budget);}
             }
             if($handle && (int)($wire['status']??0)===200 && is_string($wire['body']??null) && strlen($wire['body'])<=4194304){
@@ -162,11 +162,60 @@ class TelefoniaZadarmaApi extends \Zadarma_API\Api
         if(!flock($handle,($write?LOCK_EX:LOCK_SH)|LOCK_NB)){fclose($handle);throw new RuntimeException('Esta consulta telefónica ya se está comprobando.');}
         return $handle;
     }
-    private function impeRead($handle):array
+    private function impeBudgetLock(string $path)
+    {
+        // x+b distingue una primera reserva de un archivo truncado por un fallo.
+        // Un presupuesto vacío ya existente no equivale a cupo ilimitado.
+        $handle=@fopen($path,'x+b');$created=is_resource($handle);
+        if(!$created)$handle=@fopen($path,'c+b');
+        if(!is_resource($handle)||!flock($handle,LOCK_EX|LOCK_NB)){
+            if(is_resource($handle))fclose($handle);
+            throw new RuntimeException('El presupuesto telefónico está reservado.',503);
+        }
+        try{
+            @chmod($path,0600);
+            if($created)$this->impeWrite($handle,['all'=>[],'statistics'=>[]]);
+            return $handle;
+        }catch(Throwable $error){flock($handle,LOCK_UN);fclose($handle);throw $error;}
+    }
+    private function impeRead($handle,bool $budget=false):array
     {
         rewind($handle);$raw=stream_get_contents($handle,4500001);
-        if(!is_string($raw)||strlen($raw)>4500000)return [];
-        $data=json_decode($raw,true);return is_array($data)?$data:[];
+        if(!is_string($raw)||strlen($raw)>4500000){if($budget)throw new RuntimeException('El presupuesto telefónico requiere revisión.',503);return [];}
+        if($raw===''){if($budget)throw new RuntimeException('El presupuesto telefónico está incompleto. Se conserva pendiente.',503);return [];}
+        $data=json_decode($raw,true);
+        if($budget){
+            if(!is_array($data)||!is_array($data['all']??null)||!is_array($data['statistics']??null)||
+                count($data['all'])>1000||count($data['statistics'])>1000||
+                array_filter(array_merge($data['all'],$data['statistics']),static fn($at)=>!is_int($at)&&!is_float($at))||
+                (isset($data['pause_until'])&&!is_numeric($data['pause_until'])))
+                throw new RuntimeException('El presupuesto telefónico requiere revisión. La consulta se conserva pendiente.',503);
+        }
+        return is_array($data)?$data:[];
+    }
+    /** Retención acotada. Nunca elimina presupuestos, enlaces ni archivos ajenos. */
+    public static function limpiarCache(string $directory,int $max=64,?int $now=null,string $after=''):array
+    {
+        $now??=time();$checked=0;$removed=0;$max=max(1,min(256,$max));
+        if(!is_dir($directory)||is_link($directory))throw new InvalidArgumentException('Directorio de caché inválido.');
+        if($after!==''&&!preg_match('/^[a-f0-9]{64}-(?:audio-transferido-)?[a-f0-9]{64}\.json$/D',$after))throw new InvalidArgumentException('Cursor inválido.');
+        $names=[];
+        foreach(new DirectoryIterator($directory) as $file){
+            if(strcmp($file->getFilename(),$after)<=0)continue;
+            if(!$file->isFile()||$file->isLink()||!preg_match('/^[a-f0-9]{64}-(?:audio-transferido-)?[a-f0-9]{64}\.json$/D',$file->getFilename()))continue;
+            $names[]=$file->getFilename();sort($names,SORT_STRING);if(count($names)>$max+1)array_pop($names);
+        }
+        $more=count($names)>$max;$names=array_slice($names,0,$max);$cursor='';
+        foreach($names as $name){
+            $file=new SplFileInfo($directory.DIRECTORY_SEPARATOR.$name);$cursor=$name;
+            ++$checked;if($file->getMTime()>$now-172800)continue;
+            $h=@fopen($file->getPathname(),'r+b');if(!$h)continue;
+            try{if(flock($h,LOCK_EX|LOCK_NB)){
+                $data=json_decode((string)stream_get_contents($h,4500001),true);
+                if(is_array($data)&&(int)($data['until']??PHP_INT_MAX)<$now-86400&&@unlink($file->getPathname()))++$removed;
+            }}finally{flock($h,LOCK_UN);fclose($h);}
+        }
+        return ['revisados'=>$checked,'eliminados'=>$removed,'siguiente'=>$more?$cursor:null];
     }
     private function impeWrite($handle,array $data):void
     {

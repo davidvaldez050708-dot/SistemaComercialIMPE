@@ -384,12 +384,13 @@ class TelefoniaController
         }
 
         try {
-            $resultado = (new TelefoniaResultadoVentasService())->guardar(
-                (int)$_SESSION['usuario_id'],
-                (string)($_POST['pbx_call_id'] ?? ''),
-                (string)($_POST['resultado'] ?? ''),
-                $_POST
-            );
+            require_once __DIR__.'/../services/TelefoniaResultadoConfirmacion.php';
+            $db=Database::compartida();$usuario=(int)$_SESSION['usuario_id'];
+            $resultado=(new TelefoniaResultadoConfirmacion($db))->ejecutar($usuario,'VENTAS',$_POST,
+                static function(array $datos,?callable $confirmar)use($db,$usuario):array{
+                    return (new TelefoniaResultadoVentasService($db))->guardar($usuario,
+                        (string)($datos['pbx_call_id']??''),(string)($datos['resultado']??''),$datos,$confirmar);
+                });
             $this->responderJson([
                 'ok' => true,
                 'mensaje' => 'Resultado de la llamada registrado.',

@@ -736,6 +736,7 @@
         let capture;
         try{capture=drafts.beginSave(userId,savedCaptureIds,form,{adaptador:outgoingMode?'SEGUIMIENTO':'ANALISTA'});}
         catch(error){showError('No se pudo conservar la captura. Mantén abierto el formulario.');return;}
+        requestBody.set('captura_confirmacion',capture.values.captura_confirmacion);
         isSubmitting = true;
         modalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(e=>e.disabled=true);
         submit.disabled = true;

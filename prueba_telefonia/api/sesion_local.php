@@ -17,7 +17,7 @@ function presentarSesionLocal(array $row):array
     // Sólo datos de transporte propios, sin notas ni expedientes institucionales.
     $fields=['session_id','extension','direccion','estado','fecha_inicio','fecha_atendida','fecha_fin',
         'numero_origen','caller_name','duracion_observada_segundos','emitida','protocolo','ultima_secuencia',
-        'pbx_call_id','pbx_inicio_evento'];
+        'pbx_call_id','pbx_inicio_evento','predecesora_session_id','operacion_transferencia_id'];
     $data=array_intersect_key($row,array_fill_keys($fields,true));
     foreach(['fecha_inicio','fecha_atendida','fecha_fin'] as $field){
         if(!empty($data[$field]))$data[$field]=str_replace(' ','T',$data[$field]).'Z';

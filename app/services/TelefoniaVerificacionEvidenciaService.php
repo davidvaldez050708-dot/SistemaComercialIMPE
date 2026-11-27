@@ -9,6 +9,7 @@ final class TelefoniaVerificacionEvidenciaService
     // Ejecutar antes de abrir la transacción comercial: DDL puede hacer COMMIT.
     public function asegurarEstructura(): void
     {
+        if(PHP_SAPI!=='cli')throw new LogicException('Preparar el esquema de telefonía mediante la migración CLI autorizada.');
         if (!$this->db->query("CREATE TABLE IF NOT EXISTS telefonia_verificacion_evidencias (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             interaccion_id INT NOT NULL, usuario_id INT NOT NULL, seguimiento_id INT NOT NULL,

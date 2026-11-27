@@ -12,6 +12,23 @@ final class TelefoniaPbxSegmentosService
     public static function hechos(array $events, string $ext, string $source = '', int $afterEventId = 0): array
     {
         $allEvents = $events;
+        // Una devolución explícita abre otro tramo dentro del mismo grupo PBX.
+        // Su respuesta/cierre no puede heredarse del tramo transferido anterior.
+        $sentTo='';$returnAt=null;
+        foreach($events as $position=>$event){
+            $payload=json_decode((string)($event['payload_json']??''),true)?:[];
+            $internal=(string)($event['internal']??'');$type=$event['evento']??'';
+            $from=(string)($event['transfer_from']??$payload['transfer_from']??'');
+            if($from===''&&!empty($payload['transfer_from']))$from=(string)$payload['transfer_from'];
+            if(in_array($type,['NOTIFY_INTERNAL','NOTIFY_ANSWER'],true)&&$internal!==$ext&&$from===$ext&&preg_match('/^[0-9]{3,6}$/D',$internal))$sentTo=$internal;
+            if($type==='NOTIFY_INTERNAL'&&$internal===$ext&&$sentTo!==''&&$from===$sentTo){$returnAt=$position;$sentTo='';}
+        }
+        if($returnAt!==null){
+            $context=$source!==''?array_values(array_filter(array_slice($events,0,$returnAt),static fn($e)=>
+                (string)($e['internal']??'')===$source&&in_array($e['evento']??'',['NOTIFY_INTERNAL','NOTIFY_OUT_START'],true))):[];
+            $events=array_merge($context,array_slice($events,$returnAt));
+        }
+
         if ($afterEventId > 0) {
             $events = array_values(array_filter($events, static function ($event) use ($afterEventId, $source) {
                 return (int)($event['id'] ?? 0) > $afterEventId ||

@@ -386,133 +386,34 @@ class ZadarmaWebhookEventStoreService
                 );
         }
 
-        $respuesta = null;
-        $fin = null;
-        $transferida = null;
-        $devueltaDesde = '';
-        $origenTransferencia = trim((string)($inicio['transfer_from'] ?? ''));
-        $salienteTransferida = false;
-        foreach ($eventos as $evento) {
-            if (($evento['event'] ?? '') === 'NOTIFY_OUT_START' &&
-                $origenTransferencia !== '' &&
-                (string)($evento['internal'] ?? '') === $origenTransferencia) {
-                $salienteTransferida = true;
-                $inicio['caller_id'] = (string)($evento['destination'] ?? $inicio['caller_id']);
+        require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
+        $raw=[];$transferida=null;$devueltaDesde='';
+        $origenTransferencia=trim((string)($inicio['transfer_from']??''));
+        foreach($eventos as $evento){
+            $evento['evento']=strtoupper((string)($evento['event']??$evento['evento']??''));
+            $raw[]=$evento;
+            if($evento['evento']==='NOTIFY_OUT_START'&&$origenTransferencia!==''&&
+                (string)($evento['internal']??'')===$origenTransferencia)
+                $inicio['caller_id']=(string)($evento['destination']??$inicio['caller_id']??'');
+            if($evento['evento']==='NOTIFY_INTERNAL'){
+                if((string)($evento['internal']??'')===$extension&&$transferida&&
+                    (string)($evento['transfer_from']??'')===(string)$transferida['internal']){
+                    $devueltaDesde=(string)$transferida['internal'];$transferida=null;
+                }elseif((string)($evento['internal']??'')!==$extension&&
+                    (string)($evento['transfer_from']??'')===$extension)$transferida=$evento;
             }
         }
-
-        foreach ($eventos as $evento) {
-            $tipo = strtoupper(
-                trim((string)($evento['event'] ?? ''))
-            );
-            $internal = trim(
-                (string)($evento['internal'] ?? '')
-            );
-
-            $destination = preg_replace(
-                '/\\D+/',
-                '',
-                (string)($evento['destination'] ?? '')
-            ) ?: '';
-            $lastInternal = trim(
-                (string)($evento['last_internal'] ?? '')
-            );
-            $respuestaPerteneceExtension =
-                $internal === $extension ||
-                (
-                    $internal === '' &&
-                    $destination !== '' &&
-                    substr(
-                        $destination,
-                        -strlen($extension)
-                    ) === $extension
-                );
-
-            if ($tipo === 'NOTIFY_INTERNAL' && $internal === $extension &&
-                $transferida && (string)($evento['transfer_from'] ?? '') === (string)($transferida['internal'] ?? '')) {
-                $devueltaDesde = (string)$transferida['internal'];
-                $transferida = null;
-                $fin = null;
-            }
-
-            if (
-                $tipo === 'NOTIFY_ANSWER' &&
-                $respuestaPerteneceExtension
-            ) {
-                $respuesta = $evento;
-            }
-
-            if (
-                ($tipo === 'NOTIFY_END' || ($salienteTransferida && $tipo === 'NOTIFY_OUT_END')) &&
-                (
-                    // OUT_END del origen que llegó antes de ANSWER del receptor
-                    // cierra el tramo 100, NO una conversación futura del 150.
-                    ($salienteTransferida && $tipo === 'NOTIFY_OUT_END' &&
-                        $internal === $origenTransferencia && $respuesta !== null) ||
-                    $internal === '' ||
-                    $internal === $extension ||
-                    $lastInternal === $extension
-                )
-            ) {
-                $fin = $evento;
-            }
-
-            if (
-                $tipo === 'NOTIFY_INTERNAL' &&
-                $internal !== $extension &&
-                trim(
-                    (string)(
-                        $evento['transfer_from'] ?? ''
-                    )
-                ) === $extension
-            ) {
-                $transferida = $evento;
-            }
-        }
-
-        $estado = 'ringing';
-
-        if ($transferida) {
-            $estado = 'transferred';
-        } elseif ($fin) {
-            $estado = 'ended';
-        } elseif ($respuesta) {
-            $estado = 'answered';
-        }
-
-        $duracion = max(0, (int)($fin['duration'] ?? 0));
-        if ($salienteTransferida) {
-            // La duración OUT_END incluye la conversación previa con
-            // recepción. El analista sólo recibe su propio tramo atendido.
-            $a = strtotime((string)($respuesta['received_at'] ?? ''));
-            $b = strtotime((string)($fin['received_at'] ?? ''));
-            $duracion = $a && $b ? max(0, $b - $a) : 0;
-        }
-
+        $facts=TelefoniaPbxSegmentosService::hechos($raw,$extension,$origenTransferencia);
+        $end=null;foreach($raw as $event)if((int)($event['id']??0)===(int)$facts['evento_fin_id'])$end=$event;
         return [
-            'pbx_call_id' => $pbxCallId,
-            'estado' => $estado,
-            'caller_id' =>
-                (string)($inicio['caller_id'] ?? ''),
-            'called_did' =>
-                (string)($inicio['called_did'] ?? ''),
-            'internal' => $extension,
-            'returned_from' => $devueltaDesde,
-            'transfer_from' => preg_match('/^[0-9]{3,6}$/D', $origenTransferencia) ? $origenTransferencia : '',
-            'call_start' =>
-                (string)($inicio['call_start'] ?? ''),
-            'answer_at' =>
-                (string)($respuesta['received_at'] ?? ''),
-            'end_at' =>
-                (string)($fin['received_at'] ?? ''),
-            'duration' =>
-                $duracion,
-            'disposition' =>
-                (string)($fin['disposition'] ?? ''),
-            'transfer_to' =>
-                (string)($transferida['internal'] ?? ''),
-            'transfer_type' =>
-                (string)($transferida['transfer_type'] ?? ''),
+            'pbx_call_id'=>$pbxCallId,'estado'=>$transferida?'transferred':($facts['finalizada']?'ended':($facts['answer_at']!==''?'answered':'ringing')),
+            'caller_id'=>(string)($inicio['caller_id']??''),'called_did'=>(string)($inicio['called_did']??''),
+            'internal'=>$extension,'returned_from'=>$devueltaDesde,
+            'transfer_from'=>preg_match('/^[0-9]{3,6}$/D',$origenTransferencia)?$origenTransferencia:'',
+            'call_start'=>(string)($inicio['call_start']??''),'answer_at'=>$facts['answer_at'],
+            'end_at'=>$facts['end_at'],'duration'=>$facts['segundos'],'duration_known'=>$facts['segundos']!==null,
+            'disposition'=>(string)($end['disposition']??''),'transfer_to'=>(string)($transferida['internal']??''),
+            'transfer_type'=>(string)($transferida['transfer_type']??''),
         ];
     }
 
@@ -525,7 +426,7 @@ class ZadarmaWebhookEventStoreService
 
         $sql = "SELECT call_id_with_rec
                 FROM telefonia_zadarma_eventos
-                WHERE pbx_call_id = ?
+                WHERE pbx_call_id = BINARY ?
                   AND TRIM(COALESCE(call_id_with_rec, '')) <> ''
                 ORDER BY
                     CASE WHEN evento = 'NOTIFY_RECORD' THEN 0 ELSE 1 END,
@@ -546,6 +447,8 @@ class ZadarmaWebhookEventStoreService
             true
         );
         $registro = is_array($payload) ? $payload : [];
+        $registro['id']=(int)($fila['id']??0);
+        $registro['has_duration']=is_array($payload)&&array_key_exists('duration',$payload);
 
         $registro['event'] =
             (string)($fila['evento'] ?? ($registro['event'] ?? ''));

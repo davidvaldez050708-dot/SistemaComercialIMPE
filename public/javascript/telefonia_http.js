@@ -66,11 +66,11 @@
         const owner = userId();
         if (owner < 1 || !/^sdk-[a-z0-9-]{12,94}$/.test(String(data?.session_id || '')) ||
             !Number.isSafeInteger(data.secuencia) || data.secuencia < 1 || data.secuencia > 2147483647 ||
-            !['ringing','dialed','answered','ended','declined','missed','failed','transfer_link'].includes(data.evento))
+            !['ringing','dialed','answered','ended','declined','missed','failed','transfer_link','successor_link'].includes(data.evento))
             throw new Error('Evento local de telefonía inválido.');
         // Campos explícitos: nunca persistir cookies, CSRF, credenciales ni datos comerciales.
         const event = {session_id:data.session_id, secuencia:data.secuencia, evento:data.evento};
-        for (const field of ['direccion','numero','caller_name','sdk_id','duracion_observada_segundos']) {
+        for (const field of ['direccion','numero','caller_name','sdk_id','sdk_dialogo','predecesora_session_id','replaces_dialogo','requires_session','duracion_observada_segundos']) {
             if (data[field] !== undefined && data[field] !== null) {
                 if (field === 'duracion_observada_segundos' ?
                     !Number.isInteger(data[field]) || data[field] < 0 || data[field] > 86400 :
@@ -78,11 +78,15 @@
                 event[field] = data[field];
             }
         }
-        if(data.evento==='transfer_link'){
+        if(data.evento==='transfer_link'||data.evento==='successor_link'){
             for(const field of ['operacion_id','intento']){
                 if(!Number.isSafeInteger(data[field])||data[field]<1)throw new Error('Operación de transferencia inválida.');
                 event[field]=data[field];
             }
+        }
+        if(data.evento==='successor_link'){
+            if(!Number.isSafeInteger(data.requires_sequence)||data.requires_sequence<1)throw new Error('Dependencia SDK inválida.');
+            event.requires_sequence=data.requires_sequence;
         }
         if (JSON.stringify(event).length > 4096) throw new Error('Evento local demasiado grande.');
         const key = queuePrefix(owner) + event.session_id + '.' + event.secuencia;
@@ -94,17 +98,28 @@
         return {session_id:event.session_id, secuencia:event.secuencia};
     }
     // Una observación por diálogo SDK. No interpreta estados PBX ni formularios.
+    function dialogIdentity(session){
+        const id=session?._dialog?.id;
+        if(!id||!['call_id','local_tag','remote_tag'].every(k=>typeof id[k]==='string'&&/^[!-~]{1,180}$/.test(id[k])))return null;
+        return {call_id:id.call_id,local_tag:id.local_tag,remote_tag:id.remote_tag};
+    }
+    function replacesIdentity(request){
+        const parsed=request?.parseHeader?.('replaces');
+        if(!parsed||![parsed.call_id,parsed.to_tag,parsed.from_tag].every(v=>typeof v==='string'&&/^[!-~]{1,180}$/.test(v)))return null;
+        return {call_id:parsed.call_id,local_tag:parsed.to_tag,remote_tag:parsed.from_tag};
+    }
     function createSessionRecorder(context) {
         const owner=userId(),id=String(context?.session_id||''),direction=context?.direccion;
         if(owner<1||!/^sdk-[a-z0-9-]{12,94}$/.test(id)||!['ENTRANTE','SALIENTE'].includes(direction))
             throw new Error('Contexto local de sesión inválido.');
         const number=String(context.numero||''),name=String(context.caller_name||'');
-        let sequence=0,started=false,answered=false,closed=false,sdkId='',answeredAt=0,transferKey='';
+        let sequence=0,started=false,answered=false,closed=false,sdkId='',answeredAt=0,transferKey='',dialog='',successorKey='',transferRoot='';
         const emit=(event,extra={})=>{
             if(owner!==userId())throw new Error('La observación pertenece a otro usuario.');
             const data={session_id:id,secuencia:sequence+1,evento:event,direccion:direction,
                 numero:number,caller_name:name,...extra};
             if(sdkId)data.sdk_id=sdkId;
+            if(dialog)data.sdk_dialogo=dialog;
             enqueueSession(data);sequence++;
         };
         const start=()=>{
@@ -113,11 +128,15 @@
         };
         return Object.freeze({
             session_id:id,
-            bind(value){
+            bind(value,identity=null){
                 const next=String(value||'');
                 if(!/^[A-Za-z0-9@._:+-]{1,180}$/.test(next)||(sdkId||closed)&&sdkId!==next)
                     throw new Error('El diálogo SDK no corresponde a esta observación.');
                 sdkId=next;
+                if(identity){const raw=JSON.stringify(identity);
+                    if(dialog&&dialog!==raw)throw new Error('Cambió la identidad del diálogo SIP.');
+                    dialog=raw;
+                }
             },
             start,
             answered(){
@@ -139,7 +158,18 @@
                 if(key===transferKey)return;
                 emit('transfer_link',{operacion_id:operationId,intento:attempt});transferKey=key;
             },
-            snapshot:()=>({session_id:id,secuencia:sequence,started,answered,closed,sdk_id:sdkId})
+            successor(previous,operation,replaces){
+                if(direction!=='ENTRANTE'||!answered||!sdkId||!dialog||!previous?.sdk_dialogo||
+                    !previous.answered||previous.session_id===id||operation?.estado!=='ENTREGADA'||
+                    operation.sdk_consulta!==(previous.transfer_root||previous.session_id))return;
+                const key=previous.session_id+':'+operation.id+':'+operation.intento;
+                if(successorKey===key)return;
+                emit('successor_link',{predecesora_session_id:previous.session_id,replaces_dialogo:JSON.stringify(replaces),
+                    operacion_id:Number(operation.id),intento:Number(operation.intento),
+                    requires_session:previous.session_id,requires_sequence:previous.secuencia});
+                successorKey=key;transferRoot=operation.sdk_consulta;
+            },
+            snapshot:()=>({session_id:id,secuencia:sequence,started,answered,closed,sdk_id:sdkId,sdk_dialogo:dialog,transfer_root:transferRoot})
         });
     }
     function flushSessions(endpoint) {
@@ -158,6 +188,10 @@
             for (const entry of queuedSessions(owner)) {
                 if (owner !== userId() || attempted >= 8 || view.navigator?.onLine === false) break;
                 const {key, raw, event} = entry;
+                if(event.requires_session&&queuedSessions(owner).some(item=>item.event.session_id===event.requires_session&&
+                    item.event.secuencia<=event.requires_sequence&&view.localStorage.getItem(item.key)!==null)){
+                    blocked.add(event.session_id);stats.retained++;continue;
+                }
                 const prior = deliveryFailures.get(key);
                 if (blocked.has(event.session_id)) continue;
                 if (prior && prior.retryAt > Date.now()) {blocked.add(event.session_id); continue;}
@@ -325,7 +359,7 @@
         };
     }
     api = Object.freeze({request, cancelScope, get userId() {return userId();},
-        createSnapshotGate, csrfToken, enqueueSession, flushSessions, createSessionRecorder,
+        createSnapshotGate, csrfToken, enqueueSession, flushSessions, createSessionRecorder, dialogIdentity, replacesIdentity,
         snapshot() {const broker = parentBroker();return broker ? broker.snapshot() : {...totals, pending: pending.size};}});
     return api;
 });

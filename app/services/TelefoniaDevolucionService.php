@@ -111,7 +111,7 @@ final class TelefoniaDevolucionService
         $sid=0;$name='';$interactionId=null;
         if($decision==='identificada'){$name=trim((string)($data['institucion_nombre']??''));if(mb_strlen($name)<2||mb_strlen($name)>150)throw new DomainException('Escribe el nombre de la institución.');}
         // Construir servicios y estructura antes de iniciar la transacción de atención.
-        $registration=new TelefoniaEntrantesAnalistaService($this->db);(new TelefoniaVerificacionEvidenciaService($this->db))->asegurarEstructura();
+        $registration=new TelefoniaEntrantesAnalistaService($this->db);
         $this->db->begin_transaction();try{
             $row=$this->one('SELECT resultado FROM telefonia_devolucion_intentos WHERE id=? AND usuario_id=? FOR UPDATE',[$id,$user]);
             $task=$this->one('SELECT devolucion FROM telefonia_disponibilidad WHERE id=? AND destino_usuario=? AND version=? FOR UPDATE',[$attempt['solicitud_id'],$user,$attempt['version']]);
