@@ -1,0 +1,3 @@
+# Validación adicional V2
+
+CHECK de Hostinger aprobado para 590959f. Mejora adicional: marcador por conversación en localStorage, Web Locks cuando disponible, datos guardados exclusivamente como identificadores. Pendientes históricos de primera consulta no lanzan ráfaga. Duplicación entre pestañas sin Web Locks o almacenamiento bloqueado no queda garantizada. La prueba de navegador usa los archivos públicos exactos con verificación Git y red simulada; si difieren, se bloquea. Prueba SQL en MariaDB aislada, usando el contexto de Git y fixture de asignaciones, no la base operativa. No se habilita APPLY hasta comprobar resultados y preparar publicador reversible.

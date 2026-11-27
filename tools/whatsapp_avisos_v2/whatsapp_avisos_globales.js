@@ -5,21 +5,30 @@
  const button=root.querySelector('[data-wa-button]'),count=root.querySelector('[data-wa-count]'),summary=root.querySelector('[data-wa-summary]'),list=root.querySelector('[data-wa-list]'),status=root.querySelector('[data-wa-status]');
  const url=new URL('index.php',new URL(root.dataset.baseUrl,location.href));if(url.origin!==location.origin)return;
  url.searchParams.set('controller','whatsapp');url.searchParams.set('action','avisosGlobales');
- const key='impe:whatsapp-toast-watermark:v2:'+user;
- let watermark=null;try{const value=sessionStorage.getItem(key);if(value!==null&&/^\d+$/.test(value))watermark=BigInt(value);}catch{}
- const remember=id=>{watermark=id;try{sessionStorage.setItem(key,String(id));}catch{}};
+ const key='impe:whatsapp-toast-seen:v3:'+user;
+ let memory=null;
+ const readSeen=()=>{try{const d=JSON.parse(localStorage.getItem(key)||'null');if(d&&typeof d==='object'&&!Array.isArray(d))return d;}catch{}return memory;};
+ const saveSeen=map=>{const entries=Object.entries(map).filter(([k,v])=>/^[1-9]\d*$/.test(k)&&typeof v==='string'&&/^[1-9]\d*$/.test(v)).sort((a,b)=>BigInt(a[1])>BigInt(b[1])?-1:1).slice(0,500);memory=Object.fromEntries(entries);try{localStorage.setItem(key,JSON.stringify(memory));}catch{}};
  let timer=null,inflight=null,stopped=false,delay=15000,last='',epoch=0;
  const el=(tag,cls,value)=>{const node=document.createElement(tag);node.className=cls;if(value!==undefined)node.textContent=String(value);return node;};
  const message=(title,detail,icon)=>{status.hidden=false;const i=el('i','bi '+icon);i.setAttribute('aria-hidden','true');status.replaceChildren(i,el('strong','',title),el('span','',detail));};
  const clear=msg=>{count.classList.add('d-none');count.textContent='0';button.setAttribute('aria-label','Abrir WhatsApp');summary.textContent='Mensajes pendientes';list.replaceChildren();message('WhatsApp',msg,'bi-exclamation-circle');last='';};
  const toast=rows=>{
-    const newest=rows.reduce((a,r)=>BigInt(r.entrada_id)>a?BigInt(r.entrada_id):a,0n);
-    // First session fetch shows historical backlog in the badge, not a storm of toasts.
-    if(watermark===null){remember(newest);return;}
-    const row=rows.find(r=>BigInt(r.entrada_id)>watermark);
-    if(!row||document.hidden||typeof window.IMPE_WHATSAPP_TOAST!=='function')return;
-    const pending=rows.filter(r=>BigInt(r.entrada_id)>watermark).length;
-    if(window.IMPE_WHATSAPP_TOAST({id:row.id,nombre:row.nombre,mensaje:row.mensaje,otros:Math.max(0,pending-1)}))remember(newest);
+    const version=epoch;
+    const perform=()=>{
+      if(version!==epoch||stopped||document.hidden)return;
+      const seen=readSeen();
+      if(seen===null){saveSeen(Object.fromEntries(rows.map(r=>[String(r.id),r.entrada_id])));return;}
+      const newer=rows.filter(r=>{const v=seen[String(r.id)];return typeof v!=='string'||!/^\d+$/.test(v)||BigInt(r.entrada_id)>BigInt(v);});
+      if(!newer.length||typeof window.IMPE_WHATSAPP_TOAST!=='function')return;
+      const row=newer[0];
+      if(window.IMPE_WHATSAPP_TOAST({id:row.id,nombre:row.nombre,mensaje:row.mensaje,otros:newer.length-1})){
+        for(const r of newer)seen[String(r.id)]=r.entrada_id;
+        saveSeen(seen);
+      }
+    };
+    if(navigator.locks?.request){navigator.locks.request(key,{ifAvailable:true},lock=>{if(lock)perform();}).catch(()=>{});}
+    else perform();
  };
  const render=data=>{
    if(!Number.isInteger(data.total)||data.total<0||!Array.isArray(data.conversaciones))throw Error('invalid');

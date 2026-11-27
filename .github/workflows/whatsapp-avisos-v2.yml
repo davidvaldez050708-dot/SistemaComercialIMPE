@@ -1,0 +1,49 @@
+name: WhatsApp institutional V2 tests
+on:
+  push:
+    branches: [fix/whatsapp-recepcion-segura-20261127]
+    paths:
+      - 'tools/whatsapp_avisos_v2/**'
+      - '.github/workflows/whatsapp-avisos-v2.yml'
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact public installed assets
+        run: python3 tools/whatsapp_avisos_v2/prepare_browser.py
+      - run: npm install --no-save --package-lock=false playwright@1.56.1 bootstrap@5.3.3
+      - run: npx playwright install --with-deps chromium
+      - run: node tools/whatsapp_avisos_v2/browser.cjs
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: synthetic_test_only
+          MARIADB_ROOT_HOST: '%'
+        ports:
+          - 33319:3306
+        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      IMPE_WHATSAPP_VENTAS_TEST: 'YES'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: synthetic_test_only
+      MYSQL_PORT: '33319'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+          coverage: none
+      - run: python3 tools/whatsapp_avisos_v2/prepare_sql.py
+      - run: php tests/whatsapp_ventas_db.php
