@@ -66,49 +66,14 @@ class TelefoniaResultadoVentasService
 
     public function __construct(?mysqli $db=null)
     {
-        $this->db = $db ?? (new Database())->connect();
-        $this->asegurarEstructura();
+        $this->db = $db ?? Database::compartida();
     }
 
+    /** Compatibilidad CLI; ningún constructor ni petición prepara tablas. */
     public function asegurarEstructura(): void
     {
-        $ok = $this->db->query(
-            "CREATE TABLE IF NOT EXISTS telefonia_ventas_resultados (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                usuario_id INT NOT NULL,
-                extension VARCHAR(20) NOT NULL,
-                pbx_call_id VARCHAR(100) NOT NULL,
-                resultado VARCHAR(36) NOT NULL,
-                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    ON UPDATE CURRENT_TIMESTAMP,
-                PRIMARY KEY (id),
-                UNIQUE KEY uk_ventas_llamada_extension (pbx_call_id, extension),
-                KEY idx_ventas_usuario_fecha (usuario_id, updated_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
-        );
-        if (!$ok) {
-            throw new RuntimeException('No fue posible preparar los resultados de llamadas de Ventas.');
-        }
-        // Tabla nueva: no alterar resultados ni observaciones de llamadas anteriores.
-        $ok=$this->db->query("CREATE TABLE IF NOT EXISTS telefonia_ventas_resultado_detalles (
-            resultado_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
-            resultado_principal VARCHAR(36) NOT NULL,
-            envio_informacion VARCHAR(16) NOT NULL,
-            motivo_sin_whatsapp VARCHAR(300) NOT NULL DEFAULT '',
-            contacto_antes_corte VARCHAR(2) NOT NULL DEFAULT '',
-            catalogo_version VARCHAR(10) NOT NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            CONSTRAINT fk_ventas_detalle_resultado FOREIGN KEY (resultado_id)
-                REFERENCES telefonia_ventas_resultados(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-        if(!$ok)throw new RuntimeException('No fue posible preparar el registro de envíos de información.');
-        $ok=$this->db->query("CREATE TABLE IF NOT EXISTS telefonia_ventas_resultado_selecciones (
-            resultado_id BIGINT UNSIGNED NOT NULL,codigo VARCHAR(36) NOT NULL,posicion TINYINT UNSIGNED NOT NULL,
-            PRIMARY KEY(resultado_id,codigo),UNIQUE KEY uk_ventas_seleccion_posicion(resultado_id,posicion),
-            CONSTRAINT fk_ventas_seleccion_resultado FOREIGN KEY(resultado_id) REFERENCES telefonia_ventas_resultados(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-        if(!$ok)throw new RuntimeException('No fue posible preparar la selección de resultados.');
+        require_once __DIR__.'/TelefoniaVentasSchema.php';
+        TelefoniaVentasSchema::prepararEnCli($this->db);
     }
 
     public static function extensionPropia(int $usuarioId): string
@@ -235,7 +200,7 @@ class TelefoniaResultadoVentasService
         if($this->db->query("SHOW TABLES LIKE 'telefonia_ventas_devolucion_intentos'")->num_rows){$callbacks=new TelefoniaDevolucionVentasService($this->db);$callbacks->reconciliar($usuarioId);}
         $saveContact=($datos['guardar_contacto']??'')==='1';
         if($saveContact&&$contact!==null)throw new InvalidArgumentException('Selecciona un contacto existente o guarda uno nuevo.');
-        // Los constructores legacy que preparan tablas se ejecutan antes de la transacción.
+        // La agenda comparte la conexión y la transacción; no prepara esquema.
         $agenda=$saveContact?new TelefoniaContactosService($this->db):null;
         $this->db->begin_transaction();
         try {

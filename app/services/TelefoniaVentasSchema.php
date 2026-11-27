@@ -48,6 +48,34 @@ final class TelefoniaVentasSchema
         ];
     }
 
+    public static function tablasDetalleResultado(): array
+    {
+        return [
+            'telefonia_ventas_resultado_detalles' => "CREATE TABLE telefonia_ventas_resultado_detalles (
+            resultado_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+            resultado_principal VARCHAR(36) NOT NULL,
+            envio_informacion VARCHAR(16) NOT NULL,
+            motivo_sin_whatsapp VARCHAR(300) NOT NULL DEFAULT '',
+            contacto_antes_corte VARCHAR(2) NOT NULL DEFAULT '',
+            catalogo_version VARCHAR(10) NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_ventas_detalle_resultado FOREIGN KEY (resultado_id)
+                REFERENCES telefonia_ventas_resultados(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+            'telefonia_ventas_resultado_selecciones' => "CREATE TABLE telefonia_ventas_resultado_selecciones (
+            resultado_id BIGINT UNSIGNED NOT NULL,codigo VARCHAR(36) NOT NULL,posicion TINYINT UNSIGNED NOT NULL,
+            PRIMARY KEY(resultado_id,codigo),UNIQUE KEY uk_ventas_seleccion_posicion(resultado_id,posicion),
+            CONSTRAINT fk_ventas_seleccion_resultado FOREIGN KEY(resultado_id) REFERENCES telefonia_ventas_resultados(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+        ];
+    }
+
+    public static function prepararEnCli(mysqli $db): void
+    {
+        if(PHP_SAPI!=='cli')throw new LogicException('El esquema telefónico se prepara únicamente con el migrador CLI.');
+        foreach(self::pendientes($db) as $sql)$db->query($sql);
+    }
+
     public static function columnasResultado(): array
     {
         return ['observacion'=>"VARCHAR(1000) NOT NULL DEFAULT ''",
@@ -82,6 +110,10 @@ final class TelefoniaVentasSchema
         $cols=$exists?array_column($db->query('SHOW COLUMNS FROM telefonia_contactos_personales')->fetch_all(MYSQLI_ASSOC),'Field'):[];
         foreach(['correo'=>"VARCHAR(180) NOT NULL DEFAULT ''",'observacion'=>"VARCHAR(500) NOT NULL DEFAULT ''",'proxima_accion_at'=>'DATETIME NULL'] as $col=>$definition)
             if(!in_array($col,$cols,true))$todo[]="ALTER TABLE telefonia_contactos_personales ADD COLUMN $col $definition";
+        foreach(self::tablasDetalleResultado() as $table=>$sql){
+            $s=$db->prepare('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');
+            $s->bind_param('s',$table);$s->execute();if(!$s->get_result()->num_rows)$todo[]=$sql;$s->close();
+        }
         return $todo;
     }
 }

@@ -30,6 +30,9 @@ contra un laboratorio sintético. No deben ejecutarse en producción.
   **La migración del escritor entrante del Analista todavía está pendiente.**
 - Transporte PHP del proveedor con plazos, TLS, caché exacta y presupuesto
   compartido. No modifica el SDK ni crea sondeos.
+- Resultados, contactos y marcaciones de Ventas no crean tablas al construir
+  sus servicios. El esquema y las tablas de selección del catálogo se preparan
+  exclusivamente mediante el migrador CLI explícito.
 - El login se difiere durante una sesión local viva y el cierre se notifica
   antes de navegar. Las transferencias admiten el reemplazo autorizado de
   RTCSession y rechazan callbacks de diálogos anteriores.
@@ -49,6 +52,13 @@ Cubren diez suites de capturas, alias, ACK, sincronización, restauración,
 pendientes, carreras al marcar/colgar y registro saliente del host.
 No abren conexiones ni llamadas.
 El laboratorio HTTP/SQL y las pruebas de navegador se mantienen separados.
+
+`integration/prepare_sales.php` y `integration/sales_native_sql.php` necesitan
+el laboratorio privado existente indicado por `IMPE_PHONE_LAB_ROOT`. Ambos
+rechazan ejecución web y cualquier destino distinto de `127.0.0.1:3308`, base
+`impe_telefonia_lab`. El primero prepara únicamente ese fixture; el segundo usa
+un usuario sin privilegios de esquema y prueba los servicios comerciales nativos.
+El inicializador completo del laboratorio y la cobertura del embudo siguen pendientes.
 
 Se ejecutan pruebas sintéticas puras, HTTP y SQL con tres perfiles, además
 de la reproducción de eventos de las transferencias 87, 88 y 89 facilitados

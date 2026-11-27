@@ -11,33 +11,16 @@ class TelefoniaMarcacionesVentasService
 {
     private $db;
 
-    public function __construct(?mysqli $db=null,bool $preparar=true)
+    public function __construct(?mysqli $db=null,bool $preparar=false)
     {
-        $this->db = $db ?? (new Database())->connect();
+        $this->db = $db ?? Database::compartida();
         if($preparar)$this->asegurarEstructura();
     }
 
     public function asegurarEstructura(): void
     {
-        $ok = $this->db->query(
-            "CREATE TABLE IF NOT EXISTS telefonia_ventas_marcaciones (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                usuario_id INT NOT NULL,
-                extension VARCHAR(12) NOT NULL,
-                destino VARCHAR(20) NOT NULL,
-                token CHAR(32) NOT NULL,
-                pbx_call_id VARCHAR(100) NULL,
-                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                vinculada_at DATETIME NULL,
-                PRIMARY KEY (id),
-                UNIQUE KEY uk_ventas_marcacion_token (token),
-                UNIQUE KEY uk_ventas_marcacion_pbx (pbx_call_id),
-                KEY idx_ventas_marcacion_usuario (usuario_id, extension, created_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
-        );
-        if (!$ok) {
-            throw new RuntimeException('No fue posible preparar el registro de marcaciones comerciales.');
-        }
+        require_once __DIR__.'/TelefoniaVentasSchema.php';
+        TelefoniaVentasSchema::prepararEnCli($this->db);
     }
 
     private function extension(int $uid): string {
