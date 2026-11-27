@@ -1,0 +1,36 @@
+name: WhatsApp assignment isolated MariaDB
+on:
+  push:
+    branches: [fix/whatsapp-recepcion-segura-20261127]
+    paths:
+      - 'tools/whatsapp_asignacion_v2/**'
+      - '.github/workflows/whatsapp-asignacion-v2.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: synthetic_test_only
+          MARIADB_ROOT_HOST: '%'
+        ports:
+          - 33319:3306
+        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      IMPE_WHATSAPP_VENTAS_TEST: 'YES'
+      MYSQL_USER: root
+      MYSQL_PASSWORD: synthetic_test_only
+      MYSQL_PORT: '33319'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli, mbstring
+          coverage: none
+      - run: python3 tools/whatsapp_asignacion_v2/prepare_ci.py
+      - run: php tests/whatsapp_ventas_db.php

@@ -1,0 +1,12 @@
+{
+  "model": {
+    "before": "12657dd1950871b3ebe675451563311afa314dbe",
+    "after": "0e8046ac823e56417a0631894cf6f6f2d6e0bb7d",
+    "old": "try {(new WhatsAppVentasService($this->connection))->vincularEntrada($conversacion,$telefono);}\n        catch(Throwable $e){error_log('[whatsapp_ventas_entrada] '.get_class($e));}",
+    "new": "try {(new WhatsAppAsignacionService($this->connection))->enrutarEntrada($conversacion,$telefono);}\n        catch(Throwable $e){error_log('[whatsapp_asignacion_entrada] '.get_class($e));}"
+  },
+  "service": {
+    "before": "3c85988dc27e66f8156cb39b20c74e1177695d4a",
+    "after": "aab8f8395f565f9303379a27e4017b5f9b6a5636"
+  }
+}
