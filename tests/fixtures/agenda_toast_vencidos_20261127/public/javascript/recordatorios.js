@@ -1,0 +1,972 @@
+(function () {
+    'use strict';
+
+    const iniciar = function () {
+        const root = document.querySelector('[data-reminder-root]');
+
+        if (!root || root.dataset.reminderInitialized === '1') {
+            return;
+        }
+
+        const endpoint = root.getAttribute('data-reminder-endpoint') || '';
+        const alertasAgenda = function (metodo, ...argumentos) {
+            try { return window.IMPEAgendaAlerts?.[metodo]?.(...argumentos); }
+            catch (error) {
+                console.warn('Alertas de Agenda no disponibles; la campana conserva su funcionamiento.', error);
+                try { window.IMPEAgendaAlerts?.suspend?.(); } catch (_) { /* componente opcional */ }
+                return undefined;
+            }
+        };
+        const badge = root.querySelector('[data-reminder-badge]');
+        const contenido = root.querySelector('[data-reminder-content]');
+        const usarTotalBackend =
+            root.getAttribute('data-reminder-count-mode') === 'total';
+        const tituloVacio =
+            root.getAttribute('data-reminder-empty-title') ||
+            'Sin notificaciones pendientes';
+        const mensajeVacio =
+            root.getAttribute('data-reminder-empty-message') ||
+            'No tienes acciones o reuniones pendientes.';
+        let consultaEnCurso = false;
+        let versionComercial = 0;
+        let avisosDuranteRefresco = [];
+        let refrescoComercialPendiente = false;
+        let repetirConsulta = false;
+        let avisoMigracionMostrado = false;
+        let recordatoriosActuales = [];
+        let cargaInicialCompletada = false;
+        let consultasCompletadas = 0;
+        let fallosDeCarga = 0;
+        let temporizadorReintentoCarga = null;
+        let temporizadorToastVencido = null;
+        let proximoToastAt = 0;
+        let toastActivo = null;
+        let totalAvisosActual = 0;
+        const comentariosAbiertos = new Set();
+        const lecturasComentariosPendientes = new Set();
+        const memoriaSesion = new Map();
+        let almacenamientoPersistente = true;
+
+        const INTERVALO_TOAST_VENCIDO = 8 * 60 * 1000;
+        const REINTENTO_TOAST_OCULTO = 60 * 1000;
+        const DURACION_TOAST = 8000; // Paridad visual con la campana de Marketing.
+        const DURACION_COMENTARIO = 2600;
+        const claveUsuario = ':usuario:' + Number(window.IMPE_CURRENT_USER_ID || 0);
+        const CLAVE_ULTIMO_TOAST_VENCIDO_AT =
+            'recordatorios:ultimo-toast-vencido-at' + claveUsuario;
+        const CLAVE_ULTIMO_TOAST_VENCIDO_ID =
+            'recordatorios:ultimo-toast-vencido-id' + claveUsuario;
+        // Un turno de ocho minutos por usuario, tanto para Seguimiento como para Telefonía.
+        const CLAVE_ULTIMO_TOAST_COMPARTIDO_AT = 'recordatorios:ultimo-toast-global-at' + claveUsuario;
+        const CLAVE_INICIO_CADENCIA = 'recordatorios:inicio-toast-global-at' + claveUsuario;
+
+        if (endpoint === '') {
+            return;
+        }
+        root.dataset.reminderInitialized = '1';
+
+        const escapar = function (valor) {
+            const div = document.createElement('div');
+            div.textContent = String(valor || '');
+            return div.innerHTML;
+        };
+
+        const urlRecordatorio = function (recordatorio) {
+            const personalizada = String(recordatorio.url || '').trim();
+            if (personalizada !== '') {
+                return personalizada;
+            }
+
+            return 'index.php?controller=seguimientoVinculacion&action=detalle&id=' +
+                Number(recordatorio.id || recordatorio.seguimiento_id || 0);
+        };
+
+        const dosDigitos = function (valor) {
+            return String(valor).padStart(2, '0');
+        };
+
+        const leerSesion = function (clave) {
+            try {
+                const valor = window.sessionStorage.getItem(clave);
+                if (valor !== null) return valor;
+            } catch (_) {
+                almacenamientoPersistente = false;
+            }
+            return memoriaSesion.get(clave) || '';
+        };
+
+        const guardarSesion = function (clave, valor) {
+            memoriaSesion.set(clave, String(valor));
+            try {
+                window.sessionStorage.setItem(clave, String(valor));
+            } catch (_) {
+                almacenamientoPersistente = false;
+            }
+        };
+
+        const fechaSesion = function (clave) {
+            const valor = Number(leerSesion(clave));
+            // Una clave vieja, corrupta o del futuro no debe detener el reloj.
+            return Number.isFinite(valor) && valor > 0 && valor <= Date.now()
+                ? valor : 0;
+        };
+        if (!fechaSesion(CLAVE_INICIO_CADENCIA)) {
+            guardarSesion(CLAVE_INICIO_CADENCIA, Date.now());
+        }
+        const CLAVE_COLA_AVISOS = 'recordatorios:cola-toast-v1' + claveUsuario;
+        let colaAvisos = [];
+        try {
+            const guardados = JSON.parse(leerSesion(CLAVE_COLA_AVISOS) || '[]');
+            if (Array.isArray(guardados)) colaAvisos = guardados.filter(item =>
+                item && typeof item.clave === 'string' && item.aviso &&
+                Number(item.recibido) > Date.now() - 86400000 &&
+                Number(item.recibido) <= Date.now()
+            ).slice(0, 30);
+        } catch (_) { /* Una cola antigua inválida no impide cargar la campana. */ }
+
+        const esComercial = r => Number(r.comercial_id || 0) > 0;
+        const claveComercial = r => [Number(r.comercial_id), Number(r.actividad_ciclo), String(r.fecha || '')].join('|');
+        const CLAVE_COMERCIAL = 'recordatorios:comercial:v1' + claveUsuario;
+        const CLAVE_TURNO_COMERCIAL = 'recordatorios:comercial:ultimo-turno' + claveUsuario;
+        let memoriaComercial={};
+        let turnoComercialMemoria=0;
+        const leerComercial = () => {
+            try { const data=JSON.parse(localStorage.getItem(CLAVE_COMERCIAL) || '{}');return data&&typeof data==='object'&&!Array.isArray(data)?data:{}; }
+            catch (_) { return memoriaComercial; }
+        };
+        const ultimoComercial = () => {
+            try { const t=Number(localStorage.getItem(CLAVE_TURNO_COMERCIAL));return t>0&&t<=Date.now()?t:0; }
+            catch (_) { return turnoComercialMemoria; }
+        };
+        const comercialVisto = r => {
+            const t=Number(leerComercial()[claveComercial(r)+'|'+r.ventana] || 0);
+            return t>0 && t<=Date.now() && (r.ventana!=='VENCIDA' || Date.now()-t<INTERVALO_TOAST_VENCIDO);
+        };
+        const guardarComercial = r => {
+            const vistos=leerComercial();vistos[claveComercial(r)+'|'+r.ventana]=Date.now();
+            memoriaComercial=vistos;turnoComercialMemoria=Date.now();
+            try {
+                const claves=Object.keys(vistos).sort((a,b)=>Number(vistos[b])-Number(vistos[a]));
+                localStorage.setItem(CLAVE_COMERCIAL,JSON.stringify(Object.fromEntries(claves.slice(0,1000).map(k=>[k,vistos[k]]))));
+                localStorage.setItem(CLAVE_TURNO_COMERCIAL,String(Date.now()));
+            } catch (_) {}
+        };
+        const bloqueoComercial = async fn => {
+            if (navigator.locks?.request) {
+                try { return await navigator.locks.request('impe-comercial-avisos'+claveUsuario,{ifAvailable:true},lock=>lock?fn():false); }
+                catch (_) { /* Usar compatibilidad si el navegador bloquea Web Locks. */ }
+            }
+            // Compatibilidad sin Web Locks: una concesión breve compartida entre pestañas.
+            const key='recordatorios:comercial:bloqueo'+claveUsuario;
+            const token=String(Date.now())+':'+Math.random();
+            let compartido=false;
+            try {
+                const previo=JSON.parse(localStorage.getItem(key)||'null');
+                if(previo && previo.hasta>Date.now())return false;
+                localStorage.setItem(key,JSON.stringify({token,hasta:Date.now()+2000}));compartido=true;
+                await new Promise(resolve=>setTimeout(resolve,60));
+                if(JSON.parse(localStorage.getItem(key)||'null')?.token!==token)return false;
+            } catch (_) {}
+            try{return fn();}
+            finally{if(compartido)try{if(JSON.parse(localStorage.getItem(key)||'null')?.token===token)localStorage.removeItem(key);}catch(_){}}
+        };
+
+        const CLAVE_COMENTARIOS_MOSTRADOS = 'recordatorios:comentarios-mostrados-v1' + claveUsuario;
+        const CLAVE_HORARIOS_MOSTRADOS = 'recordatorios:agenda-horarios-v1' + claveUsuario;
+        let horariosActuales = [];
+        let desfaseServidor = 0;
+        let comentariosMostrados = {};
+        try {
+            const guardados = JSON.parse(leerSesion(CLAVE_COMENTARIOS_MOSTRADOS) || '{}');
+            if (guardados && typeof guardados === 'object' && !Array.isArray(guardados)) {
+                comentariosMostrados = Object.fromEntries(Object.entries(guardados).filter(([key,at])=>
+                    /^agenda-comentario:\d+\|/.test(key) && Number.isFinite(Number(at)) && Number(at)>0 && Number(at)<=Date.now()).slice(0,500));
+            }
+        } catch (_) { /* Recuperar novedades aunque falte su memoria local. */ }
+
+        const claveRecordatorio = function (recordatorio) {
+            if (esComercial(recordatorio)) return 'comercial:'+claveComercial(recordatorio);
+
+            const comentarioAgendaId = Number(recordatorio.agenda_comentario_id || 0);
+            if (comentarioAgendaId > 0) return 'agenda-comentario:' + comentarioAgendaId + '|' + String(recordatorio.agenda_comentario_evento || '');
+            const telefonoId = Number(recordatorio.telefonia_id || 0);
+            if (telefonoId > 0) return 'telefonia:' + telefonoId;
+            const reunionId = Number(recordatorio.reunion_id || 0);
+            const seguimientoConvocatoriaId = Number(
+                recordatorio.seguimiento_convocatoria_id || 0
+            );
+            const seguimientoId = Number(
+                recordatorio.seguimiento_id || recordatorio.id || 0
+            );
+            const accion = String(recordatorio.accion || '').trim();
+            const fecha = String(recordatorio.fecha || '').trim();
+            let referencia = 'seguimiento:' + seguimientoId;
+
+            if (seguimientoConvocatoriaId > 0) {
+                referencia =
+                    'aliado-seguimiento:' + seguimientoConvocatoriaId;
+            } else if (reunionId > 0) {
+                referencia = 'reunion:' + reunionId;
+            }
+
+            return [
+                referencia,
+                accion,
+                fecha
+            ].join('|');
+        };
+
+        const registrarToastVencido = function (recordatorio) {
+            guardarSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT, Date.now());
+            guardarSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT, Date.now());
+            guardarSesion(
+                CLAVE_ULTIMO_TOAST_VENCIDO_ID,
+                claveRecordatorio(recordatorio)
+            );
+        };
+
+        const unirAccionesPendientes = function (recordatorios, acciones) {
+            const lista = Array.isArray(recordatorios) ? recordatorios.slice() : [];
+            const claves = new Set(lista.map(claveRecordatorio));
+            for (const accion of Array.isArray(acciones) ? acciones : []) {
+                if (!accion || !Object.prototype.hasOwnProperty.call(accion, 'tipo_anticipo')) continue;
+                const clave = claveRecordatorio(accion);
+                if (!claves.has(clave)) { lista.push(accion); claves.add(clave); }
+            }
+            return lista;
+        };
+
+        const fechaRecordatorio = function (recordatorio) {
+            const timestamp = Number(recordatorio.alerta_at || 0);
+            if (Number.isFinite(timestamp) && timestamp > 0) return new Date(timestamp * 1000);
+            const fechaTexto = String(recordatorio.fecha_iso || recordatorio.fecha || '').trim();
+            if (fechaTexto === '') {
+                return null;
+            }
+
+            const momento = new Date(fechaTexto.replace(' ', 'T'));
+            return Number.isNaN(momento.getTime()) ? null : momento;
+        };
+
+        let audioAcciones = null;
+        const esTipoAnticipo = tipo => /^[1-9]\d*[HM]$/.test(String(tipo || ''));
+        const tituloProximaAccion = function (recordatorio) {
+            const fecha = fechaRecordatorio(recordatorio);
+            const desfase = typeof desfaseServidor === 'number' ? desfaseServidor : 0;
+            const minutos = Math.max(1, Math.ceil((fecha.getTime() - Date.now() - desfase) / 60000));
+            const horas = Math.floor(minutos / 60);
+            const resto = minutos % 60;
+            const tiempo = horas > 0
+                ? horas + (horas === 1 ? ' hora' : ' horas') +
+                    (resto ? ' y ' + resto + (resto === 1 ? ' minuto' : ' minutos') : '')
+                : minutos + (minutos === 1 ? ' minuto' : ' minutos');
+            return String(recordatorio.accion || 'Próxima acción') + ' · En ' + tiempo;
+        };
+        const habilitarAudioAcciones = function (evento) {
+            if (!evento.isTrusted) return;
+            try {
+                const Contexto = window.AudioContext || window.webkitAudioContext;
+                if (!Contexto) return;
+                if (!audioAcciones) audioAcciones = new Contexto();
+                if (audioAcciones.state === 'suspended') {
+                    void audioAcciones.resume().catch(function () {});
+                }
+            } catch (_) { /* La notificación visual conserva su funcionamiento. */ }
+        };
+        document.addEventListener('pointerdown', habilitarAudioAcciones, { capture: true });
+        document.addEventListener('keydown', habilitarAudioAcciones, { capture: true });
+
+        const sonarProximaAccion = function (aviso, recordatorio) {
+            // Revisar el pendiente actual al mostrarlo: pudo vencer dentro de la cola.
+            // No guardar sonidos para después de un gesto o del regreso a la pestaña.
+            const fecha = fechaRecordatorio(recordatorio);
+            // El servidor decide los intervalos y los destinatarios por permisos.
+            // Aceptar todos sus anticipos en horas/minutos, sin fijar otra agenda aquí.
+            const esAnticipo = esTipoAnticipo(aviso.tipo);
+            if (!esAnticipo ||
+                !fecha || fecha.getTime() <= Date.now() ||
+                String(recordatorio.estado || '').trim().toLowerCase() === 'vencida' ||
+                Number(recordatorio.leida || 0) !== 0 ||
+                document.hidden || !audioAcciones || audioAcciones.state !== 'running') return;
+            try {
+                // Mismo aviso musical breve usado por las notificaciones de disponibilidad.
+                for (const [frecuencia, desfase] of [[740, 0], [880, .29], [988, .58]]) {
+                    const tono = audioAcciones.createOscillator();
+                    const volumen = audioAcciones.createGain();
+                    const inicio = audioAcciones.currentTime + desfase;
+                    tono.type = 'sine';
+                    tono.frequency.value = frecuencia;
+                    volumen.gain.setValueAtTime(0, inicio);
+                    volumen.gain.linearRampToValueAtTime(.17, inicio + .035);
+                    volumen.gain.linearRampToValueAtTime(0, inicio + .26);
+                    tono.connect(volumen);
+                    volumen.connect(audioAcciones.destination);
+                    tono.onended = function () { tono.disconnect(); volumen.disconnect(); };
+                    tono.start(inicio);
+                    tono.stop(inicio + .27);
+                }
+            } catch (_) { /* Un bloqueo de audio no altera el turno ni la cola. */ }
+        };
+
+        const estadoVisibleRecordatorio = function (recordatorio) {
+            const estado = String(recordatorio.estado || 'normal').trim().toLowerCase();
+            if(esComercial(recordatorio))return estado;
+            const momento = fechaRecordatorio(recordatorio);
+
+            // Algunos avisos de agenda representan una acción que requiere atención
+            // (por ejemplo, reprogramar una reunión) y el backend puede marcarlos
+            // como "vencida" para darles prioridad. Si la fecha de la reunión sigue
+            // siendo futura, no debe mostrarse visualmente como una reunión vencida.
+            if (estado === 'vencida' && momento && momento.getTime() > Date.now()) {
+                return 'proxima';
+            }
+
+            return estado || 'normal';
+        };
+
+        const etiquetaVisibleRecordatorio = function (recordatorio) {
+            const etiquetaOriginal = String(recordatorio.etiqueta || '').trim();
+            if(esComercial(recordatorio))return etiquetaOriginal;
+            const estado = String(recordatorio.estado || '').trim().toLowerCase();
+            const momento = fechaRecordatorio(recordatorio);
+
+            if (estado !== 'vencida' || !momento) {
+                return etiquetaOriginal;
+            }
+
+            // Si la fecha todavía no ocurre, conservamos la etiqueta operativa
+            // (por ejemplo, "Requiere ajuste") en lugar de mostrar "Vencida".
+            if (momento.getTime() > Date.now()) {
+                return etiquetaOriginal;
+            }
+
+            const ahora = new Date();
+            const hoy = new Date(
+                ahora.getFullYear(),
+                ahora.getMonth(),
+                ahora.getDate()
+            );
+            const diaEvento = new Date(
+                momento.getFullYear(),
+                momento.getMonth(),
+                momento.getDate()
+            );
+            const diferenciaDias = Math.round(
+                (diaEvento.getTime() - hoy.getTime()) / 86400000
+            );
+            const hora = dosDigitos(momento.getHours()) + ':' +
+                dosDigitos(momento.getMinutes());
+            const diaMes = dosDigitos(momento.getDate()) + '/' +
+                dosDigitos(momento.getMonth() + 1);
+
+            if (diferenciaDias === 0) {
+                return 'Vencida hoy · ' + hora;
+            }
+
+            if (diferenciaDias === -1) {
+                return 'Ayer · ' + diaMes + ' · ' + hora;
+            }
+
+            if (momento.getFullYear() === ahora.getFullYear()) {
+                return 'Vencida · ' + diaMes + ' · ' + hora;
+            }
+
+            return 'Vencida · ' + diaMes + '/' + momento.getFullYear() +
+                ' · ' + hora;
+        };
+
+        const asegurarContenedorToasts = function () {
+            let contenedor = document.querySelector('[data-reminder-toast-container]');
+
+            if (contenedor) {
+                return contenedor;
+            }
+
+            contenedor = document.createElement('div');
+            contenedor.className = 'toast-container position-fixed top-0 end-0 p-3 reminder-toast-container';
+            contenedor.setAttribute('data-reminder-toast-container', '');
+            // Si el CDN de Bootstrap JS/CSS no carga, conservar posición y visibilidad.
+            contenedor.style.position = 'fixed';
+            contenedor.style.top = '0';
+            contenedor.style.right = '0';
+            contenedor.style.padding = '12px';
+            contenedor.style.zIndex = '1095';
+            document.body.appendChild(contenedor);
+
+            return contenedor;
+        };
+
+        const mostrarToast = function (aviso) {
+            if (document.hidden || toastActivo?.isConnected) return false;
+            if (esComercial(aviso) && (document.querySelector('.system-toast.show,dialog[open],.modal.show') ||
+                window.IMPE_TELEPHONY_PERSISTENT?.getState?.()?.active)) return false;
+            // Marketing conserva su presentador. Evitar superponer un aviso suyo.
+            if (document.querySelector('.convocatoria-activation-toast.is-visible')) return false;
+            const contenedor = asegurarContenedorToasts();
+            const toast = document.createElement('div');
+            const vencida = String(aviso.tipo || '') === 'VENCIDA';
+            const comentario = Number(aviso.agenda_comentario_id) > 0;
+            toast.className = comentario ? 'toast system-toast agenda-comment-toast show' :
+                'toast reminder-toast show' + (vencida ? ' is-overdue' : '');
+            toast.setAttribute('role', 'status');
+            toast.setAttribute('aria-live', 'polite');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.innerHTML =
+                '<div class="reminder-toast-body">' +
+                    '<span class="reminder-toast-icon"><i class="bi ' +
+                        escapar(aviso.icono || 'bi-bell') + '"></i></span>' +
+                    '<span class="reminder-toast-copy">' +
+                        '<strong>' + escapar(aviso.titulo || 'Notificación') + '</strong>' +
+                        '<span>' + escapar(aviso.mensaje || '') + '</span>' +
+                    '</span>' +
+                '</div>';
+
+            if (comentario) {
+                toast.innerHTML = '<div class="toast-body"><i class="bi bi-chat-left-text" aria-hidden="true"></i>' +
+                    '<span><strong>' + escapar(aviso.titulo || 'Nuevo comentario en la agenda') + '</strong>' +
+                    '<span style="display:block">' + escapar(aviso.mensaje || aviso.accion || '') + '</span></span></div>';
+            }
+            const url = urlRecordatorio(aviso);
+            if (Number(aviso.telefonia_id) > 0) {
+                // El lector existente captura este atributo, registra lectura con CSRF
+                // y navega únicamente al terminar. El temporizador nunca llama al lector.
+                toast.dataset.telefoniaId = String(aviso.telefonia_id);
+                toast.setAttribute('href', url);
+            }
+            if (Number(aviso.agenda_comentario_id) > 0) {
+                toast.dataset.agendaComentarioId = String(aviso.agenda_comentario_id);
+                if (aviso.agenda_solo_aviso) toast.dataset.agendaSoloAviso = '1';
+                if (Number(aviso.agenda_comentario_visto_por)>0) toast.dataset.agendaComentarioVistoPor=String(aviso.agenda_comentario_visto_por);
+                toast.setAttribute('href', url);
+            }
+            if (url !== '') {
+                toast.classList.add('is-clickable');
+                toast.setAttribute('tabindex', '0');
+                toast.addEventListener('click', function () { window.location.href = url; });
+                toast.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toast.click();
+                    }
+                });
+            }
+            // La presentación usa las clases existentes del CRM. No depende del
+            // constructor, los eventos o el CDN de Bootstrap JS, aunque esté presente.
+            toast.style.display = 'block';
+            contenedor.appendChild(toast);
+            const estilo = window.getComputedStyle(toast);
+            const rect = toast.getBoundingClientRect();
+            const marco = window.frameElement;
+            const marcoVisible = !marco || marco.getBoundingClientRect().width > 0;
+            if (!toast.isConnected || rect.width <= 0 || rect.height <= 0 ||
+                estilo.display === 'none' || estilo.visibility === 'hidden' ||
+                Number(estilo.opacity) === 0 || !marcoVisible) {
+                toast.remove();
+                return false;
+            }
+            if(esComercial(aviso)){
+                toast.dataset.comercialClave=claveRecordatorio(aviso);
+                const cerrar=document.createElement('button');cerrar.type='button';cerrar.className='btn-close reminder-toast-close';
+                cerrar.setAttribute('aria-label','Cerrar aviso');
+                cerrar.addEventListener('click',e=>{e.stopPropagation();toast.remove();if(toastActivo===toast)toastActivo=null;});
+                cerrar.addEventListener('keydown',e=>e.stopPropagation());
+                toast.querySelector('.reminder-toast-body').appendChild(cerrar);
+            }
+            toastActivo = toast;
+            alertasAgenda('onToastShown', aviso);
+            window.setTimeout(function () {
+                toast.remove();
+                if (toastActivo === toast) toastActivo = null;
+                mostrarSiguienteComentarioNuevo();
+            }, (comentario ? DURACION_COMENTARIO : DURACION_TOAST) +
+                (comentario || Number(aviso.reunion_id) > 0 || aviso.agenda_alerta_clave ? 4000 : 0));
+            return true;
+        };
+
+        const esRecordatorioVencidoRecurrente = function (recordatorio) {
+            return estadoVisibleRecordatorio(recordatorio) === 'vencida';
+        };
+
+        const registrarComentarioMostrado = function (item) {
+            const clave = claveRecordatorio(item);
+            comentariosMostrados[clave] = Date.now();
+            comentariosMostrados = Object.fromEntries(Object.entries(comentariosMostrados)
+                .sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,500));
+            guardarSesion(CLAVE_COMENTARIOS_MOSTRADOS, JSON.stringify(comentariosMostrados));
+            colaAvisos = colaAvisos.filter(queued=>queued.clave!==clave);
+            guardarSesion(CLAVE_COLA_AVISOS,JSON.stringify(colaAvisos));
+        };
+        const mostrarSiguienteComentarioNuevo = function () {
+            if (mostrarProximaAccion()) return true;
+            if (mostrarSiguienteAvisoHorario()) return true;
+            const item = recordatoriosActuales.find(r=>Number(r.agenda_comentario_id)>0 &&
+                (!r.agenda_creado_at || alertasAgenda('canAnnounceComment', r) !== false) &&
+                !esRecordatorioVencidoRecurrente(r) && !comentariosMostrados[claveRecordatorio(r)] && Number(r.leida||0)===0);
+            if (!item) return false;
+            const queued = colaAvisos.find(q=>q.clave===claveRecordatorio(item));
+            const aviso = queued?.aviso || {...item,tipo:'AGENDA_COMENTARIO',titulo:item.titulo||'Nuevo comentario en la agenda',
+                mensaje:item.mensaje||[item.nombre_entidad,item.accion].filter(Boolean).join('. ')};
+            if (!mostrarToast(aviso)) return false;
+            registrarComentarioMostrado(item);
+            return true;
+        };
+
+        const mostrarSiguienteAvisoHorario = function () {
+            if (alertasAgenda('hasScheduleSource') === true) return false;
+            let vistos;
+            try { vistos = JSON.parse(leerSesion(CLAVE_HORARIOS_MOSTRADOS) || '{}') || {}; }
+            catch (_) { vistos = {}; }
+            const ahora = Date.now() + desfaseServidor;
+            for (const item of horariosActuales) {
+                const hora = Number(item.agenda_horario_at);
+                const minutos = Math.ceil((hora * 1000 - ahora) / 60000);
+                if (!(minutos > 0 && minutos <= 30)) continue;
+                if (![30, 20, 10, 5, 1].includes(minutos)) continue;
+                const comentario = Number(item.agenda_comentario_id) > 0;
+                const clave = (comentario ? 'c' + item.agenda_comentario_id : 'r' + item.reunion_id) + ':' + hora + ':' + minutos;
+                if (vistos[clave]) continue;
+                if (!mostrarToast({
+                    ...item,
+                    titulo: comentario ? 'Recordatorio de agenda' : 'Reunión próxima',
+                    mensaje: (minutos === 1 ? 'En 1 minuto' : 'En ' + minutos + ' minutos') +
+                        ' · ' + item.agenda_horario_mensaje
+                })) return false;
+                vistos[clave] = hora;
+                guardarSesion(CLAVE_HORARIOS_MOSTRADOS, JSON.stringify(Object.fromEntries(
+                    Object.entries(vistos).filter(([, fin]) => Number(fin) > ahora / 1000)
+                )));
+                return true;
+            }
+            return false;
+        };
+
+        const actualizarColaAvisos = function (avisos) {
+            const pendientes = new Set(recordatoriosActuales.map(claveRecordatorio));
+            colaAvisos = colaAvisos.filter(item => pendientes.has(item.clave) && !esComercial(item.aviso));
+            const novedades = Array.isArray(avisos) ? avisos.slice() : [];
+            // La campana es la fuente de verdad. Otra pestaña pudo consumir
+            // "avisos" en la sesión PHP antes de que ésta guardara su cola.
+            for (const r of recordatoriosActuales) {
+                if (!(Number(r.agenda_comentario_id) > 0)) continue;
+                const clave = claveRecordatorio(r);
+                if (comentariosMostrados[clave] || colaAvisos.some(item => item.clave === clave) ||
+                    novedades.some(item => claveRecordatorio(item) === clave)) continue;
+                novedades.push({...r, tipo:'AGENDA_COMENTARIO',
+                    titulo:r.titulo || (esRecordatorioVencidoRecurrente(r)?'Recordatorio de agenda':'Nuevo comentario en la agenda'),
+                    mensaje:r.mensaje || [r.nombre_entidad,r.accion].filter(Boolean).join('. ')});
+            }
+            for (const aviso of novedades) {
+                if(esComercial(aviso))continue;
+                const clave = claveRecordatorio(aviso);
+                // Un aviso sigue a su pendiente real; no revivir acciones resueltas.
+                if (!pendientes.has(clave)) continue;
+                if (Number(aviso.agenda_comentario_id)>0 && comentariosMostrados[clave] && !esRecordatorioVencidoRecurrente(aviso)) continue;
+                const existente = colaAvisos.findIndex(item => item.clave === clave);
+                const item = { clave, aviso, recibido: Date.now() };
+                if (existente >= 0) colaAvisos[existente] = item;
+                else colaAvisos.push(item);
+            }
+            colaAvisos = colaAvisos.slice(0, 30);
+            guardarSesion(CLAVE_COLA_AVISOS, JSON.stringify(colaAvisos));
+        };
+
+        const mostrarProximaAccion = function () {
+            if (document.hidden || toastActivo?.isConnected) return false;
+            for (const recordatorio of recordatoriosActuales) {
+                const clave = claveRecordatorio(recordatorio);
+                const enCola = colaAvisos.find(item => item.clave === clave);
+                // La fuente operativa conserva el intervalo aunque el aviso de BD
+                // se haya consumido en una consulta anterior o al navegar.
+                const tipo = recordatorio.tipo_anticipo ?? enCola?.aviso.tipo;
+                const fecha = fechaRecordatorio(recordatorio);
+                if (!esTipoAnticipo(tipo) || !fecha || fecha.getTime() <= Date.now() ||
+                    Number(recordatorio.leida || 0) !== 0 ||
+                    String(recordatorio.estado || '').toLowerCase() === 'vencida') continue;
+                const claveEntrega = 'recordatorios:anticipo-mostrado-v1' + claveUsuario +
+                    ':' + clave + ':' + tipo;
+                if (leerSesion(claveEntrega) === '1') continue;
+                const aviso = {
+                    ...recordatorio,
+                    ...(enCola?.aviso.tipo === tipo ? enCola.aviso : {}),
+                    tipo,
+                    titulo: tituloProximaAccion(recordatorio),
+                    mensaje: String(recordatorio.accion || 'Revisar pendiente') + ' · ' +
+                        String(recordatorio.nombre_entidad || 'Seguimiento') +
+                        (etiquetaVisibleRecordatorio(recordatorio) ? ' · ' + etiquetaVisibleRecordatorio(recordatorio) : '')
+                };
+                if (!mostrarToast(aviso)) return false;
+                sonarProximaAccion(aviso, recordatorio);
+                // Sólo el toast visible confirma la entrega, por usuario/acción/fecha/intervalo.
+                guardarSesion(claveEntrega, '1');
+                registrarToastVencido(recordatorio);
+                colaAvisos = colaAvisos.filter(item => item.clave !== clave);
+                guardarSesion(CLAVE_COLA_AVISOS, JSON.stringify(colaAvisos));
+                return true;
+            }
+            return false;
+        };
+
+        const mostrarSiguienteToastVencido = async function () {
+            const claves = new Set();
+            const disponibles = recordatoriosActuales.filter(function (r) {
+                const clave = claveRecordatorio(r);
+                if (claves.has(clave) || (Number(r.leida || 0) !== 0 && r.reiterar_hasta_atender !== true)) return false;
+                if(esComercial(r)){
+                    const disponible=!refrescoComercialPendiente && Boolean(r.ventana) && !comercialVisto(r);
+                    if(disponible)claves.add(clave);return disponible;
+                }
+                const disponible = esRecordatorioVencidoRecurrente(r) ||
+                    Number(r.telefonia_id || 0) > 0 ||
+                    colaAvisos.some(item => item.clave === clave && !esTipoAnticipo(item.aviso.tipo));
+                if (disponible) claves.add(clave);
+                return disponible;
+            });
+            if (!disponibles.length) return false;
+            const ultimaClave = leerSesion(CLAVE_ULTIMO_TOAST_VENCIDO_ID);
+            const anterior = disponibles.findIndex(r => claveRecordatorio(r) === ultimaClave);
+            const recordatorio = disponibles[(anterior + 1) % disponibles.length];
+            const clave = claveRecordatorio(recordatorio);
+            if(esComercial(recordatorio))return bloqueoComercial(()=>{
+                if(document.hidden || refrescoComercialPendiente || comercialVisto(recordatorio) ||
+                    ultimoComercial()+INTERVALO_TOAST_VENCIDO>Date.now() ||
+                    !recordatoriosActuales.some(r=>claveRecordatorio(r)===clave && r.ventana===recordatorio.ventana))return false;
+                const aviso={...recordatorio,tipo:recordatorio.ventana,
+                    titulo:recordatorio.ventana==='VENCIDA'?'Actividad comercial vencida':'Próxima actividad comercial',
+                    mensaje:recordatorio.nombre_entidad+' · '+recordatorio.accion+
+                        (recordatorio.detalle?' · '+recordatorio.detalle:'')+' · '+recordatorio.fecha_texto};
+                if(!mostrarToast(aviso))return false;
+                guardarComercial(recordatorio);registrarToastVencido(recordatorio);return true;
+            });
+            const enCola = colaAvisos.find(item => item.clave === clave && !esTipoAnticipo(item.aviso.tipo));
+            const telefono = Number(recordatorio.telefonia_id || 0) > 0;
+            const comentarioAgenda = Number(recordatorio.agenda_comentario_id || 0) > 0;
+            const aviso = enCola?.aviso || {
+                ...recordatorio,
+                tipo: esRecordatorioVencidoRecurrente(recordatorio) ? 'VENCIDA' : (telefono ? 'TELEFONIA_PERDIDA' : 'VENCIDA'),
+                titulo: comentarioAgenda ? 'Recordatorio de agenda' : (telefono ? (recordatorio.titulo || recordatorio.nombre_entidad || 'Aviso telefónico') : 'Acción vencida'),
+                mensaje: telefono ? (recordatorio.mensaje || recordatorio.accion || 'Revisa tu historial') :
+                    String(recordatorio.accion || 'Revisar pendiente') + ' · ' +
+                    String(recordatorio.nombre_entidad || 'Seguimiento') +
+                    (etiquetaVisibleRecordatorio(recordatorio) ? ' · ' + etiquetaVisibleRecordatorio(recordatorio) : '')
+            };
+            if (!mostrarToast(aviso)) return false;
+            if (comentarioAgenda) {
+                registrarComentarioMostrado(recordatorio);
+            }
+            // Sólo un aviso realmente visible consume turno y posición de rotación.
+            registrarToastVencido(recordatorio);
+            colaAvisos = colaAvisos.filter(item => item.clave !== clave);
+            guardarSesion(CLAVE_COLA_AVISOS, JSON.stringify(colaAvisos));
+            return true;
+        };
+
+        const ultimoTurno = function () {
+            return Math.max(fechaSesion(CLAVE_INICIO_CADENCIA),
+                fechaSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT),
+                fechaSesion(CLAVE_ULTIMO_TOAST_VENCIDO_AT),ultimoComercial());
+        };
+        const programarSiguienteToastVencido = function () {
+            if (temporizadorToastVencido !== null) window.clearTimeout(temporizadorToastVencido);
+            proximoToastAt = ultimoTurno() + INTERVALO_TOAST_VENCIDO;
+            temporizadorToastVencido = window.setTimeout(async function ejecutar() {
+                temporizadorToastVencido = null;
+                // Otra página o fuente pudo usar el turno después de programarlo.
+                if (ultimoTurno() + INTERVALO_TOAST_VENCIDO > Date.now()) {
+                    programarSiguienteToastVencido();
+                    return;
+                }
+                if (!document.hidden && cargaInicialCompletada && await mostrarSiguienteToastVencido()) {
+                    programarSiguienteToastVencido();
+                    return;
+                }
+                // Sin pendientes, sin visibilidad o con otro toast: conservar el
+                // turno vencido. Un fetch o visibilitychange vuelve a comprobarlo.
+                temporizadorToastVencido = window.setTimeout(ejecutar, REINTENTO_TOAST_OCULTO);
+            }, Math.max(0, proximoToastAt - Date.now()));
+        };
+
+        window.IMPE_REMINDER_STATUS = function () {
+            return Object.freeze({
+                version: 'toasts-8m-v1', initialized: true,
+                userId: Number(window.IMPE_CURRENT_USER_ID || 0),
+                bootstrapAvailable: typeof window.bootstrap?.Toast === 'function',
+                persistentStorage: almacenamientoPersistente,
+                startedAt: fechaSesion(CLAVE_INICIO_CADENCIA),
+                lastShownAt: fechaSesion(CLAVE_ULTIMO_TOAST_COMPARTIDO_AT),
+                nextToastAt: proximoToastAt,
+                timerActive: temporizadorToastVencido !== null,
+                pendingCount: recordatoriosActuales.length,
+                loadedCount: consultasCompletadas,
+                visibleToasts: toastActivo?.isConnected ? 1 : 0
+            });
+        };
+
+        const renderizarRecordatorios = function (
+            recordatorios,
+            totalBackend, falloComercial=false
+        ) {
+            const recibidos = Array.isArray(recordatorios) ? recordatorios : [];
+            const lista = recibidos.filter(item => !comentariosAbiertos.has(claveRecordatorio(item)));
+            const totalBadge = usarTotalBackend
+                ? Math.max(0, Number(totalBackend || 0) - (recibidos.length-lista.length))
+                : lista.length;
+            totalAvisosActual = totalBadge;
+            recordatoriosActuales = lista;
+            if(toastActivo?.dataset.comercialClave && !lista.some(r=>claveRecordatorio(r)===toastActivo.dataset.comercialClave)){
+                toastActivo.remove();toastActivo=null;
+            }
+
+            if (contenido) {
+                contenido.setAttribute('aria-busy', 'false');
+            }
+
+            if (badge) {
+                if (totalBadge > 0) {
+                    badge.textContent =
+                        totalBadge > 9 ? '9+' : String(totalBadge);
+                    badge.classList.remove('d-none');
+                } else {
+                    badge.textContent = '0';
+                    badge.classList.add('d-none');
+                }
+            }
+
+            if (!contenido) {
+                return;
+            }
+
+            if (lista.length === 0 && falloComercial) {
+                contenido.innerHTML='<div class="topbar-reminder-empty" role="status"><strong>No se pudieron actualizar las actividades comerciales</strong><span>Reintentando automáticamente.</span></div>';
+                return;
+            }
+            if (lista.length === 0) {
+                contenido.innerHTML =
+                    '<div class="topbar-reminder-empty">' +
+                        '<i class="bi bi-check2-circle"></i>' +
+                        '<strong>' + escapar(tituloVacio) + '</strong>' +
+                        '<span>' + escapar(mensajeVacio) + '</span>' +
+                    '</div>';
+                return;
+            }
+
+            contenido.innerHTML =
+                '<div class="topbar-reminder-list">' +
+                lista.map(function (recordatorio) {
+                    const url = escapar(urlRecordatorio(recordatorio));
+                    const etiqueta = etiquetaVisibleRecordatorio(recordatorio);
+                    const estadoVisual = estadoVisibleRecordatorio(recordatorio);
+                    return (
+                        '<a class="topbar-reminder-item' +
+                            (Number(recordatorio.telefonia_id)>0 && Number(recordatorio.leida||0)===0 ? ' is-unread' : '') +
+                            '" '+(recordatorio.agenda_solo_aviso?'data-agenda-solo-aviso="1" ':'')+(Number(recordatorio.agenda_comentario_id)>0?'data-agenda-comentario-id="'+Number(recordatorio.agenda_comentario_id)+'" ':'')+(Number(recordatorio.agenda_comentario_visto_por)>0?'data-agenda-comentario-visto-por="'+Number(recordatorio.agenda_comentario_visto_por)+'" ':'')+(Number(recordatorio.telefonia_id)>0?'data-telefonia-id="'+Number(recordatorio.telefonia_id)+'" ':'')+'href="' + url + '">' +
+                            '<span class="topbar-reminder-icon">' +
+                                '<i class="bi ' + escapar(recordatorio.icono || 'bi-bell') + '"></i>' +
+                            '</span>' +
+                            '<span class="topbar-reminder-copy">' +
+                                '<strong>' + escapar(recordatorio.nombre_entidad || 'Seguimiento') + '</strong>' +
+                                '<span>' + escapar(recordatorio.accion || '') + '</span>' +
+                                (Number(recordatorio.telefonia_id)>0 ? fechaAvisoTelefonico(recordatorio) : '') +
+                                (esComercial(recordatorio)?'<span>'+escapar(recordatorio.detalle||'')+'</span><span><time datetime="'+escapar(recordatorio.fecha)+'">'+escapar(recordatorio.fecha_texto)+'</time></span>':'') +
+                            '</span>' +
+                            '<span class="topbar-reminder-time is-' + escapar(estadoVisual) + '">' +
+                                escapar(etiqueta) +
+                            '</span>' +
+                        '</a>'
+                    );
+                }).join('') +
+                '</div>' + (falloComercial?'<div class="topbar-reminder-header" role="status"><span>No se pudieron actualizar las actividades comerciales. Reintentando.</span></div>':'');
+        };
+
+        function fechaAvisoTelefonico(recordatorio) {
+            const raw=String(recordatorio.created_at||recordatorio.fecha||'').trim();
+            const fecha=new Date(raw.replace(' ','T'));
+            if(!raw||Number.isNaN(fecha.getTime()))return '<span>Fecha pendiente de confirmar</span>';
+            const texto=new Intl.DateTimeFormat('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(fecha);
+            return '<span><time datetime="'+escapar(raw.replace(' ','T'))+'">'+escapar(texto)+'</time></span>';
+        }
+
+        const programarReintentoCarga = function () {
+            if (temporizadorReintentoCarga !== null || fallosDeCarga > 4) return;
+            const espera = Math.min(15000, 2500 * Math.max(1, fallosDeCarga));
+            temporizadorReintentoCarga = window.setTimeout(function () {
+                temporizadorReintentoCarga = null;
+                void consultarRecordatorios();
+            }, espera);
+        };
+
+        const mostrarFalloCarga = function () {
+            // Mantener los avisos previamente cargados; no vaciar la campana.
+            if (cargaInicialCompletada || !contenido) return;
+            contenido.setAttribute('aria-busy', 'false');
+            contenido.innerHTML =
+                '<div class="topbar-reminder-empty">' +
+                    '<i class="bi bi-arrow-clockwise"></i>' +
+                    '<strong>No se pudieron cargar las notificaciones</strong>' +
+                    '<span>Reintentando automáticamente. También puedes recargar la página.</span>' +
+                '</div>';
+        };
+
+        // Sólo interceptar los enlaces de comentarios de esta campana/toast.
+        // La lectura se confirma antes de retirarlos o navegar a la agenda.
+        document.addEventListener('click', async function (event) {
+            const link = event.target.closest?.('[data-agenda-comentario-id]');
+            if (!link || (!root.contains(link) && !link.closest('[data-reminder-toast-container]')) ||
+                event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            const id = Number(link.dataset.agendaComentarioId);
+            const lector=Number(link.dataset.agendaComentarioVistoPor)||0;
+            const target = new URL(link.getAttribute('href') || '', window.location.href);
+            if (!Number.isSafeInteger(id) || id<=0 || target.origin!==window.location.origin ||
+                target.searchParams.get('controller')!=='agendaReunion' || Number(target.searchParams.get('comentario_id'))!==id) return;
+            event.preventDefault();event.stopImmediatePropagation();
+            if (lecturasComentariosPendientes.has(id)) return;
+            lecturasComentariosPendientes.add(id);link.setAttribute('aria-busy','true');
+            const previousError = link.querySelector('[data-agenda-comment-read-error]');
+            previousError?.remove();
+            try {
+                const url = new URL('index.php', window.location.href);
+                url.search = new URLSearchParams({controller:'agendaComentario',action:lector>0?'leerVisto':'leer'}).toString();
+                const response = await fetch(url,{method:'POST',credentials:'same-origin',cache:'no-store',
+                    headers:{'X-CSRF-Token':String(window.IMPE_CSRF_TOKEN || ''),'X-Requested-With':'XMLHttpRequest'},
+                    body:new URLSearchParams(lector>0?{id:String(id),lector_id:String(lector)}:{id:String(id)})});
+                const result = await response.json();
+                if (!response.ok || !result.ok) throw new Error('Lectura no confirmada');
+                const same = r => Number(r.agenda_comentario_id)===id && (Number(r.agenda_comentario_visto_por)||0)===lector;
+                recordatoriosActuales.filter(same).forEach(r=>comentariosAbiertos.add(claveRecordatorio(r)));
+                const matches = item => same(item.aviso);
+                colaAvisos = colaAvisos.filter(item=>!matches(item));
+                guardarSesion(CLAVE_COLA_AVISOS,JSON.stringify(colaAvisos));
+                renderizarRecordatorios(recordatoriosActuales,totalAvisosActual);
+                if (Number(toastActivo?.dataset.agendaComentarioId)===id && (Number(toastActivo?.dataset.agendaComentarioVistoPor)||0)===lector) { toastActivo.remove();toastActivo=null; }
+                if (link.dataset.agendaSoloAviso === '1') {
+                    void consultarRecordatorios();
+                    return;
+                }
+                target.searchParams.set(lector>0?'aviso_visto_leido':'comentario_leido','1');
+                window.location.href = target.href;
+            } catch (_) {
+                const message = document.createElement('span');
+                message.dataset.agendaCommentReadError='';message.setAttribute('role','alert');
+                message.style.cssText='display:block;grid-column:1/-1;font-size:12px;color:#b91c1c';
+                message.textContent='No se pudo abrir el comentario. Intenta de nuevo o recarga la página.';
+                link.append(message);
+            } finally { lecturasComentariosPendientes.delete(id);link.removeAttribute('aria-busy'); }
+        }, true);
+
+        window.addEventListener('impe:agenda-comments-refresh',event=>{
+            const ownId=Number(event.detail?.comentarioPropioId);
+            if (Number.isSafeInteger(ownId) && ownId>0) registrarComentarioMostrado({agenda_comentario_id:ownId,agenda_comentario_evento:ownId+'|nuevo'});
+            void consultarRecordatorios();
+        });
+
+        const refrescarComercial = event => {
+            if(event?.detail?.usuarioId && Number(event.detail.usuarioId)!==Number(window.IMPE_CURRENT_USER_ID))return;
+            versionComercial++;refrescoComercialPendiente=true;
+            if(consultaEnCurso){repetirConsulta=true;return;}
+            void consultarRecordatorios();
+        };
+        window.addEventListener('impe:phone-notices-refresh',refrescarComercial);
+        window.addEventListener('impe:comercial-actividad-refresh',refrescarComercial);
+        window.addEventListener('impe:embudo:confirmacion-resultado',refrescarComercial);
+        window.addEventListener('storage',event=>{
+            if(event.key==='impe:comercial:actividad:'+Number(window.IMPE_CURRENT_USER_ID||0) ||
+                event.key==='impe:embudo:resultado-guardado:'+Number(window.IMPE_CURRENT_USER_ID||0))refrescarComercial();
+        });
+        const consultarRecordatorios = async function () {
+            if (consultaEnCurso || (document.hidden && !alertasAgenda('preferences')?.browser)) {
+                return;
+            }
+
+            consultaEnCurso = true;
+            const versionConsulta=versionComercial;
+
+            try {
+                const respuesta = await fetch(endpoint, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    cache: 'no-store'
+                });
+
+                if (!respuesta.ok) {
+                    throw new Error('Respuesta HTTP ' + respuesta.status);
+                }
+
+                const datos = await respuesta.json();
+
+                if (!datos || (!datos.ok && !datos.parcial)) {
+                    throw new Error('Respuesta de recordatorios no disponible');
+                }
+
+                if(versionConsulta!==versionComercial){
+                    // Agenda puede consumir avisos de sesión al responder. Conservar
+                    // los ajenos a Comercial y validarlos contra los pendientes frescos.
+                    avisosDuranteRefresco=[...avisosDuranteRefresco,...(Array.isArray(datos.avisos)?datos.avisos:[]).filter(r=>!esComercial(r))].slice(-1000);
+                    repetirConsulta=true;return;
+                }
+                const falloComercial=datos.comercial_ok===false;
+                const comercialesPrevios=falloComercial?recordatoriosActuales.filter(esComercial):[];
+                const recibidos=unirAccionesPendientes(datos.recordatorios,datos.acciones_pendientes);
+                refrescoComercialPendiente=falloComercial;
+                renderizarRecordatorios(
+                    falloComercial?[...recibidos.filter(r=>!esComercial(r)),...comercialesPrevios]:recibidos,
+                    Number(datos.total||0)+comercialesPrevios.length,falloComercial
+                );
+                cargaInicialCompletada = true;
+                consultasCompletadas += 1;
+                fallosDeCarga = 0;
+                if (temporizadorReintentoCarga !== null) {
+                    window.clearTimeout(temporizadorReintentoCarga);
+                    temporizadorReintentoCarga = null;
+                }
+                actualizarColaAvisos([...(datos.avisos || []),...avisosDuranteRefresco]);
+                avisosDuranteRefresco=[];
+                horariosActuales = Array.isArray(datos.horarios) ? datos.horarios : [];
+                desfaseServidor = Number(datos.servidor_at) > 0 ? Number(datos.servidor_at) * 1000 - Date.now() : 0;
+                alertasAgenda('ingest', datos);
+                mostrarSiguienteComentarioNuevo();
+                programarSiguienteToastVencido();
+                if (datos.requiere_migracion) {
+                    if (!avisoMigracionMostrado) {
+                        avisoMigracionMostrado = true;
+                        console.warn(
+                            'Recordatorios: ejecuta database/migrations/2026_09_03_recordatorios_vinculacion.sql para habilitar los avisos automáticos.'
+                        );
+                    }
+                    return;
+                }
+
+            } catch (error) {
+                alertasAgenda('suspend');
+                if(recordatoriosActuales.some(esComercial))refrescoComercialPendiente=true;
+                fallosDeCarga += 1;
+                mostrarFalloCarga();
+                console.error('No fue posible actualizar las notificaciones.', error);
+            } finally {
+                consultaEnCurso = false;
+                if(repetirConsulta && !document.hidden){repetirConsulta=false;void consultarRecordatorios();}
+                if (!cargaInicialCompletada) programarReintentoCarga();
+            }
+        };
+
+        alertasAgenda('setPresenter', mostrarToast);
+        consultarRecordatorios();
+        window.setInterval(consultarRecordatorios, 60000);
+        programarSiguienteToastVencido();
+
+        window.addEventListener('pageshow', function () {
+            if(recordatoriosActuales.some(esComercial))refrescarComercial();else void consultarRecordatorios();
+            programarSiguienteToastVencido();
+        });
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) {
+                if(recordatoriosActuales.some(esComercial))refrescarComercial();else consultarRecordatorios();
+                programarSiguienteToastVencido();
+            }
+        });
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', iniciar, { once: true });
+    } else {
+        iniciar();
+    }
+})();

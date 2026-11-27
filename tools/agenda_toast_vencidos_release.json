@@ -1,0 +1,45 @@
+{
+  "release": "agenda-toast-vencidos-20261127",
+  "files": [
+    {
+      "path": "public/javascript/agenda_alertas.js",
+      "new_file": false,
+      "before_sha": "beb4b418e5fd0b6119940013f0476b770ba2dfe6d1a8fd3a72c9e3c38b3496d2",
+      "after_sha": "79d734138aea0bf1fc069a2e43ad63d3abc729f69523585f5da990cd1927a865",
+      "hunks": [
+        {
+          "before": "        return deliver();\n    }\n    function deliver(item, key, title, message, visual) {\n        if (visual && !visualQueue.has(key)) visualQueue.set(key, {item, title, message});\n        void claim('browser:' + key, () => {\n",
+          "after": "        return deliver();\n    }\n    function expiredComment(item) {\n        if (!(Number(item.agenda_comentario_id) > 0) || Number(item.agenda_comentario_visto_por) > 0) return false;\n        const at = Number(item.agenda_horario_at || 0) * 1000;\n        const created = Number(item.agenda_creado_at || 0) * 1000;\n        const now = Date.now() + offset;\n        return String(item.estado || '').trim().toLowerCase() === 'vencida' ||\n            (at > 0 && at <= now) ||\n            (!(at > 0) && created > 0 && now - created > 5 * 60000);\n    }\n    function deliver(item, key, title, message, visual) {\n        if (expiredComment(item)) return;\n        if (visual && !visualQueue.has(key)) visualQueue.set(key, {item, title, message});\n        void claim('browser:' + key, () => {\n"
+        },
+        {
+          "before": "        try {\n            for (const [key, entry] of visualQueue) {\n                const shown = await claim('visual:' + key, () => presenter({...entry.item,\n                    agenda_alerta_clave:key, titulo:entry.title, mensaje:entry.message}));\n",
+          "after": "        try {\n            for (const [key, entry] of visualQueue) {\n                if (expiredComment(entry.item)) { visualQueue.delete(key); continue; }\n                const shown = await claim('visual:' + key, () => presenter({...entry.item,\n                    agenda_alerta_clave:key, titulo:entry.title, mensaje:entry.message}));\n"
+        },
+        {
+          "before": "        for (const item of schedules) {\n            const at = Number(item.agenda_horario_at || item.alerta_at) * 1000;\n            if (!(at > 0)) continue;\n            const delta = at - now;\n            const id = item.agenda_comentario_id ? 'c:' + item.agenda_comentario_id :\n",
+          "after": "        for (const item of schedules) {\n            const at = Number(item.agenda_horario_at || item.alerta_at) * 1000;\n            if (!(at > 0) || expiredComment(item)) continue;\n            const delta = at - now;\n            const id = item.agenda_comentario_id ? 'c:' + item.agenda_comentario_id :\n"
+        },
+        {
+          "before": "        const created = Number(item.agenda_creado_at) * 1000;\n        const now = Date.now() + offset;\n        return baseline !== null && created > baseline && now - created <= 5 * 60000 &&\n            created <= now + 1000 && Number(item.agenda_autor_id) !== user;\n    }\n",
+          "after": "        const created = Number(item.agenda_creado_at) * 1000;\n        const now = Date.now() + offset;\n        return !expiredComment(item) && baseline !== null && created > baseline && now - created <= 5 * 60000 &&\n            created <= now + 1000 && Number(item.agenda_autor_id) !== user;\n    }\n"
+        }
+      ]
+    },
+    {
+      "path": "public/javascript/recordatorios.js",
+      "new_file": false,
+      "before_sha": "ae90e1a68c84b1cf9373bbc164c0390e40a29ebf5ce4d9a30896e34f4b4c9527",
+      "after_sha": "c9fea774e19897302c410c718827f477edf24c469bf25141807e2ac0c7cc6d8b",
+      "hunks": [
+        {
+          "before": "        };\n\n        const mostrarToast = function (aviso) {\n            if (document.hidden || toastActivo?.isConnected) return false;\n            if (esComercial(aviso) && (document.querySelector('.system-toast.show,dialog[open],.modal.show') ||\n",
+          "after": "        };\n\n        const esComentarioAgendaVencido = function (aviso) {\n            if (!(Number(aviso.agenda_comentario_id) > 0) || Number(aviso.agenda_comentario_visto_por) > 0) return false;\n            const hora = Number(aviso.agenda_horario_at || 0) * 1000;\n            const creado = Number(aviso.agenda_creado_at || 0) * 1000;\n            const ahora = Date.now() + desfaseServidor;\n            return String(aviso.estado || '').trim().toLowerCase() === 'vencida' ||\n                (hora > 0 && hora <= ahora) ||\n                (!(hora > 0) && creado > 0 && ahora - creado > 5 * 60000);\n        };\n\n        const mostrarToast = function (aviso) {\n            // Mantener el pendiente en la campana, sin revivir comentarios pasados desde ninguna cola.\n            if (esComentarioAgendaVencido(aviso)) return false;\n            if (document.hidden || toastActivo?.isConnected) return false;\n            if (esComercial(aviso) && (document.querySelector('.system-toast.show,dialog[open],.modal.show') ||\n"
+        },
+        {
+          "before": "            const disponibles = recordatoriosActuales.filter(function (r) {\n                const clave = claveRecordatorio(r);\n                if (claves.has(clave) || (Number(r.leida || 0) !== 0 && r.reiterar_hasta_atender !== true)) return false;\n                if(esComercial(r)){\n",
+          "after": "            const disponibles = recordatoriosActuales.filter(function (r) {\n                const clave = claveRecordatorio(r);\n                if (esComentarioAgendaVencido(r)) return false;\n                if (claves.has(clave) || (Number(r.leida || 0) !== 0 && r.reiterar_hasta_atender !== true)) return false;\n                if(esComercial(r)){\n"
+        }
+      ]
+    }
+  ]
+}
