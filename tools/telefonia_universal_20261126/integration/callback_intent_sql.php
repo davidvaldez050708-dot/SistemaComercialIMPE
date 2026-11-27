@@ -1,0 +1,48 @@
+<?php
+declare(strict_types=1);
+require __DIR__.'/fixture.php';
+require_once $lab.'/site/app/services/TelefoniaDevolucionService.php';
+require_once $lab.'/site/app/services/TelefoniaSesionLocalService.php';
+$_SESSION=['usuario_id'=>42,'rol_id'=>4,'rol'=>'Analista de Datos','permisos'=>['telefonia.usar','telefonia.recibir','telefonia.salientes']];
+$callbacks=new TelefoniaDevolucionService($db);$journal=new TelefoniaSesionLocalService($db);
+$new=static function(string $phone)use($db):array{
+ $reference='fixture-intent-task-'.bin2hex(random_bytes(7));
+ $s=$db->prepare("INSERT INTO telefonia_disponibilidad(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,ruta_json,estado,version,expires_at,created_at,updated_at,telefono,devolucion) VALUES(43,'100',42,'102',?,?,'{}','FALLIDA',1,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 DAY),UTC_TIMESTAMP(),UTC_TIMESTAMP(),?,'PENDIENTE')");
+ $s->bind_param('sss',$reference,$phone,$phone);$s->execute();$task=(int)$s->insert_id;$s->close();
+ $s=$db->prepare("INSERT INTO telefonia_devolucion_intentos(solicitud_id,version,usuario_id,extension,numero,desde_evento_id,estado,created_at,updated_at) VALUES(?,1,42,'102',?,0,'PREPARADO',UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+ $s->bind_param('is',$task,$phone);$s->execute();$id=(int)$s->insert_id;$s->close();return [$id,$task];
+};
+$reject=static function(callable $call,string $why)use($assert){$caught=false;try{$call();}catch(DomainException $e){$caught=true;}$assert($caught,$why);};
+$count=static fn():int=>(int)$db->query('SELECT COUNT(*) n FROM telefonia_analista_webrtc_sesiones')->fetch_assoc()['n'];
+$event=static function(string $ref,string $phone,string $ext='102',string $kind='NOTIFY_OUT_START')use($db):void{
+ $at=date('Y-m-d H:i:s');$s=$db->prepare("INSERT INTO telefonia_zadarma_eventos(pbx_call_id,evento,internal,received_at,call_start,destination,destination_digits,caller_id,duration,disposition,payload_json) VALUES(?,?,?,?,?,?,?,'5550000101',10,'answered','{\"duration\":10}')");
+ $s->bind_param('sssssss',$ref,$kind,$ext,$at,$at,$phone,$phone);$s->execute();$s->close();
+};
+$phone='555'.random_int(2000000,2999999);[$id,$task]=$new($phone);$before=$count();
+$reject(fn()=>$journal->prepararSaliente(41,$phone,$id),'Another actor cannot reserve callback');
+$reject(fn()=>$journal->prepararSaliente(42,'5559999999',$id),'Different destination cannot reserve callback');
+$assert($count()===$before,'Rejected reservations create no orphan intent');
+$prepared=$journal->prepararSaliente(42,$phone,$id);$sid=$prepared['session_id'];
+$assert($callbacks->estado(42,$id)['sdk_session_id']===$sid,'Callback binds exact server-prepared SDK intent');
+$reject(fn()=>$journal->prepararSaliente(42,$phone,$id),'One callback cannot reserve two sessions');
+$assert($count()===$before+1,'Concurrent/repeated reservation leaves one intent');
+$reject(fn()=>$callbacks->cancelar(42,$id),'Unfinished SDK reservation cannot be discarded while ACK/dial is pending');
+$wrong='fixture-intent-country-'.bin2hex(random_bytes(6));$event($wrong,'99'.$phone);
+$state=$callbacks->estado(42,$id);$assert($state['pbx_call_id']===null,'Prepared but unissued intent cannot inherit a PBX call');
+$journal->registrarEvento(42,['session_id'=>$sid,'evento'=>'dialed','secuencia'=>1,'sdk_id'=>'fixture-callback-intent'],2);
+$state=$callbacks->estado(42,$id);$assert($state['pbx_call_id']===null,'Shared telephone suffix from another country cannot match modern callback');
+$other='fixture-intent-other-ext-'.bin2hex(random_bytes(6));$event($other,$phone,'101');
+$assert($callbacks->estado(42,$id)['pbx_call_id']===null,'Another extension cannot match callback intent');
+$ref='fixture-intent-own-'.bin2hex(random_bytes(6));$event($ref,$phone);$event($ref,$phone,'102','NOTIFY_ANSWER');$event($ref,$phone,'102','NOTIFY_OUT_END');
+$state=$callbacks->estado(42,$id);$assert($state['pbx_call_id']===$ref&&$state['puede_registrar'],'Exact own intent resolves PBX and permits native result');
+$assert($journal->obtener(42,$sid)['pbx_call_id']===$ref,'Callback and session share server-resolved PBX identity');
+$phone2='555'.random_int(3000000,3999999);[$ambiguous]=$new($phone2);$p=$journal->prepararSaliente(42,$phone2,$ambiguous);
+$journal->registrarEvento(42,['session_id'=>$p['session_id'],'evento'=>'dialed','secuencia'=>1,'sdk_id'=>'fixture-callback-ambiguous'],2);
+foreach([1,2]as $n)$event('fixture-intent-amb-'.$n.'-'.bin2hex(random_bytes(6)),$phone2);
+$state=$callbacks->estado(42,$ambiguous);$assert($state['pbx_call_id']===null&&$state['identificacion_llamada']==='AMBIGUA','Ambiguous modern callback remains pending without falling back to old lookup');
+$assert($callbacks->estado(42,$id)['pbx_call_id']===$ref,'Other ambiguous attempt cannot rewrite earlier callback identity');
+$phone3='555'.random_int(4000000,4999999);[$abandoned]=$new($phone3);$p3=$journal->prepararSaliente(42,$phone3,$abandoned);
+$journal->registrarEvento(42,['session_id'=>$p3['session_id'],'evento'=>'failed','secuencia'=>1],2);
+$callbacks->cancelar(42,$abandoned);
+$assert($callbacks->estado(42,$abandoned)['estado']==='CANCELADO','Intent that actually failed before dialing can be discarded without an invented call');
+echo "PASS $checks native callback intention checks: atomic reservation, actor/destination, no orphan, actual SDK emission, exact full-number/extension, ambiguity and preserved identities. Synthetic SQL only.\n";

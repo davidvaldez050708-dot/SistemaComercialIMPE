@@ -67,5 +67,15 @@
     "portable_unit_suites_passed": 18,
     "complete_call_acceptance": false,
     "production_changed": false
+  },
+  "continuation_callback_intents": {
+    "native_sql_checks": 15,
+    "outgoing_resolver_regression_checks": 7,
+    "host_outgoing_checks": 36,
+    "dial_race_checks": 24,
+    "callback_http_checks": 28,
+    "scope": "SDK host to reserved callback/PBX identity and native result receipts; includes concurrent receipt replay. Synthetic provider; not universal call acceptance.",
+    "schema_proposal": "schema_devolucion_sesion.sql",
+    "production_changed": false
   }
 }

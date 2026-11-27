@@ -1633,7 +1633,7 @@
         }
         return journal;
     };
-    const fetchDialCheckpoint = async function (destination) {
+    const fetchDialCheckpoint = async function (destination, context) {
         const response = await hostRequest(
             String(config.sesionLocalUrl || ''),
             {
@@ -1641,6 +1641,7 @@
                 credentials: 'same-origin',
                 cache: 'no-store',
                 body:JSON.stringify({accion:'preparar_saliente',destino:destination,
+                    ...(context?.type==='DEVOLUCION'?{callback_attempt:Number(context.callbackAttempt)}:{}),
                     csrf_token:window.IMPE_PHONE_HTTP.csrfToken()}),
                 headers: {
                     Accept: 'application/json',
@@ -1987,7 +1988,7 @@
         try {
             await ensureWidget();
             if(!preparing())return;
-            const prepared = await fetchDialCheckpoint(destination);
+            const prepared = await fetchDialCheckpoint(destination,payload.context);
             if(!preparing()){
                 // Una entrante puede ganar mientras responde la preparación.
                 // Cerrar sólo esa intención no emitida; nunca tocar la entrante.

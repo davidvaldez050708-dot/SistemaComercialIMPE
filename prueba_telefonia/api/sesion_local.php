@@ -54,7 +54,9 @@ try{
     if(($data['accion']??'')==='preparar_saliente'){
         if(!tienePermiso('telefonia.salientes'))responderSesionLocal(['ok'=>false],403);
         if(!is_string($data['destino']??null))throw new InvalidArgumentException('Destino inválido.');
-        responderSesionLocal(['ok'=>true,'sesion'=>$service->prepararSaliente($user,$data['destino'])],201);
+        $callback=filter_var($data['callback_attempt']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0]]);
+        if(!is_int($callback))throw new InvalidArgumentException('Intento de devolución inválido.');
+        responderSesionLocal(['ok'=>true,'sesion'=>$service->prepararSaliente($user,$data['destino'],$callback)],201);
     }
     if(($data['accion']??'')!=='registrar')throw new InvalidArgumentException('Acción inválida.');
     $service->registrarEvento($user,$data,2);

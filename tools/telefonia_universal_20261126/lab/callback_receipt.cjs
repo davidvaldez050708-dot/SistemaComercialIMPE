@@ -20,18 +20,28 @@ const origin='http://127.0.0.1:33181',endpoint='/index.php?controller=telefonia&
  assert.equal(account.ok,true);assert.equal(account.user,42);checks+=2;cookie=login.headers.get('set-cookie').split(';')[0];csrf=account.csrf;
  const pbx='out_lab_callback_'+crypto.randomBytes(8).toString('hex');
  const fixturePost=async(url,body)=>{const r=await request(url,{method:'POST',headers:{'X-Fixture-Key':c.fixture_key,'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json();assert.equal(data.ok,true);checks++;return data;};
- const {attempt}=await fixturePost('/fixture/callback',{pbx});
- const start=new Date(Date.now()-60000).toISOString().slice(0,19).replace('T',' ');
- for(const [event,ago,extra]of [['NOTIFY_OUT_START',60,{}],['NOTIFY_ANSWER',50,{}],['NOTIFY_OUT_END',10,{disposition:'answered',duration:40}]]){
-  await fixturePost('/fixture/event',{event,pbx_call_id:pbx,internal:'102',destination:'5550000101',caller_id:'5550000101',call_start:start,...extra});
- }
- const status=await request(endpoint+'&intento_id='+attempt),state=await status.json();assert.equal(status.status,200);assert.equal(state.intento.puede_registrar,true);checks+=2;
+ const {attempt}=await fixturePost('/fixture/callback',{pbx,reserve_intent:true});
  const f=fixture({origin,userId:42,extension:'102',csrf,fetch:request});f.window.crypto=crypto.webcrypto;
  Object.assign(f.box,{localStorage:f.window.localStorage,sessionStorage:f.window.localStorage,URL,document:{baseURI:origin+'/',readyState:'loading',addEventListener(){}}});
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../../../public/javascript/telefonia_atencion.js'),'utf8'),f.box);
+ await f.box.invoke({destination:'5550000101',context:{type:'DEVOLUCION',callbackAttempt:attempt}});
+ const sdkId=f.box.state.callToken,physical=f.window.zdrmWebPhone.webCallSession;
+ assert.match(sdkId,/^sdk-/);checks++;f.pulse();
+ await f.window.IMPE_PHONE_HTTP.flushSessions('/prueba_telefonia/api/sesion_local.php');
+ const start=new Date().toISOString().slice(0,19).replace('T',' ');
+ for(const [event,ago,extra]of [['NOTIFY_OUT_START',60,{}],['NOTIFY_ANSWER',50,{}],['NOTIFY_OUT_END',10,{disposition:'answered',duration:40}]]){
+  await fixturePost('/fixture/event',{event,pbx_call_id:pbx,internal:'102',destination:'5550000101',caller_id:'5550000101',call_start:start,...extra});
+ }
+ physical.established=true;physical.emit('confirmed');f.pulse();
+ await f.window.IMPE_PHONE_HTTP.flushSessions('/prueba_telefonia/api/sesion_local.php');
+ physical.ended=true;physical.emit('ended');f.pulse();
+ await f.window.IMPE_PHONE_HTTP.flushSessions('/prueba_telefonia/api/sesion_local.php');
+ assert.equal(f.box.state.active,false,'Local SDK end releases host before business result');checks++;
+ const status=await request(endpoint+'&intento_id='+attempt),state=await status.json();assert.equal(status.status,200);assert.equal(state.intento.puede_registrar,true);checks+=2;
+ assert.equal(state.intento.sdk_session_id,sdkId);assert.equal(state.intento.pbx_call_id,pbx);checks+=2;
  const values={csrf_token:csrf,accion:'RESULTADO',intento_id:String(attempt),pbx_call_id:pbx,resultado:'CONTACTO_CORRECTO',decision:'sin_identificar',observacion:'Nota sintética de devolución'};
  drop=true;
- const result=await f.window.IMPE_CALL_RESULTS.submit({form:{querySelectorAll:()=>[]},user:42,ids:[pbx],context:{adaptador:'DEVOLUCION'},values,captureValues:values,endpoint});
+ const result=await f.window.IMPE_CALL_RESULTS.submit({form:{querySelectorAll:()=>[]},user:42,ids:[sdkId,pbx],context:{adaptador:'DEVOLUCION'},values,captureValues:values,endpoint});
  assert.equal(result.ok,true,result.error?.message);assert.equal(result.payload.recibo_recuperado,true);assert.equal(Number(result.payload.intento.id),attempt);assert.equal(resultPosts,1);checks+=4;
  const replay=await request(endpoint,{method:'POST',body:new URLSearchParams(result.capture.values)}),again=await replay.json();
  assert.equal(replay.status,200);assert.deepEqual(again.intento,result.payload.intento);checks+=2;

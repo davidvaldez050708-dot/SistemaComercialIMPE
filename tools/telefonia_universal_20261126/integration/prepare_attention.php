@@ -7,6 +7,8 @@ if($c['host']!=='127.0.0.1'||$c['port']!==3308||$c['database']!=='impe_telefonia
 mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
 $db=new mysqli($c['host'],$c['root_user'],$c['root_password'],$c['database'],$c['port']);$db->set_charset('utf8mb4');
 foreach(['schema_recepcion.sql','schema_atencion_analista.sql','schema_evidencias.sql','schema_devoluciones.sql'] as $file)$db->query(file_get_contents(dirname(__DIR__).'/'.$file));
+if($db->query("SHOW COLUMNS FROM telefonia_devolucion_intentos LIKE 'sdk_session_id'")->num_rows===0)
+ $db->query(file_get_contents(dirname(__DIR__).'/schema_devolucion_sesion.sql'));
 $dump=file_get_contents(dirname(__DIR__,3).'/database/sistema_comercial_impe.sql');
 // ONLY schema definitions for an explicit allowlist. Never import dump rows.
 foreach(['interacciones_vinculacion','seguimientos_vinculacion'] as $table){

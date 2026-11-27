@@ -52,7 +52,19 @@ final class TelefoniaDevolucionService
         $ext=$this->ext($user);$r=$this->one('SELECT * FROM telefonia_devolucion_intentos WHERE id=? AND usuario_id=? AND extension=?',[$id,$user,$ext['extension']]);
         if(!$r)throw new DomainException('El intento no te corresponde.');$task=$this->task($user,(int)$r['solicitud_id']);
         if((int)$task['version']!==(int)$r['version'])throw new DomainException('La devolución cambió de responsable.');
-        if(!$r['pbx_call_id'] && $r['estado']!=='CANCELADO'){
+        if(!$r['pbx_call_id']&&$r['estado']!=='CANCELADO'&&!empty($r['sdk_session_id'])){
+            require_once __DIR__.'/TelefoniaSesionLocalService.php';
+            $resolved=(new TelefoniaSesionLocalService($this->db))->resolverSalientePreparada($user,$r['sdk_session_id']);
+            $r['identificacion_llamada']=$resolved['identificacion'];
+            if($resolved['identificacion']==='CONFIRMADA'){
+                $ref=$resolved['inicio']['pbx_call_id'];
+                $s=$this->db->prepare("UPDATE telefonia_devolucion_intentos SET pbx_call_id=?,estado='EN_CURSO',updated_at=UTC_TIMESTAMP() WHERE id=? AND usuario_id=? AND sdk_session_id=BINARY ? AND pbx_call_id IS NULL AND estado='PREPARADO' AND resultado=''");
+                $s->bind_param('siis',$ref,$id,$user,$r['sdk_session_id']);$s->execute();$s->close();
+                $r=$this->one('SELECT * FROM telefonia_devolucion_intentos WHERE id=? AND usuario_id=?',[$id,$user]);
+            }
+        }
+        // Compatibilidad sólo para intentos anteriores sin una intención SDK reservada.
+        if(!$r['pbx_call_id'] && $r['estado']!=='CANCELADO'&&empty($r['sdk_session_id'])){
             $from=(new DateTimeImmutable($r['created_at'],new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('America/Mexico_City'));
             $a=$from->modify('-5 seconds')->format('Y-m-d H:i:s');$b=$from->modify('+2 minutes')->format('Y-m-d H:i:s');
             $suffix=substr(preg_replace('/\D/','',$r['numero']),-10);
@@ -64,7 +76,7 @@ final class TelefoniaDevolucionService
         }
         $call=null;
         if($r['pbx_call_id']){
-            $s=$this->db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=? ORDER BY id');$s->bind_param('s',$r['pbx_call_id']);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+            $s=$this->db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=BINARY ? ORDER BY id');$s->bind_param('s',$r['pbx_call_id']);$s->execute();$events=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
             foreach(TelefoniaRecepcionMarketingService::agruparEventos($events,$r['extension'],true) as $c)if($c['pbx_call_id']===$r['pbx_call_id'] && $c['tipo']==='Saliente')$call=$c;
         }
         $r['finalizada']=!empty($call['finalizada']);$r['contestada']=$r['finalizada'] && in_array($call['estado_cierre']??'', ['Completada','Atendida'],true) && (int)($call['segundos']??0)>0;
@@ -74,6 +86,12 @@ final class TelefoniaDevolucionService
     }
     public function cancelar(int $user,int $id): void {
         $r=$this->estado($user,$id);if($r['pbx_call_id'])throw new DomainException('La llamada ya comenzó. Espera su resultado.');
+        if(!empty($r['sdk_session_id'])){
+            require_once __DIR__.'/TelefoniaSesionLocalService.php';
+            $session=(new TelefoniaSesionLocalService($this->db))->obtener($user,$r['sdk_session_id']);
+            if(!$session||empty($session['fecha_fin'])||!empty($session['emitida']))
+                throw new DomainException('La sesión telefónica debe cerrar sin marcar antes de descartar esta preparación.');
+        }
         $s=$this->db->prepare("UPDATE telefonia_devolucion_intentos SET estado='CANCELADO',updated_at=UTC_TIMESTAMP() WHERE id=? AND usuario_id=? AND pbx_call_id IS NULL");$s->bind_param('ii',$id,$user);$s->execute();$s->close();
     }
     public function registrar(int $user,int $id,array $data,?callable $confirmar=null): array {

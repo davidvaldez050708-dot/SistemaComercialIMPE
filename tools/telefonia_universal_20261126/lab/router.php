@@ -47,8 +47,10 @@ if(str_starts_with($path,'/fixture/')){
   try{
    $s=$db->prepare("INSERT INTO telefonia_disponibilidad(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,ruta_json,estado,version,expires_at,created_at,updated_at,telefono,devolucion) VALUES(43,'100',42,'102',?,'5550000101','{}','FALLIDA',1,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 DAY),UTC_TIMESTAMP(),UTC_TIMESTAMP(),'5550000101','PENDIENTE')");
    $s->bind_param('s',$reference);$s->execute();$task=(int)$s->insert_id;$s->close();
-   $s=$db->prepare("INSERT INTO telefonia_devolucion_intentos(solicitud_id,version,usuario_id,extension,numero,desde_evento_id,pbx_call_id,estado,created_at,updated_at) VALUES(?,1,42,'102','5550000101',0,?,'EN_CURSO',UTC_TIMESTAMP(),UTC_TIMESTAMP())");
-   $s->bind_param('is',$task,$reference);$s->execute();$attempt=(int)$s->insert_id;$s->close();$db->commit();
+   $bound=!empty($body['reserve_intent'])?null:$reference;
+   $state=$bound===null?'PREPARADO':'EN_CURSO';
+   $s=$db->prepare("INSERT INTO telefonia_devolucion_intentos(solicitud_id,version,usuario_id,extension,numero,desde_evento_id,pbx_call_id,estado,created_at,updated_at) VALUES(?,1,42,'102','5550000101',0,?,?,UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+   $s->bind_param('iss',$task,$bound,$state);$s->execute();$attempt=(int)$s->insert_id;$s->close();$db->commit();
    fixtureReply(['ok'=>true,'attempt'=>$attempt]);
   }catch(Throwable $e){$db->rollback();throw $e;}
  }

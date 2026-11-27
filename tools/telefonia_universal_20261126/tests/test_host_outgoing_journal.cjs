@@ -43,6 +43,8 @@ function fixture(options={}){
 module.exports={fixture,sdk};
 if(require.main===module)(async()=>{
  let checks=0;const f=fixture();
+ const callback=fixture();await callback.box.invoke({destination:'5550000101',context:{type:'DEVOLUCION',callbackAttempt:71}});
+ assert.equal(callback.preparations[0].callback_attempt,71,'Host includes the exact callback attempt in its server preparation');checks++;
  await f.box.invoke({destination:'5550000000',context:{type:'VINCULACION',seguimientoId:901}});
  assert.equal(f.preparations.length,1);assert.equal(f.preparations[0].accion,'preparar_saliente');checks+=2;
  assert.equal(f.box.state.callToken,'sdk-fixture-outgoing-1');assert.equal(f.box.state.requestedAt,1800000001);checks+=2;

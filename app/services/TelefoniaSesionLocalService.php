@@ -44,7 +44,7 @@ class TelefoniaSesionLocalService
         }
         return isset($this->internalExtensions[$number]);
     }
-    public function prepararSaliente(int $user,string $number):array
+    public function prepararSaliente(int $user,string $number,int $callbackAttempt=0):array
     {
         $formats=ProspectoNoContactarV3::formatos($number);
         if(!$formats)throw new InvalidArgumentException('Destino telefónico inválido.');
@@ -53,11 +53,31 @@ class TelefoniaSesionLocalService
         $marker=(new ZadarmaWebhookEventStoreService($this->db))->ultimoInicioSalienteId($ext);
         $token='sdk-'.bin2hex(random_bytes(16));$number=(string)$formats[0];
         $since=$a['asignacion_desde']??null;
+        $this->db->begin_transaction();
+        try{
+        if($callbackAttempt>0){
+            $s=$this->db->prepare("SELECT i.* FROM telefonia_devolucion_intentos i
+                JOIN telefonia_disponibilidad d ON d.id=i.solicitud_id AND d.version=i.version
+                AND d.destino_usuario=i.usuario_id AND d.destino_extension=BINARY i.extension
+                WHERE i.id=? AND i.usuario_id=? AND i.extension=BINARY ? AND d.devolucion='PENDIENTE' FOR UPDATE");
+            $s->bind_param('iis',$callbackAttempt,$user,$ext);$s->execute();$callback=$s->get_result()->fetch_assoc();$s->close();
+            if(!$callback||$callback['estado']!=='PREPARADO'||$callback['resultado']!==''||
+                !empty($callback['pbx_call_id'])||!empty($callback['sdk_session_id'])||
+                ($since!==null&&(string)$callback['created_at']<(string)$since)||
+                !array_intersect($formats,ProspectoNoContactarV3::formatos($callback['numero'])))
+                throw new DomainException('La devolución no permite preparar este destino o ya tiene una sesión.');
+        }
         $s=$this->db->prepare("INSERT INTO telefonia_analista_webrtc_sesiones
             (usuario_id,extension,session_id,numero_origen,direccion,estado,fecha_inicio,
              protocolo,emitida,evento_desde,asignacion_desde)
             VALUES(?,?,?,?,'SALIENTE','preparada',UTC_TIMESTAMP(),2,0,?,?)");
         $s->bind_param('isssis',$user,$ext,$token,$number,$marker,$since);$s->execute();$s->close();
+        if($callbackAttempt>0){
+            $s=$this->db->prepare('UPDATE telefonia_devolucion_intentos SET sdk_session_id=?,updated_at=UTC_TIMESTAMP() WHERE id=? AND usuario_id=?');
+            $s->bind_param('sii',$token,$callbackAttempt,$user);$s->execute();$s->close();
+        }
+        $this->db->commit();
+        }catch(Throwable $error){$this->db->rollback();throw $error;}
         return ['session_id'=>$token,'after_id'=>$marker,'server_time'=>time(),'extension'=>$ext];
     }
     /** Identificación saliente acotada por la intención persistida. Nunca usa

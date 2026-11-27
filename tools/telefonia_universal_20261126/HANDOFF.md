@@ -278,3 +278,31 @@ su búsqueda antigua de PBX por sufijo de teléfono/ventana aún existe. No pres
 como identidad fuerte. También siguen pendientes los endpoints de Seguimiento,
 transferencias sin reserva temprana, grabaciones, aceptación universal de 1,000
 llamadas y ocho horas reales, Supervisión selectiva y publicador CHECK/ROLLBACK.
+
+### Cuarto checkpoint: devolución ligada a intención saliente persistida
+
+El tercer checkpoint está publicado en `bd9d053d`. Este bloque conecta el intento
+de devolución al mismo preparador/conciliador saliente del host:
+
+- El host envía `callback_attempt` sólo para contexto DEVOLUCION. El servidor
+  valida actor, extensión, versión de tarea, estado pendiente, destino completo,
+  asignación actual y ausencia de reserva previa. Inserción de sesión SDK y
+  reserva del intento ocurren juntas; un rechazo no deja sesiones huérfanas.
+- Campo aditivo propuesto `sdk_session_id` e índice único por usuario/sesión en
+  `schema_devolucion_sesion.sql`. Sólo se preparó en el laboratorio, no en producción.
+- `estado()` usa `resolverSalientePreparada()` para intentos reservados: marcador,
+  emisión SDK, número completo, extensión, siguiente intención y ambigüedad del
+  motor existente. No cae al buscador por sufijo cuando el vínculo moderno existe.
+  La búsqueda histórica queda sólo para intentos antiguos sin reserva; migrar esa
+  compatibilidad requiere evidencia suficiente, no reconstrucción de históricos.
+- Una reserva SDK todavía abierta no puede descartarse como preparación vacía.
+  Si el SDK falla y termina sin marcar, sí puede cancelarse. PBX se compara BINARY.
+- 15 comprobaciones SQL de intención de devolución y 7 de regresión del conciliador
+  saliente. Host saliente:36 checks; carrera de preparación:24. El harness HTTP
+  anterior ahora pasa 28 checks e incluye host SDK sintético, reserva HTTP real,
+  eventos PBX, asociación al intento y guardado/recibo; conserva la concurrencia.
+  Aún no constituye aceptación universal ni duración real de una llamada.
+
+Siguiente bloque: endpoints restantes de Seguimiento con recibos dentro de su
+transacción real, sin duplicar el pipeline comercial ya implementado. Mantener
+pendientes de grabaciones/transferencias/soak/publicador y Supervisión selectiva.
