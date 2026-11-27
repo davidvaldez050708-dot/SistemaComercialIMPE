@@ -38,6 +38,20 @@ if(str_starts_with($path,'/fixture/')){
   }
   fixtureReply(['ok'=>true,'counts'=>$counts]);
  }
+ if($path==='/fixture/callback'){
+  if(($_SERVER['REQUEST_METHOD']??'')!=='POST')fixtureReply(['ok'=>false],405);
+  $body=json_decode((string)file_get_contents('php://input'),true,8,JSON_THROW_ON_ERROR);
+  $reference=(string)($body['pbx']??'');
+  if(!preg_match('/^out_lab_[a-zA-Z0-9_-]{6,80}$/D',$reference))fixtureReply(['ok'=>false],422);
+  $db=Database::compartida();$db->begin_transaction();
+  try{
+   $s=$db->prepare("INSERT INTO telefonia_disponibilidad(origen_usuario,origen_extension,destino_usuario,destino_extension,referencia,numero,ruta_json,estado,version,expires_at,created_at,updated_at,telefono,devolucion) VALUES(43,'100',42,'102',?,'5550000101','{}','FALLIDA',1,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 1 DAY),UTC_TIMESTAMP(),UTC_TIMESTAMP(),'5550000101','PENDIENTE')");
+   $s->bind_param('s',$reference);$s->execute();$task=(int)$s->insert_id;$s->close();
+   $s=$db->prepare("INSERT INTO telefonia_devolucion_intentos(solicitud_id,version,usuario_id,extension,numero,desde_evento_id,pbx_call_id,estado,created_at,updated_at) VALUES(?,1,42,'102','5550000101',0,?,'EN_CURSO',UTC_TIMESTAMP(),UTC_TIMESTAMP())");
+   $s->bind_param('is',$task,$reference);$s->execute();$attempt=(int)$s->insert_id;$s->close();$db->commit();
+   fixtureReply(['ok'=>true,'attempt'=>$attempt]);
+  }catch(Throwable $e){$db->rollback();throw $e;}
+ }
  fixtureReply(['ok'=>false],404);
 }
 $files=['/prueba_telefonia/api/sesion_local.php','/prueba_telefonia/api/borrador_llamada.php',
@@ -49,6 +63,7 @@ if(in_array($path,$files,true)||$path==='/index.php'){
  if($path!=='/index.php'){require $site.$path;exit;}
  session_start();require_once $site.'/app/helpers/TelefoniaPeticionContexto.php';TelefoniaPeticionContexto::actualizar();
  $routes=['telefonia.guardarResultadoVenta'=>['TelefoniaController','guardarResultadoVenta'],
+  'telefonia.devolucion'=>['TelefoniaController','devolucion'],
   'seguimientoVinculacion.registrarLlamadaEntrante'=>['SeguimientoVinculacionController','registrarLlamadaEntrante']];
  $route=$routes[($_GET['controller']??'').'.'.($_GET['action']??'')]??null;if(!$route)fixtureReply(['ok'=>false],404);
  require_once $site.'/app/controllers/'.$route[0].'.php';(new $route[0])->{$route[1]}();exit;

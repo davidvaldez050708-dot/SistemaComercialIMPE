@@ -12,20 +12,7 @@ final class TelefoniaDevolucionService
     private TelefoniaDisponibilidadService $disponibilidad;
     public const RESULTADOS=['CONTACTO'=>'Persona atendió','BUZON'=>'Buzón de voz','SIN_RESPUESTA'=>'Sin respuesta','NO_DISPONIBLE'=>'Fuera de servicio / no disponible','NUMERO_INCORRECTO'=>'Número incorrecto','LLAMAR_DESPUES'=>'Solicitó llamar después'];
     public function __construct(?mysqli $db=null){
-        $this->db=$db??(new Database())->connect();$this->disponibilidad=new TelefoniaDisponibilidadService($this->db);
-        $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_devolucion_intentos (
-          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,solicitud_id BIGINT UNSIGNED NOT NULL,version INT NOT NULL,
-          usuario_id INT NOT NULL,extension VARCHAR(12) NOT NULL,numero VARCHAR(40) NOT NULL,
-          desde_evento_id BIGINT NOT NULL,pbx_call_id VARCHAR(100) NULL,estado VARCHAR(20) NOT NULL DEFAULT 'PREPARADO',
-          resultado VARCHAR(30) NOT NULL DEFAULT '',identificacion VARCHAR(24) NOT NULL DEFAULT '',
-          seguimiento_id INT NOT NULL DEFAULT 0,interaccion_id INT NULL,institucion_nombre VARCHAR(150) NOT NULL DEFAULT '',
-          observacion VARCHAR(500) NOT NULL DEFAULT '',datos_json TEXT NULL,created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,
-          UNIQUE KEY uk_dev_llamada(usuario_id,pbx_call_id),KEY idx_dev_pendiente(usuario_id,estado,resultado),
-          KEY idx_dev_solicitud(solicitud_id,version,id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-        $column=$this->db->query("SHOW COLUMNS FROM telefonia_devolucion_intentos LIKE 'datos_json'");
-        if(!$column->num_rows){try{$this->db->query('ALTER TABLE telefonia_devolucion_intentos ADD COLUMN datos_json TEXT NULL');}catch(mysqli_sql_exception $e){if($e->getCode()!==1060)throw $e;}}
-
+        $this->db=$db??Database::compartida();$this->disponibilidad=new TelefoniaDisponibilidadService($this->db);
     }
     private function one(string $sql,array $v=[]): ?array {$s=$this->db->prepare($sql);if($v)$s->bind_param(str_repeat('s',count($v)),...$v);$s->execute();$r=$s->get_result()->fetch_assoc();$s->close();return $r?:null;}
     private function ext(int $user): array {
@@ -89,8 +76,10 @@ final class TelefoniaDevolucionService
         $r=$this->estado($user,$id);if($r['pbx_call_id'])throw new DomainException('La llamada ya comenzó. Espera su resultado.');
         $s=$this->db->prepare("UPDATE telefonia_devolucion_intentos SET estado='CANCELADO',updated_at=UTC_TIMESTAMP() WHERE id=? AND usuario_id=? AND pbx_call_id IS NULL");$s->bind_param('ii',$id,$user);$s->execute();$s->close();
     }
-    public function registrar(int $user,int $id,array $data): array {
+    public function registrar(int $user,int $id,array $data,?callable $confirmar=null): array {
         $attempt=$this->estado($user,$id);
+        if(isset($data['pbx_call_id'])&&(string)$data['pbx_call_id']!==(string)$attempt['pbx_call_id'])
+            throw new DomainException('La captura pertenece a otra llamada de devolución.');
         $aliases=['CONTACTO'=>'CONTACTO_CORRECTO','BUZON'=>'BUZON_VOZ','NO_DISPONIBLE'=>'FUERA_SERVICIO','LLAMAR_DESPUES'=>'SOLICITO_LLAMAR_DESPUES'];
         $code=$aliases[$data['resultado']??'']??(string)($data['resultado']??'');$data['resultado']=$code;
         $allowed=['CONTACTO_CORRECTO','CONTACTO_REFERIDO','BUZON_VOZ','FUERA_SERVICIO','SIN_RESPUESTA','OCUPADO','NUMERO_INCORRECTO','SOLICITO_INFORMACION','SOLICITO_LLAMAR_DESPUES','NO_INTERESADO','OTRO'];
@@ -131,7 +120,9 @@ final class TelefoniaDevolucionService
             $details=json_encode(array_intersect_key($data,array_flip(['decision','resultado','persona_atendio','proxima_accion','proxima_accion_at','tipo_entidad','telefono_capturado','correo_capturado','nuevo_contacto_nombre','nuevo_contacto_cargo','nuevo_telefono_contacto','nuevo_correo_contacto'])),JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
             $s=$this->db->prepare("UPDATE telefonia_devolucion_intentos SET estado='FINALIZADO',resultado=?,identificacion=?,seguimiento_id=?,interaccion_id=?,institucion_nombre=?,observacion=?,datos_json=?,updated_at=UTC_TIMESTAMP() WHERE id=?");$s->bind_param('ssiisssi',$code,$kind,$sid,$interactionId,$name,$note,$details,$id);$s->execute();$s->close();
             if(!$negative && $code!=='SOLICITO_LLAMAR_DESPUES' || $code==='NUMERO_INCORRECTO'){$s=$this->db->prepare("UPDATE telefonia_disponibilidad SET devolucion='ATENDIDA',updated_at=UTC_TIMESTAMP() WHERE id=? AND destino_usuario=?");$s->bind_param('ii',$attempt['solicitud_id'],$user);$s->execute();$s->close();}
-            $this->db->commit();return $this->estado($user,$id)+['atencion'=>$atencion];
+            $respuesta=$this->estado($user,$id)+['atencion'=>$atencion];
+            if($confirmar)$confirmar('DEVOLUCION_ANALISTA',$id,$respuesta);
+            $this->db->commit();return $respuesta;
         }catch(Throwable $e){$this->db->rollback();throw $e;}
 
     }

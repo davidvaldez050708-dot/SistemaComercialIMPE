@@ -37,6 +37,21 @@ const deferred=()=>{let resolve;return {promise:new Promise(r=>resolve=r),resolv
  });
  const recovered=await retry.window.IMPE_CALL_RESULTS.submit({...options,form:second,onCommitted(){},onError(){throw Error('Committed result is not a failed save');}});
  assert.equal(recovered.ok,true);assert.equal(recovered.payload.resultado.interaccion_id,17);assert.equal(attempts,1,'Lost ACK never triggers automatic POST replay');assert.equal(reads,1,'Single authoritative receipt lookup');
+ const callback=fixture();let callbackMeta,callbackPosts=0;
+ callback.reply(async(input,settings)=>{
+  if(String(input)==='/result'){
+   callbackPosts++;callbackMeta=JSON.parse(settings.body.get('captura_confirmacion'));
+   return response(503,{ok:false});
+  }
+  if(settings?.method==='POST')return response(200,{ok:true});
+  return response(200,{ok:true,borrador:{aplicaciones:{[callbackMeta.request_id]:{
+   request_id:callbackMeta.request_id,revision:callbackMeta.revision,adaptador:'DEVOLUCION',respuesta:{id:23,atencion:{verificacion_confirmada:false}}
+  }}}});
+ });
+ const callbackSaved=await callback.window.IMPE_CALL_RESULTS.submit({...options,form:new Form(),
+  context:{adaptador:'DEVOLUCION'},onError(){throw Error('Committed callback must recover its receipt');},onCommitted(){}});
+ assert.equal(callbackSaved.ok,true);assert.equal(callbackSaved.payload.intento.id,23);
+ assert.equal(callbackSaved.payload.recibo_recuperado,true);assert.equal(callbackPosts,1,'Lost callback ACK cannot automatically repeat the native result');
  const failed=fixture(),invalid=new Form();let deniedReads=0;
  failed.reply(async(input,settings)=>{if(String(input)==='/result')return response(422,{ok:false,mensaje:'Required field'});if(settings?.method!=='POST')deniedReads++;return response(200,{ok:true});});
  const denied=await failed.window.IMPE_CALL_RESULTS.submit({...options,form:invalid,onError(){assert.equal(invalid.button.disabled,false);},onCommitted(){throw Error('Invalid result cannot commit');}});

@@ -734,7 +734,7 @@
         const savedCaptureIds=[...callRefs];
         const savedCycle=modalCycle,original=submit.innerHTML;
         await window.IMPE_CALL_RESULTS.submit({form,user:userId,ids:savedCaptureIds,
-            context:{adaptador:outgoingMode?'SEGUIMIENTO':'ANALISTA'},values:Object.fromEntries(requestBody),endpoint:saveUrl,
+            context:{adaptador:callbackMode?'DEVOLUCION':outgoingMode?'SEGUIMIENTO':'ANALISTA'},values:Object.fromEntries(requestBody),endpoint:saveUrl,
             controls:[...modalEl.querySelectorAll('[data-bs-dismiss="modal"]')],isCurrent:()=>modalCycle===savedCycle,
             onStart(){isSubmitting=true;submit.textContent='Guardando…';},
             onCommitted:async({payload:data,current})=>{

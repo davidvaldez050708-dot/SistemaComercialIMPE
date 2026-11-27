@@ -57,5 +57,15 @@
     "shared_result_controller": true,
     "lost_sdk_and_result_ack": true,
     "scope": "Synthetic outgoing cycles. Transfers, audio, whole-page browser and 1000-call acceptance not yet complete."
+  },
+  "continuation_callback_receipts": {
+    "base": "6b4e80712828780758c1ba551200017ae67b8358",
+    "native_sql_checks": 13,
+    "native_http_checks": 24,
+    "concurrent_http_workers": 2,
+    "prior_adapter_receipt_regressions": 15,
+    "portable_unit_suites_passed": 18,
+    "complete_call_acceptance": false,
+    "production_changed": false
   }
 }

@@ -904,7 +904,12 @@ class TelefoniaController
             $id=(int)($_POST['intento_id']??0);
             if($action==='CANCELAR'){$svc->cancelar($user,$id);$this->responderJson(['ok'=>true]);}
             if($action!=='RESULTADO')$this->responderJson(['ok'=>false],422);
-            $this->responderJson(['ok'=>true,'intento'=>$svc->registrar($user,$id,$_POST)]);
+            require_once __DIR__.'/../helpers/TelefoniaPeticionContexto.php';
+            TelefoniaPeticionContexto::liberarSesion();
+            require_once __DIR__.'/../services/TelefoniaResultadoConfirmacion.php';
+            $resultado=(new TelefoniaResultadoConfirmacion(Database::compartida()))->ejecutar($user,'DEVOLUCION',$_POST,
+                static fn(array $datos,?callable $confirmar):array=>$svc->registrar($user,$id,$datos,$confirmar));
+            $this->responderJson(['ok'=>true,'intento'=>$resultado]);
         }catch(DomainException|InvalidArgumentException $e){$this->responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
         catch(Throwable $e){error_log('[telefonia_devolucion] '.get_class($e));$this->responderJson(['ok'=>false,'mensaje'=>'No se pudo actualizar la devolución. Intenta nuevamente.'],500);}
     }

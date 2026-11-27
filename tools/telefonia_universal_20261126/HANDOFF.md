@@ -239,3 +239,42 @@ funcional seguro es `git diff 0d5387d..76ed8c0` (22 archivos de runtime); aplica
 selectivamente conservando el motor universal y los ajustes personalizados.
 Los HTTP workers vivos figuran en http.json del laboratorio; detener sólo PIDs
 cuyo comando verificado corresponde a ese router y raíz privada.
+
+### Tercer checkpoint: recibo atómico de devoluciones de Vinculación
+
+Continuación desde `6b4e80712828780758c1ba551200017ae67b8358`. No se fusionó
+Supervisión de personal, no se modificó producción ni se ejecutó SQL productivo.
+
+- `TelefoniaDevolucionService` dejó de ejecutar CREATE/ALTER/SHOW COLUMNS en
+  su constructor. Usa la conexión común. Su esquema se prepara explícitamente
+  con `schema_devoluciones.sql`; una instalación antigua sin `datos_json` exige
+  migración aditiva autorizada, nunca se corrige durante la petición.
+- Resultado, estado de tarea y recibo `DEVOLUCION_ANALISTA` se confirman en la
+  misma transacción nativa. Una captura con otra PBX no puede consumir el intento.
+  La ruta `telefonia.devolucion` usa `TelefoniaResultadoConfirmacion`, mantiene
+  los permisos/CSRF y libera la sesión antes del guardado. Compatibilidad con
+  formularios antiguos sin metadatos de confirmación conservada.
+- El formulario institucional reutilizado identifica este envío como
+  `DEVOLUCION`. El controlador común recupera la respuesta en `payload.intento`,
+  conservando el contrato del adaptador y evitando un reenvío automático.
+- 13 comprobaciones SQL nativas: cuenta sin DDL, resultado/recibo/estado juntos,
+  rollback por fallo del recibo, usuario/PBX, request inmutable y regla negativa.
+- 24 comprobaciones HTTP nativas con CSRF y controlador común: pérdida de ACK,
+  una consulta al recibo, replay explícito, rechazo de contenido cambiado y dos
+  workers concurrentes devolviendo el mismo resultado para la misma aprobación.
+  Runner: `node tools/telefonia_universal_20261126/lab/callback_receipt.cjs
+  --lab-root <laboratorio>`. No son ciclos completos SDK ni se suman a las 1,000.
+- Regresión justificada por el nuevo tipo de recibo: 18/18 suites JS y 15 checks
+  SQL de los tres adaptadores anteriores pasan. No se repitió la auditoría general.
+
+Laboratorio reproducible de este perfil: fuera del checkout, en
+`C:/xampp/htdocs/SistemaComercialIMPE/output/telefonia_universal_20261126/lab-checkpoint2`.
+Se preparó con `lab/prepare.py`, proveedor externo bloqueado y credenciales
+sintéticas privadas. Se detuvo sólo el mysqld anterior cuyo datadir privado exacto
+y puerto3308 se verificaron; no se tocó XAMPP. PIDs actuales en `lab.json`/`http.json`.
+
+Sigue pendiente vincular los intentos de devolución con la intención SDK persistida:
+su búsqueda antigua de PBX por sufijo de teléfono/ventana aún existe. No presentarla
+como identidad fuerte. También siguen pendientes los endpoints de Seguimiento,
+transferencias sin reserva temprana, grabaciones, aceptación universal de 1,000
+llamadas y ocho horas reales, Supervisión selectiva y publicador CHECK/ROLLBACK.
