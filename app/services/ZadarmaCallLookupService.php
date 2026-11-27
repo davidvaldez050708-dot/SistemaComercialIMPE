@@ -68,7 +68,7 @@ class ZadarmaCallLookupService
         return $this->normalizar($candidatas[0]);
     }
 
-    public function buscarPorPbxCallId(string $pbxCallId): ?array
+    public function buscarPorPbxCallId(string $pbxCallId, ?string $extension=null): ?array
     {
         $pbxCallId = trim($pbxCallId);
         if ($pbxCallId === '') {
@@ -76,17 +76,29 @@ class ZadarmaCallLookupService
         }
 
         $estadisticas = $this->estadisticas(time() - 86400, time() + 30);
+        // Una página llena no demuestra unicidad entre todos los tramos.
+        if(count($estadisticas)>=1000)return null;
 
+        require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
+        $candidatas=[];$ajenas=[];
         foreach ($estadisticas as $fila) {
             if (hash_equals(
                 $pbxCallId,
                 trim((string)($fila['pbx_call_id'] ?? ''))
             )) {
-                return $this->normalizar($fila);
+                if(filter_var($fila['seconds']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>86400]])===false)continue;
+                $normalizada=$this->normalizar($fila);
+                if($extension!==null&&TelefoniaPbxSegmentosService::extensionDeFila($fila)!==$extension){
+                    if($normalizada['call_id']!=='')$ajenas[$normalizada['call_id']]=true;
+                    continue;
+                }
+                $candidatas[json_encode($normalizada,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]=$normalizada;
             }
         }
 
-        return null;
+        foreach($candidatas as $key=>$candidate)
+            if($candidate['call_id']!==''&&isset($ajenas[$candidate['call_id']]))unset($candidatas[$key]);
+        return count($candidatas)===1?reset($candidatas):null;
     }
 
     /**

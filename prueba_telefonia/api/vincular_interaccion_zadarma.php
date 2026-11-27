@@ -10,12 +10,21 @@ require_once dirname(__DIR__, 2) .
     '/app/services/TelefoniaExtensionService.php';
 require_once dirname(__DIR__, 2) .
     '/app/services/ZadarmaWebhookEventStoreService.php';
+require_once dirname(__DIR__,2).'/app/services/TelefoniaPbxSegmentosService.php';
+require_once dirname(__DIR__,2).'/app/helpers/TelefoniaAsignacionFechaHelper.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+$transactionActive=false;
 
 function responderJson(array $data, int $status = 200): void
 {
+    global $connection,$transactionActive;
+    if($transactionActive){
+        try{$connection->rollback();}catch(Throwable $ignored){}
+        $transactionActive=false;
+        if($status<400){$status=500;$data=['ok'=>false,'mensaje'=>'No se confirmó la conciliación. El resultado permanece guardado.'];}
+    }
     http_response_code($status);
     echo json_encode(
         $data,
@@ -34,7 +43,9 @@ function fechaMysqlDesdeIso(?string $valor): ?string
     }
 
     try {
-        $fecha = new DateTime($valor);
+        $fecha = new DateTime($valor,new DateTimeZone('America/Mexico_City'));
+        $errors=DateTime::getLastErrors();
+        if($errors!==false&&($errors['warning_count']||$errors['error_count']))return null;
         $fecha->setTimezone(new DateTimeZone('America/Mexico_City'));
         return $fecha->format('Y-m-d H:i:s');
     } catch (Throwable $e) {
@@ -55,38 +66,11 @@ function fechaMysqlLocal(?string $valor): ?string
         new DateTimeZone('America/Mexico_City')
     );
 
-    if (!$fecha) {
+    if (!$fecha||$fecha->format('Y-m-d H:i:s')!==$valor) {
         return null;
     }
 
     return $fecha->format('Y-m-d H:i:s');
-}
-
-function duracionConversacion(?array $respuesta, ?array $fin): int
-{
-    if (!$fin) {
-        return 0;
-    }
-
-    $duracionProveedor = max(0, (int)($fin['duration'] ?? 0));
-    // Un duration=1 puede representar una marca provisional. Contrastar
-    // con los tiempos de respuesta y fin de ESTA MISMA llamada.
-    if (!$respuesta) {
-        return $duracionProveedor;
-    }
-
-    $inicio = strtotime((string)($respuesta['received_at'] ?? ''));
-    $finTimestamp = strtotime((string)($fin['received_at'] ?? ''));
-
-    if ($inicio === false || $finTimestamp === false ||
-        $finTimestamp <= $inicio) {
-        return $duracionProveedor;
-    }
-    $intervalo = $finTimestamp - $inicio;
-    // Rechazar desfases de reloj: no convertir 6 horas de zona horaria
-    // en una conversación; conservar en ese caso dato del proveedor.
-    if ($intervalo > 7200) return $duracionProveedor;
-    return max($duracionProveedor, $intervalo);
 }
 
 $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
@@ -110,9 +94,7 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
 $seguimientoId = (int)($_POST['seguimiento_id'] ?? 0);
 $interaccionId = (int)($_POST['interaccion_id'] ?? 0);
 $pbxCallId = trim((string)($_POST['pbx_call_id'] ?? ''));
-$destino = trim((string)($_POST['destination'] ?? ''));
-$desdeUnix = max(0, (int)($_POST['since'] ?? 0));
-$duracionCliente = max(0, (int)($_POST['duration_client'] ?? 0));
+$sessionId=trim((string)($_POST['session_id']??''));
 $lookupAttempt = max(0, (int)($_POST['lookup_attempt'] ?? 0));
 $permitirLookupEstadisticas =
     $lookupAttempt === 0 ||
@@ -134,8 +116,9 @@ $rootPath = dirname(__DIR__, 2);
 $logPath = $rootPath . '/storage/zadarma_webhooks.log';
 
 try {
+    $connection=Database::compartida();
     $asignacionTelefonica =
-        (new TelefoniaExtensionService())
+        (new TelefoniaExtensionService($connection))
             ->resolverParaUsuario($usuarioId);
 } catch (Throwable $e) {
     responderJson([
@@ -144,7 +127,7 @@ try {
     ], 500);
 }
 
-if (!$asignacionTelefonica) {
+if (!$asignacionTelefonica||empty($asignacionTelefonica['permite_salientes'])||!tienePermiso('telefonia.salientes')) {
     responderJson([
         'ok' => false,
         'mensaje' => 'Tu usuario no tiene una extensión Zadarma activa asignada.'
@@ -161,17 +144,34 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
         'mensaje' => 'La extensión Zadarma asignada no es válida.'
     ], 422);
 }
+$asignacionDesde=TelefoniaAsignacionFechaHelper::aMexico((string)$asignacionTelefonica['asignacion_desde']);
+if($sessionId!==''){
+    $csrf=(string)($_SESSION['csrf_token']??'');
+    if($csrf===''||!is_string($_POST['csrf_token']??null)||!hash_equals($csrf,$_POST['csrf_token']))
+        responderJson(['ok'=>false,'mensaje'=>'Actualiza la sesión para conciliar esta llamada.'],403);
+    try{
+        require_once dirname(__DIR__,2).'/app/services/TelefoniaSesionLocalService.php';
+        $resolved=(new TelefoniaSesionLocalService($connection))->resolverSalientePreparada($usuarioId,$sessionId);
+        $reference=(string)($resolved['inicio']['pbx_call_id']??'');
+        if($resolved['identificacion']!=='CONFIRMADA'||($pbxCallId!==''&&$pbxCallId!==$reference))
+            responderJson(['ok'=>false,'mensaje'=>'La intención todavía no acredita esta referencia PBX.'],409);
+        $pbxCallId=$reference;
+    }catch(DomainException|InvalidArgumentException $e){responderJson(['ok'=>false,'mensaje'=>$e->getMessage()],409);}
+    catch(Throwable $e){
+        if(Database::responderFalloTemporal($e))exit;
+        responderJson(['ok'=>false,'mensaje'=>'No se pudo comprobar la intención telefónica. El resultado permanece guardado.'],503);
+    }
+}
+if($pbxCallId==='')responderJson(['ok'=>false,'mensaje'=>'Falta la referencia PBX acreditada. El resultado permanece registrado.'],409);
 
 $inicio = null;
-$respuesta = null;
 $fin = null;
-$grabacion = null;
 $eventosLlamada = [];
 
 if ($pbxCallId !== '') {
     try {
         $eventosLlamada =
-            (new ZadarmaWebhookEventStoreService())
+            (new ZadarmaWebhookEventStoreService($connection))
                 ->obtenerPorPbxCallId($pbxCallId);
     } catch (Throwable $errorStore) {
         error_log('[zadarma_vincular_store] ' . $errorStore->getMessage());
@@ -180,7 +180,7 @@ if ($pbxCallId !== '') {
     /*
      * Respaldo para llamadas antiguas o contingencia de almacenamiento.
      */
-    if (empty($eventosLlamada) && is_file($logPath)) {
+    if ($sessionId===''&&empty($eventosLlamada) && is_file($logPath)) {
         $lineas = file(
             $logPath,
             FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES
@@ -200,38 +200,35 @@ if ($pbxCallId !== '') {
         }
     }
 
+    $iniciosPropios=[];
     foreach ($eventosLlamada as $fila) {
+        if((string)($fila['pbx_call_id']??'')!==$pbxCallId)continue;
+        $propia=(string)($fila['internal']??'')===$extension;
         $evento = (string)($fila['event'] ?? '');
-        if ($evento === 'NOTIFY_OUT_START') {
+        if ($evento === 'NOTIFY_OUT_START'&&$propia&&
+            (string)fechaMysqlDesdeIso($fila['received_at']??null)>=$asignacionDesde&&
+            (empty($fila['call_start'])||(string)fechaMysqlDesdeIso($fila['call_start'])>=$asignacionDesde)) {
             $inicio = $fila;
-        } elseif ($evento === 'NOTIFY_ANSWER') {
-            $respuesta = $fila;
-        } elseif ($evento === 'NOTIFY_OUT_END') {
+            $iniciosPropios[]=$fila;
+        } elseif ($evento === 'NOTIFY_OUT_END'&&$propia) {
             $fin = $fila;
-        } elseif ($evento === 'NOTIFY_RECORD') {
-            $grabacion = $fila;
+
         }
     }
+    if(count($iniciosPropios)>1)responderJson(['ok'=>false,'mensaje'=>'La referencia contiene inicios incompatibles. Conserva la captura para revisión.'],409);
 }
 
 $estadistica = null;
 if (
     (!$inicio || !$fin || $pbxCallId === '' ||
-     ($fin && (int)($fin['duration'] ?? 0) <= 1) ||
-     ($fin && !$grabacion && empty($fin['is_recorded']))) &&
+     ($fin && empty($fin['has_duration']))) &&
     $permitirLookupEstadisticas
 ) {
     try {
         $lookup = new ZadarmaCallLookupService();
 
         if ($pbxCallId !== '') {
-            $estadistica = $lookup->buscarPorPbxCallId($pbxCallId);
-        } elseif ($destino !== '') {
-            $estadistica = $lookup->buscarSalienteReciente(
-                $extension,
-                $destino,
-                $desdeUnix > 0 ? $desdeUnix : (time() - 300)
-            );
+            $estadistica = $lookup->buscarPorPbxCallId($pbxCallId,$extension);
         }
 
         if ($estadistica) {
@@ -240,7 +237,8 @@ if (
             $extEstadistica = trim((string)($estadistica['sip'] ?? ''));
             if ($idEstadistica === '' ||
                 ($pbxCallId !== '' && !hash_equals($pbxCallId, $idEstadistica)) ||
-                ($extEstadistica !== '' && ltrim($extEstadistica, '0') !== ltrim($extension, '0'))) {
+                $extEstadistica!==$extension||
+                (string)($estadistica['callstart']??'')<$asignacionDesde) {
                 $estadistica = null;
             }
         }
@@ -254,7 +252,7 @@ if (
                 $inicio = [
                     'event' => 'STATISTICS_OUT_START',
                     'internal' => $extension,
-                    'destination' => (string)($estadistica['destination'] ?? $destino),
+                    'destination' => (string)($estadistica['destination'] ?? ''),
                     'call_start' => $callStart,
                     'pbx_call_id' => $pbxCallId,
                 ];
@@ -278,14 +276,14 @@ if (
                 $fin = [
                     'event' => 'STATISTICS_OUT_END',
                     'internal' => $extension,
-                    'destination' => (string)($estadistica['destination'] ?? $destino),
+                    'destination' => (string)($estadistica['destination'] ?? ''),
                     'call_start' => $callStart,
                     'pbx_call_id' => $pbxCallId,
                     'duration' => (string)$segundos,
                     'disposition' => (string)($estadistica['disposition'] ?? ''),
                     'is_recorded' => !empty($estadistica['is_recorded']) ? '1' : '0',
                     'call_id_with_rec' => (string)($estadistica['call_id'] ?? ''),
-                    'received_at' => date('c'),
+                    'received_at' => '', // CDR sin fecha de fin: no fabricar la hora actual.
                 ];
             }
         }
@@ -324,10 +322,8 @@ if (!$fin) {
 
 try {
     require_once $rootPath . '/config/db_connection.php';
-    $database = new Database();
-    $connection = $database->connect();
 
-    $sqlSeguimiento = "SELECT id
+    $sqlSeguimiento = "SELECT id,telefono_fuente,telefono_verificado
         FROM seguimientos_vinculacion
         WHERE id = ?
           AND analista_id = ?
@@ -337,16 +333,18 @@ try {
     $stmtSeguimiento->bind_param('ii', $seguimientoId, $usuarioId);
     $stmtSeguimiento->execute();
 
-    if (!$stmtSeguimiento->get_result()->fetch_assoc()) {
+    $expediente=$stmtSeguimiento->get_result()->fetch_assoc();$stmtSeguimiento->close();
+    if (!$expediente) {
         responderJson(['ok' => false, 'mensaje' => 'No tienes acceso a este seguimiento.'], 403);
     }
 
     $connection->begin_transaction();
+    $transactionActive=true;
     $sqlInteraccion = "SELECT
             id,
             proveedor_externo,
             id_externo,
-            notas
+            notas,telefono_destino,duracion_segundos,fecha_inicio,fecha_fin
         FROM interacciones_vinculacion
         WHERE id = ?
           AND seguimiento_id = ?
@@ -381,42 +379,43 @@ try {
             'mensaje' => 'Esta interacción ya está vinculada con otro proveedor de telefonía.'
         ], 409);
     }
+    if($idExternoActual===''){
+        require_once $rootPath.'/app/services/ProspectoNoContactarV3.php';
+        $numbers=ProspectoNoContactarV3::formatos((string)($inicio['destination']??''));$matches=false;
+        $destinations=!empty($interaccion['telefono_destino'])?[$interaccion['telefono_destino']]:[$expediente['telefono_verificado'],$expediente['telefono_fuente']];
+        foreach($destinations as $number)
+            if(array_intersect($numbers,ProspectoNoContactarV3::formatos((string)$number)))$matches=true;
+        if(!$matches)responderJson(['ok'=>false,'mensaje'=>'La llamada no corresponde al contacto de esta interacción.'],409);
+    }
 
-    $fechaInicio = fechaMysqlLocal($inicio['call_start'] ?? null) ?? date('Y-m-d H:i:s');
+    $fechaInicio = fechaMysqlLocal($inicio['call_start'] ?? null) ?? fechaMysqlDesdeIso($inicio['received_at']??null);
+    if($fechaInicio===null)responderJson(['ok'=>false,'mensaje'=>'Falta la fecha acreditada del inicio telefónico.'],409);
     $fechaFin = fechaMysqlDesdeIso($fin['received_at'] ?? null);
     $disposicion = strtoupper(trim((string)($fin['disposition'] ?? '')));
-    $huboRespuesta =
-        $respuesta !== null ||
-        in_array($disposicion, ['ANSWERED', 'ANSWER', 'CONNECTED', 'SUCCESS'], true);
+    $raw=array_map(static function(array $e):array{$e['evento']=$e['event']??'';return $e;},$eventosLlamada);
+    $hechos=TelefoniaPbxSegmentosService::hechos($raw,$extension,'',max(0,(int)($inicio['id']??0)-1));
+    $huboRespuesta=$hechos['conectada']||($estadistica!==null&&in_array($disposicion,['ANSWERED','ANSWER','CONNECTED','SUCCESS'],true));
 
     /*
-     * La duración contabilizable debe representar conversación real.
-     * El cronómetro del navegador incluye timbrado, por lo que solo sirve
-     * como respaldo cuando Zadarma confirma que la llamada fue contestada
-     * pero todavía no publica una duración positiva.
+     * Sólo duración del tramo propio PBX/CDR. El cronómetro SDK no acredita
+     * conversación del proveedor; una duración ausente permanece desconocida.
      */
-    $duracionProveedor = max(
-        duracionConversacion($respuesta, $fin),
-        max(0, (int)($fin['duration'] ?? 0)),
-        max(0, (int)($estadistica['seconds'] ?? 0))
-    );
-    $duracion = $huboRespuesta
-        ? $duracionProveedor
-        : 0;
-
-    if ($huboRespuesta && $duracion <= 0) {
-        $duracion = $duracionCliente;
+    $duracionProveedor=$hechos['segundos'];
+    if($estadistica!==null)$duracionProveedor=max((int)($duracionProveedor??0),(int)$estadistica['seconds']);
+    $duracion=$huboRespuesta?$duracionProveedor:0;
+    $confirmarEvidencia=$huboRespuesta&&$duracion!==null&&$duracion>0;
+    $evidenciaFinal=$duracionProveedor!==null||!$huboRespuesta;
+    $grabaciones=$hechos['segmentos'];
+    if($estadistica!==null){
+        $propios=TelefoniaPbxSegmentosService::propios([$estadistica],$pbxCallId,$extension);
+        foreach($propios['tramos'] as $tramo)
+            if($tramo['grabada']&&!in_array($tramo['id'],$hechos['audio_bloqueadas'],true))$grabaciones[]=$tramo['id'];
+        $grabaciones=array_values(array_unique($grabaciones));
     }
-
-    if ($fechaFin === null && $duracion > 0) {
-        try {
-            $temporal = new DateTime($fechaInicio, new DateTimeZone('America/Mexico_City'));
-            $temporal->modify('+' . $duracion . ' seconds');
-            $fechaFin = $temporal->format('Y-m-d H:i:s');
-        } catch (Throwable $e) {
-            $fechaFin = null;
-        }
-    }
+    // No borrar un dato técnico histórico ya asociado si esta consulta carece
+    // de duración. Tampoco usar ese dato previo para acreditar evidencia nueva.
+    if($duracion===null&&$idExternoActual===$pbxCallId)$duracion=$interaccion['duracion_segundos'];
+    if($fechaFin===null&&$idExternoActual===$pbxCallId)$fechaFin=$interaccion['fecha_fin'];
 
     $proveedor = 'ZADARMA';
 
@@ -427,8 +426,9 @@ try {
      * sin respuesta en verificación efectiva.
      */
     $notasInteraccion = (string)($interaccion['notas'] ?? '');
+    $verificacionSolicitada=strpos($notasInteraccion,'[VERIFICACION_PENDIENTE_TELEFONIA]')!==false;
 
-    $notasInteraccion = str_replace(
+    if($evidenciaFinal)$notasInteraccion = str_replace(
         '[VERIFICACION_PENDIENTE_TELEFONIA]',
         '',
         $notasInteraccion
@@ -436,7 +436,7 @@ try {
 
     if (
         strpos($notasInteraccion, '[VERIFICACION_EFECTIVA]') !== false &&
-        !$huboRespuesta
+        (!$huboRespuesta||($verificacionSolicitada&&$evidenciaFinal&&!$confirmarEvidencia))
     ) {
         $notasInteraccion = str_replace(
             '[VERIFICACION_EFECTIVA]',
@@ -445,7 +445,7 @@ try {
         );
         $notasInteraccion = preg_replace(
             '/^Verificación obtenida:\s*.*$/miu',
-            'Verificación no contabilizada: el proveedor de telefonía no registró respuesta.',
+            'Verificación no contabilizada: la evidencia telefónica no acredita conversación con duración positiva.',
             $notasInteraccion
         );
         $notasInteraccion = trim((string)$notasInteraccion);
@@ -476,11 +476,13 @@ try {
         $usuarioId
     );
     $stmtActualizar->execute();
-    (new TelefoniaVerificacionEvidenciaService($connection))->confirmarSalida($usuarioId,$interaccionId,$pbxCallId,$huboRespuesta);
+    if($evidenciaFinal)
+        (new TelefoniaVerificacionEvidenciaService($connection))->confirmarSalida($usuarioId,$interaccionId,$pbxCallId,$confirmarEvidencia);
     $connection->commit();
+    $transactionActive=false;
 
     $verificacionEfectiva =
-        $huboRespuesta &&
+        $confirmarEvidencia &&
         strpos($notasInteraccion, '[VERIFICACION_EFECTIVA]') !== false;
     $yaContabilizadaHoy = false;
 
@@ -520,21 +522,20 @@ try {
         'hubo_respuesta' => $huboRespuesta,
         'verificacion_efectiva' => $verificacionEfectiva,
         'institucion_ya_contabilizada_hoy' => $yaContabilizadaHoy,
-        'grabacion_disponible' =>
-            (string)($fin['is_recorded'] ?? '') === '1' ||
-            $grabacion !== null,
-        'call_id_with_rec' => trim((string)(
-            $grabacion['call_id_with_rec'] ??
-            $fin['call_id_with_rec'] ??
-            ''
-        )),
+        'verificacion_pendiente'=>$verificacionSolicitada&&!$evidenciaFinal,
+        'verificacion_rechazada'=>$verificacionSolicitada&&$evidenciaFinal&&!$confirmarEvidencia,
+        'grabacion_disponible'=>!empty($grabaciones),
+        'call_id_with_rec'=>count($grabaciones)===1?(string)$grabaciones[0]:'',
+        'segmentos_grabacion'=>$grabaciones,
     ]);
 } catch (Throwable $e) {
+    if($transactionActive){
+        try{$connection->rollback();}catch(Throwable $ignored){}
+        $transactionActive=false;
+    }
     if (Database::responderFalloTemporal($e)) exit;
-    if (isset($connection) && $connection instanceof mysqli) $connection->rollback();
     responderJson([
         'ok' => false,
         'mensaje' => 'No se pudo vincular la llamada con la interacción.',
-        'detalle' => $e->getMessage(),
     ], 500);
 }

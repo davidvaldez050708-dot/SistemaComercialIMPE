@@ -376,3 +376,59 @@ Próximo bloque: conciliación posterior en vincular_interaccion_zadarma.php,
 eliminando atribuciones de duración desde el navegador y cerrando su recuperación
 con evidencia propia; después transferencias/audio y aceptación completa. Siguen
 sin iniciarse las ocho horas reales. No se ha modificado producción.
+
+### Séptimo checkpoint: conciliación posterior, duración y audio propios
+
+El sexto checkpoint está publicado en `20a4a4be`. Se conserva la ruta instalada
+`vincular_interaccion_zadarma.php`, cerrando vías de atribución incorrecta:
+
+- Reutiliza conexión común, asignación actual, datos nativos de interacción y
+  TelefoniaPbxSegmentosService. No usa duración del navegador ni busca otra
+  llamada por teléfono cuando falta el identificador. Protocolo2 manda la sesión
+  preparada explícita y CSRF fresco; el servidor deriva su referencia y rechaza
+  otra sesión/PBX/interacción. Los trabajos antiguos no se convierten en SDK2
+  sólo porque su token comience por sdk-. Log histórico queda sólo para legacy.
+- Duración ausente queda NULL y conserva la verificación pendiente. Cero PBX
+  acreditado queda cero y no produce efectiva ni reintentos indefinidos de esa
+  verificación. Una duración positiva posterior confirma las dos evidencias y
+  suma exactamente una efectiva usando el indicador nativo; repetir no suma otra.
+  No se modifica el resultado humano ni se sustituye un dato técnico anterior
+  por desconocido al repetir. Los rechazos revierten y liberan la transacción.
+- Las fechas sin zona del almacén local se interpretan como México incluso si
+  PHP tiene UTC predeterminado; ISO con zona se convierte una sola vez. No se
+  fabrica una fecha final a partir del cronómetro ni de la hora actual del CDR.
+- El selector CDR admite extensión explícita y rechaza filas contradictorias,
+  ids de grabación compartidos/ajenos, duración inválida y páginas truncadas.
+  Entrantes Analista y estado saliente pasan su extensión. IDs decimales largos
+  siguen como strings. Varias grabaciones propias se devuelven como segmentos;
+  el campo antiguo de grabación única queda vacío cuando no es inequívoco.
+- La cola técnica conserva el ID nativo de la interacción y sólo entrega metadata,
+  nunca reenvía el alta comercial. Evidencia pendiente persiste entre recargas
+  con backoff de1 a15min sobre el timer ya existente, sin añadir sondeos. Se evita
+  la cascada inmediata de hasta24 solicitudes en SDK2 y los toasts repetidos.
+  La operación local sigue liberada; un ACK antiguo no cambia la llamada activa.
+- Evidencia:21/21 suites JS (incluye21 checks del reconciliador real),10 checks
+  puros del selector CDR y6 de fechas reales con PHP predeterminado UTC. HTTP:
+  39 Seguimiento con evidencia tardía,40 Informativa equivalente,33 con cero PBX.
+  Son variantes parciales del harness, NO sumar sus asserts como llamadas.
+  Las pruebas usan SDK sintético y la ruta HTTP/SQL/comercial real del candidato.
+- Fuentes del laboratorio sincronizadas, hash
+  `3848e9245c8728a6b8831df5b32bb864694671073000f84578b45a02a60eb182`.
+  `lab/followup_receipt.cjs --pending-duration [--informative] --lab-root <raíz>`
+  reproduce la llegada tardía; `--zero-duration` cubre cero acreditado. Los tests
+  puros son `tests/lookup_exact_pbx.php` y `tests/technical_dates.php`.
+
+Contrato contrastado con [API oficial de Zadarma](https://zadarma.com/en/support/api/):
+pbx_call_id conserva el grupo externo, call_id identifica una grabación, estadísticas
+tienen límite/paginación y el campo internal de NOTIFY_OUT_END es opcional.
+No interpretar ausencia de internal como prueba de conversación propia. **Siguiente
+bloque:** cierre global sin internal en el motor común, preservando duración
+desconocida/propiedad; timezone real de la cuenta CDR y paginación segura siguen
+pendientes de contraste/cobertura. La zona local del almacén sí se probó; no afirmar
+que se verificó la configuración real de la cuenta o TLS de Hostinger.
+
+También falta recuperación técnica desde el servidor si desaparece toda la cola
+del navegador (las evidencias/resultados SQL sobreviven); aprobación diferida ante
+PBX tardía para todos los roles; integración entrante/transferencias/audio completo,
+regresión visual, Supervisión selectiva,1,000 llamadas universales,8h reales y
+publicador. No se ha modificado producción ni arrancado el soak de ocho horas.

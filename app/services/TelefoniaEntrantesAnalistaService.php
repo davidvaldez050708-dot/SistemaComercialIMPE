@@ -66,7 +66,7 @@ class TelefoniaEntrantesAnalistaService
         // usando la referencia exacta de un inicio saliente ya firmado.
         if ($saliente && ($saliente['estado'] ?? '') !== 'ended') {
             try {
-                $estadistica = (new ZadarmaCallLookupService())->buscarPorPbxCallId($pbxCallId);
+                $estadistica = (new ZadarmaCallLookupService())->buscarPorPbxCallId($pbxCallId,$ext);
                 if ($estadistica) {
                     $saliente = TelefoniaSalienteAnalistaEstado::desdeEstadistica(
                         $saliente, $estadistica, $ext, $pbxCallId,

@@ -2024,7 +2024,7 @@
                 answeredAtMs: 0,
                 pbxCallId: '',
                 callToken: callToken,
-                context: {...(payload.context||{}),sdkSessionId:callToken},
+                context: {...(payload.context||{}),sdkSessionId:callToken,sdkJournalProtocol:2},
                 finalMetadata: null,
                 message: ''
             });

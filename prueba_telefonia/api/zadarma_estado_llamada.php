@@ -423,7 +423,7 @@ if (
     $usarEstadisticas
 ) {
     try {
-        $estadistica = (new ZadarmaCallLookupService())->buscarPorPbxCallId($pbxCallId);
+        $estadistica = (new ZadarmaCallLookupService())->buscarPorPbxCallId($pbxCallId,$extension);
         if ($estadistica) {
             $disposition = strtolower((string)($estadistica['disposition'] ?? ''));
             $duration = max($duration, (int)($estadistica['seconds'] ?? 0));

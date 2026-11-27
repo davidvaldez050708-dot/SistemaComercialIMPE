@@ -249,6 +249,14 @@
             }
             catch (_) { return false; }
         };
+        const conservarConciliacion = (token,job,data) => {
+            if(data.verificacion_pendiente===true){
+                const attempts=Math.max(0,Math.min(16,Number(job.evidenceAttempts)||0));
+                const delay=Math.min(900000,60000*Math.pow(2,Math.min(attempts,4)));
+                return writeQueue(token,{...job,evidencePending:true,evidenceAttempts:attempts+1,retryAt:Date.now()+delay});
+            }
+            return writeQueue(token,null);
+        };
         const secureResult = (job, announce) => {
             // El evento de guardado contiene el ID definitivo del backend.
             // Persistir ANTES de liberar el panel; nunca afirmar un vínculo PBX.
@@ -603,6 +611,8 @@
                             checkpoint_ready: telephonyState.checkpointReady === true,
                             after_id: Number(telephonyState.afterEventId || 0),
                             finished_at: Math.floor(Date.now() / 1000),
+                            sdk_session_id:String(telephonyState.context?.sdkSessionId||''),
+                            session_protocol:Number(telephonyState.context?.sdkJournalProtocol||1),
                             call_token: token
                         }
                     );
@@ -1092,6 +1102,9 @@
                     'interaccion_id',
                     String(interactionId)
                 );
+                formData.set('csrf_token',String(window.IMPE_PHONE_HTTP.csrfToken?.()||''));
+                const persistedSession=Number(metadata.session_protocol)===2&&/^sdk-[a-z0-9-]{12,94}$/.test(String(metadata.sdk_session_id||''));
+                if(persistedSession)formData.set('session_id',String(metadata.sdk_session_id));
                 formData.set(
                     'pbx_call_id',
                     String(
@@ -1115,18 +1128,6 @@
                     )
                 );
                 formData.set(
-                    'duration_client',
-                    String(
-                        Math.max(
-                            0,
-                            Number(
-                                metadata
-                                    .duration || 0
-                            )
-                        )
-                    )
-                );
-                formData.set(
                     'lookup_attempt',
                     String(
                         Math.max(
@@ -1142,22 +1143,23 @@
                         // Nunca usar la llamada anterior al mismo número como sustituta.
                         // El checkpoint no tiene cota superior: tras otro marcado podría
                         // devolver una llamada posterior al mismo destino. No adivinar.
-                        if (!metadata.checkpoint_ready ||
+                        if (!persistedSession&&(!metadata.checkpoint_ready ||
                             localStorage.getItem(lastDialKey) !== String(metadata.call_token) ||
-                            Date.now() / 1000 - Number(metadata.finished_at || 0) > 30) {
+                            Date.now() / 1000 - Number(metadata.finished_at || 0) > 30)) {
                             throw new Error('Identificador telefónico pendiente. El resultado ya está guardado.');
                         }
                         const params = new URLSearchParams({destination:metadata.to || '',
                             since:String(metadata.requested_at || 0), after_id:String(metadata.after_id || 0), final:'1'});
+                        if(persistedSession)params.set('session_id',String(metadata.sdk_session_id));
                         const status = await fetchTechnical('prueba_telefonia/api/zadarma_estado_llamada.php?' + params,
                             {credentials:'same-origin',cache:'no-store',headers:{'X-Requested-With':'fetch'}});
                         const resolved = await status.json();
                         const ref = resolved?.call?.pbx_call_id;
                         const start = Date.parse(resolved?.call?.start_time || '') / 1000;
                         if (!status.ok || !resolved.ok || !/^out_[a-fA-F0-9]{32,64}$/.test(ref || '') ||
-                            !Number.isFinite(start) || start < Number(metadata.requested_at) - 2 ||
+                            !persistedSession&&(!Number.isFinite(start) || start < Number(metadata.requested_at) - 2 ||
                             start > Number(metadata.finished_at) + 2 ||
-                            localStorage.getItem(lastDialKey) !== String(metadata.call_token)) {
+                            localStorage.getItem(lastDialKey) !== String(metadata.call_token))) {
                             const pending = new Error('Identificador telefónico pendiente. El resultado ya está guardado.');
                             pending.status = 409; throw pending;
                         }
@@ -1187,7 +1189,7 @@
                             [404, 409].includes(response.status) ||
                             response.status >= 500
                         ) &&
-                        attempt < 24
+                        !persistedSession&&attempt < 24
                     ) {
                         linkingMetadata = false;
                         await sleep(
@@ -1225,7 +1227,7 @@
 
                     const ownsForm = pendingMetadata?.call_token === token;
                     securedTokens.add(token);
-                    delete queue[token]; writeQueue(token, null);
+                    conservarConciliacion(token,job,data);
                     if (pendingMetadata?.call_token === token) {
                         pendingMetadata = null;
                         pendingInteractionId = 0;
@@ -1246,6 +1248,12 @@
                         '.';
 
                     if (
+                        data.verificacion_pendiente===true
+                    ) {
+                        finalMessage='La llamada está guardada. Su verificación se confirmará cuando llegue la evidencia telefónica.';
+                    } else if(data.verificacion_rechazada===true&&data.hubo_respuesta===true){
+                        finalMessage='La llamada está guardada. La evidencia telefónica no permite contabilizarla como verificación efectiva.';
+                    } else if (
                         data.verificacion_efectiva ===
                         true
                     ) {
@@ -1293,7 +1301,7 @@
                     void window.IMPE_CALL_DRAFTS?.remove(usuarioId,
                         [metadata.pbx_call_id,metadata.call_token,token].filter(Boolean),
                         form?.querySelector('[name="csrf_token"]')?.value||'').catch(()=>{});
-                    mostrarToast(
+                    if(!job.evidencePending||data.verificacion_pendiente!==true)mostrarToast(
                         finalMessage,
                         false
                     );
@@ -1312,7 +1320,7 @@
                         pbxCallId: String(metadata.pbx_call_id || '')
                     };
 
-                    document.dispatchEvent(
+                    if(data.verificacion_pendiente!==true)document.dispatchEvent(
                         new CustomEvent(
                             'impe:telephony-call-linked',
                             { detail: detail }
@@ -1320,7 +1328,7 @@
                     );
                 } catch (error) {
                     if (
-                        attempt < 10 &&
+                        !persistedSession&&attempt < 10 &&
                         Number(error?.status || 0) === 0
                     ) {
                         linkingMetadata = false;

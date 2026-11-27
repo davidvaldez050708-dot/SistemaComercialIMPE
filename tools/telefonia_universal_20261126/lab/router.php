@@ -40,6 +40,11 @@ if(str_starts_with($path,'/fixture/')){
   if(isset($_GET['followup'])){
    $followup=(int)$_GET['followup'];$s=$db->prepare('SELECT COUNT(*) n FROM interacciones_vinculacion WHERE seguimiento_id=? AND usuario_id=42');
    $s->bind_param('i',$followup);$s->execute();$counts['interacciones_vinculacion']=(int)$s->get_result()->fetch_assoc()['n'];$s->close();
+   $s=$db->prepare("SELECT SUM(estado='CONFIRMADA') confirmadas,SUM(estado='RECHAZADA') rechazadas FROM telefonia_verificacion_evidencias WHERE seguimiento_id=? AND usuario_id=42");
+   $s->bind_param('i',$followup);$s->execute();$evidence=$s->get_result()->fetch_assoc();$s->close();
+   $counts['evidencias_confirmadas']=(int)$evidence['confirmadas'];$counts['evidencias_rechazadas']=(int)$evidence['rechazadas'];
+   require_once $site.'/app/models/SeguimientoVinculacionModel.php';
+   $counts['efectivas_del_dia']=(new SeguimientoVinculacionModel($db))->obtenerResumenVerificacionTelefonicaDia(42,date('Y-m-d'))['verificaciones_efectivas'];
   }
   fixtureReply(['ok'=>true,'counts'=>$counts]);
  }
@@ -68,7 +73,8 @@ if(str_starts_with($path,'/fixture/')){
  fixtureReply(['ok'=>false],404);
 }
 $files=['/prueba_telefonia/api/sesion_local.php','/prueba_telefonia/api/borrador_llamada.php',
- '/prueba_telefonia/api/zadarma_estado_llamada.php','/prueba_telefonia/api/resultado_recepcion_marketing.php'];
+ '/prueba_telefonia/api/zadarma_estado_llamada.php','/prueba_telefonia/api/resultado_recepcion_marketing.php',
+ '/prueba_telefonia/api/vincular_interaccion_zadarma.php'];
 if(in_array($path,$files,true)||$path==='/index.php'){
  if(($_SERVER['HTTP_X_FIXTURE_DROP_REPLY']??'')==='1'){
   ob_start();register_shutdown_function(static function(){if(http_response_code()<300){ob_clean();http_response_code(503);header('Content-Type: application/json');echo '{"ok":false,"mensaje":"Synthetic lost ACK"}';}});
