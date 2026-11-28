@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el decimoctavo checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el decimonoveno checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -844,3 +844,23 @@ no se sustituyó en este bloque por identidad SDK/PBX fuerte. Revisar esa polít
 antes de declarar motor universal terminado. CDR Ventas aún conserva transporte
 duplicado. Persisten entrega diferida,1,000 universales,8h reales y publicador.
 Producción intacta; la única creación de tabla fue explícita en el laboratorio.
+
+
+## Decimonoveno checkpoint — CDR Ventas usa selector y transporte comunes
+
+Base:5eb9b23f (incluye schema_internal_audio.sql que estaba ignorado por la regla
+genérica SQL; ya se agregó explícitamente sin datos). grabacion_ventas_cdr.php
+conserva exactamente su autorización personal y su resolutor CDR único. Publica
+la referencia opaca acreditada y la revalida antes de reproducir/descargar;
+retira su implementación duplicada de Range/MIME en favor de TelefoniaAudioRespuesta.
+Conserva URL individual antigua y rechaza una referencia ajena incluso si el
+índice dice0. No hay nuevas consultas, sondeos ni asociación por teléfono.
+
+12 pruebas del resolutor real/selector: ID decimal largo, CDR propio único,
+extensión/PBX ajenos, ambigüedad, ausencia de grabación, float, duración0 y buzón.
+786 aserciones del transporte común y sintaxis del endpoint pasaron. Catálogo
+y fecha son sintéticos; sin proveedor ni audio real. El laboratorio no se
+sincronizó en este bloque, por lo que su hash anterior NO acredita este endpoint.
+Faltan aceptación HTTP positiva/CDR y navegador. Los pendientes anteriores
+(incluida proyección institucional, entrega diferida,1,000 universales/8h y
+publicador) continúan. Producción intacta.

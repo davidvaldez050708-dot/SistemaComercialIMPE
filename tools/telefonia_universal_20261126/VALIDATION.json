@@ -274,5 +274,14 @@
     "lab_source_sha256": "0585cc38352a655f97c1d076b42464f9c4c40495cd496b4ca283f87389eda25e",
     "real_provider_audio_validated": false,
     "production_changed": false
+  },
+  "continuation_cdr_common_audio": {
+    "base": "5eb9b23f",
+    "actual_cdr_reference_checks": 12,
+    "synthetic_binary_range_assertions": 786,
+    "endpoint_syntax_passed": true,
+    "lab_not_resynced_for_this_block": true,
+    "real_provider_audio_validated": false,
+    "production_changed": false
   }
 }
