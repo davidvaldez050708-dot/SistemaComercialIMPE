@@ -103,32 +103,13 @@ try {
         http_response_code(416); exit;
     }
     $audio = $service->descargarGrabacion((string)$records[$index]['link'],$range);
-    $body = (string)($audio['body'] ?? '');
-    $type = strtolower(trim((string)($audio['content_type'] ?? '')));
-    if ($body==='' || ($type!=='' && !str_starts_with($type,'audio/') &&
-        $type!=='application/octet-stream')) { http_response_code(502); exit; }
-    $mime = str_contains($type,'wav')?'audio/wav':
-        (str_contains($type,'ogg')?'audio/ogg':
-        (str_contains($type,'mp4')?'audio/mp4':'audio/mpeg'));
-    header('Content-Type: '.$mime);
-    if ((string)($_GET['download'] ?? '') === '1') {
-        $extension = $mime === 'audio/wav' ? 'wav'
-            : ($mime === 'audio/ogg' ? 'ogg'
-            : ($mime === 'audio/mp4' ? 'm4a' : 'mp3'));
-        header('Content-Disposition: attachment; filename="llamada-transferida-parte-'
-            . ($index + 1) . '.' . $extension . '"');
-    } else {
-        header('Content-Disposition: inline');
-    }
-    header('Accept-Ranges: bytes');
-    if ($range!=='' && (int)($audio['status']??200)===206 &&
-        preg_match('~^bytes \\d+-\\d+/\\d+$~',
-            (string)($audio['headers']['content-range']??''))) {
-        header('Content-Range: '.$audio['headers']['content-range']);
-        http_response_code(206);
-    } else http_response_code(200);
-    header('Content-Length: '.strlen($body));
-    echo $body;
+    require_once $root.'/app/services/TelefoniaAudioRespuesta.php';
+    $response=TelefoniaAudioRespuesta::respuesta($audio,$range);
+    http_response_code($response['status']);
+    foreach($response['headers'] as $name=>$value)header($name.': '.$value);
+    $extensionArchivo=TelefoniaAudioRespuesta::extension($response['headers']['Content-Type']??'');
+    header('Content-Disposition: '.(($_GET['download']??'')==='1'?'attachment':'inline').'; filename="llamada-transferida-parte-'.($index+1).'.'.$extensionArchivo.'"');
+    echo $response['body'];
 } catch (DomainException $error) {
     http_response_code(403);header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['ok'=>false,'estado'=>'ACCESO_NO_AUTORIZADO']);exit;

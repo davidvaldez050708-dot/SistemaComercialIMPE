@@ -130,26 +130,10 @@ final class SupervisionLlamadasAudioService
         return ['ok'=>true,'disponible'=>(bool)($response['disponible']??false),'segmentos'=>count($info),'segmentos_info'=>$info,
             'estado'=>(string)($response['estado']??'TRAMO_PENDIENTE_VINCULACION'),'records'=>$response['records']??[]];
     }
-    /** Valida y recorta cuando el proveedor ignora Range; no acepta HTML. */
+    /** Compatibilidad con consumidores existentes; transporte común. */
     public static function respuesta(array $audio,string $range=''): array
     {
-        if($range!==''&&!preg_match('/^bytes=\d*-\d*$/D',$range))return ['status'=>416,'headers'=>[],'body'=>''];
-        $body=(string)($audio['body']??'');$type=strtolower(trim((string)($audio['content_type']??'')));
-        if(!preg_match('~^(audio/[a-z0-9.+-]+|application/octet-stream)(?:;[^\r\n]*)?$~D',$type))throw new RuntimeException('El archivo recibido no es audio.');
-        if(!$body)throw new RuntimeException('El audio todavía no está disponible.');
-        $headers=['Content-Type'=>$type,'Accept-Ranges'=>'bytes'];$status=200;
-        if($range!==''){
-            $provided=(string)($audio['headers']['content-range']??'');
-            if((int)($audio['status']??200)===206){
-                if(!preg_match('/^bytes (\d+)-(\d+)\/(\d+)$/D',$provided,$p)||(int)$p[2]<(int)$p[1]||(int)$p[3]<=(int)$p[2]||strlen($body)!==(int)$p[2]-(int)$p[1]+1)throw new RuntimeException('Respuesta de audio incompleta.');
-                $headers['Content-Range']=$provided;$status=206;
-            }else{
-                preg_match('/^bytes=(\d*)-(\d*)$/D',$range,$m);$size=strlen($body);
-                $start=$m[1]===''?max(0,$size-(int)$m[2]):(int)$m[1];$end=$m[1]===''||$m[2]===''?$size-1:min($size-1,(int)$m[2]);
-                if(($m[1]===''&&(int)$m[2]<=0)||$start>=$size||$end<$start)return ['status'=>416,'headers'=>['Content-Range'=>'bytes */'.$size],'body'=>''];
-                $body=substr($body,$start,$end-$start+1);$status=206;$headers['Content-Range']="bytes $start-$end/$size";
-            }
-        }
-        $headers['Content-Length']=(string)strlen($body);return ['status'=>$status,'headers'=>$headers,'body'=>$body];
+        require_once __DIR__.'/TelefoniaAudioRespuesta.php';
+        return TelefoniaAudioRespuesta::respuesta($audio,$range);
     }
 }

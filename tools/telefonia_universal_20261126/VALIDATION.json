@@ -239,5 +239,15 @@
     "lab_source_sha256": "ccef28d22cbb22f9aa82ec5fa424cc28341bd823c61f1ec9869d15a9c85dad41",
     "positive_binary_audio_validated": false,
     "production_changed": false
+  },
+  "continuation_shared_audio_transport": {
+    "base": "2e0dbaf3",
+    "synthetic_binary_range_assertions": 786,
+    "lab_scope_http_checks": 21,
+    "lab_dependency_policy_checks": 19,
+    "shared_response_consumers": 5,
+    "lab_source_sha256": "693f0e999914c1c3861d13189f3e7f2d16fff436f2d76951c598fa591349335b",
+    "real_provider_audio_or_browser_seek": false,
+    "production_changed": false
   }
 }

@@ -107,96 +107,15 @@ try {
     } // Fin del reproductor original de llamada individual.
 
     $audio = $service->descargarGrabacion((string)$recording['link'], $rangeHeader);
-    $body = (string)($audio['body'] ?? '');
-    if ($body === '') {
-        http_response_code(404);
-        exit('La grabación todavía no está disponible.');
-    }
-
-    $contentType = strtolower(trim((string)($audio['content_type'] ?? '')));
-    // Solo admitir audio: no devolver contenido HTML del proveedor como si
-    // fuera una grabación reproducible.
-    if (
-        $contentType !== '' &&
-        strpos($contentType, 'audio/') !== 0 &&
-        strpos($contentType, 'application/octet-stream') !== 0
-    ) {
-        throw new RuntimeException('Zadarma no devolvió un archivo de audio.');
-    }
-    $extensionArchivo = 'mp3';
-    if (strpos($contentType, 'wav') !== false) $extensionArchivo = 'wav';
-    if (strpos($contentType, 'ogg') !== false) $extensionArchivo = 'ogg';
-
-    $disposition = (int)($_GET['download'] ?? 0) === 1
-        ? 'attachment'
-        : 'inline';
-    header('Content-Type: ' . ($contentType !== '' ? $contentType : 'audio/mpeg'));
-    header('Accept-Ranges: bytes');
-    header(
-        'Content-Disposition: ' . $disposition .
-        '; filename="llamada-ventas-' . $pbxCallId . '.' . $extensionArchivo . '"'
-    );
+    require_once $root.'/app/services/TelefoniaAudioRespuesta.php';
+    $response=TelefoniaAudioRespuesta::respuesta($audio,$rangeHeader);
+    http_response_code($response['status']);
+    foreach($response['headers'] as $name=>$value)header($name.': '.$value);
+    $extensionArchivo=TelefoniaAudioRespuesta::extension($response['headers']['Content-Type']??'');
+    header('Content-Disposition: '.(($_GET['download']??'')==='1'?'attachment':'inline').'; filename="'.'llamada-ventas-'.$pbxCallId.'.'.$extensionArchivo.'"');
     header('Cache-Control: private, no-store');
     header('X-Content-Type-Options: nosniff');
-
-    $headersProveedor = is_array($audio['headers'] ?? null)
-        ? $audio['headers']
-        : [];
-    if (
-        $rangeHeader !== '' &&
-        (int)($audio['status'] ?? 200) === 206 &&
-        !empty($headersProveedor['content-range'])
-    ) {
-        http_response_code(206);
-        header('Content-Range: ' . $headersProveedor['content-range']);
-        header('Content-Length: ' . strlen($body));
-        echo $body;
-        exit;
-    }
-
-    // Si Zadarma ignoró Range, devolver igualmente la parte solicitada
-    // para que funcionen la barra de avance y la reproducción en navegador.
-    if ($rangeHeader !== '') {
-        $size = strlen($body);
-        preg_match('/^bytes=(\d*)-(\d*)$/', $rangeHeader, $matches);
-        $inicio = $matches[1] ?? '';
-        $fin = $matches[2] ?? '';
-        if ($size === 0 || ($inicio === '' && $fin === '')) {
-            http_response_code(416);
-            header('Content-Range: bytes */' . $size);
-            exit;
-        }
-
-        if ($inicio === '') {
-            $suffix = (int)$fin;
-            if ($suffix <= 0) {
-                http_response_code(416);
-                header('Content-Range: bytes */' . $size);
-                exit;
-            }
-            $start = max(0, $size - $suffix);
-            $end = $size - 1;
-        } else {
-            $start = (int)$inicio;
-            $end = $fin === '' ? $size - 1 : min((int)$fin, $size - 1);
-        }
-
-        if ($start >= $size || $end < $start) {
-            http_response_code(416);
-            header('Content-Range: bytes */' . $size);
-            exit;
-        }
-
-        $part = substr($body, $start, $end - $start + 1);
-        http_response_code(206);
-        header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);
-        header('Content-Length: ' . strlen($part));
-        echo $part;
-        exit;
-    }
-
-    header('Content-Length: ' . strlen($body));
-    echo $body;
+    echo $response['body'];
 } catch (Throwable $error) {
     if (Database::responderFalloTemporal($error, false)) exit;
     error_log('[telefonia_ventas_grabacion] ' . $error->getMessage());

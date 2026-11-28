@@ -56,45 +56,15 @@ try{
     $index=TelefoniaGrabacionSelector::indice(
         TelefoniaGrabacionSelector::referencias($result['records'],$result['segmentos_info']),$_GET);
     $audio=$provider->descargarGrabacion((string)$result['records'][$index]['link'],$range);
-    $body=(string)($audio['body']??'');
-    $type=strtolower(trim((string)($audio['content_type']??'')));
-    if($body===''||($type!==''&&!str_starts_with($type,'audio/')&&
-        $type!=='application/octet-stream')){http_response_code(502);exit;}
-    $mime=str_contains($type,'wav')?'audio/wav':
-        (str_contains($type,'ogg')?'audio/ogg':
-        (str_contains($type,'mp4')?'audio/mp4':'audio/mpeg'));
-    header('Content-Type: '.$mime);
-    header('Accept-Ranges: bytes');
-    if((string)($_GET['download']??'')==='1'){
-        $ext=$mime==='audio/wav'?'wav':($mime==='audio/ogg'?'ogg':
-            ($mime==='audio/mp4'?'m4a':'mp3'));
-        header('Content-Disposition: attachment; filename="transferencia-institucion-tramo-'
-            .($index+1).'.'.$ext.'"');
-    }else header('Content-Disposition: inline');
-    $size=strlen($body);
-    $code=(int)($audio['status']??200);
-    $headers=is_array($audio['headers']??null)?$audio['headers']:[];
-    if($range!==''&&$code===206&&preg_match('~^bytes \d+-\d+/\d+$~',
-            (string)($headers['content-range']??''))){
-        http_response_code(206);header('Content-Range: '.$headers['content-range']);
-    }elseif($range!==''){
-        // Un upstream sin Range se rebanará localmente; nunca devolver
-        // bytes incorrectos con Content-Range de una descarga completa.
-        preg_match('/^bytes=(\d*)-(\d*)$/',$range,$m);
-        $from=$m[1]??'';$to=$m[2]??'';
-        if(!$size||($from===''&&$to==='')){http_response_code(416);exit;}
-        if($from===''){
-            if((int)$to<=0){http_response_code(416);exit;}
-            $start=max(0,$size-(int)$to);$end=$size-1;
-        }else{
-            $start=(int)$from;$end=$to===''?$size-1:min((int)$to,$size-1);
-        }
-        if($start>=$size||$end<$start){http_response_code(416);exit;}
-        $body=substr($body,$start,$end-$start+1);
-        http_response_code(206);header('Content-Range: bytes '.$start.'-'.$end.'/'.$size);
-    }
-    header('Content-Length: '.strlen($body));
-    echo $body;
+    require_once $root.'/app/services/TelefoniaAudioRespuesta.php';
+    $response=TelefoniaAudioRespuesta::respuesta($audio,$range);
+    http_response_code($response['status']);
+    foreach($response['headers'] as $name=>$value)header($name.': '.$value);
+    $extensionArchivo=TelefoniaAudioRespuesta::extension($response['headers']['Content-Type']??'');
+    header('Content-Disposition: '.(($_GET['download']??'')==='1'?'attachment':'inline').'; filename="'.'transferencia-institucion-tramo-'.($index+1).'.'.$extensionArchivo.'"');
+    header('Cache-Control: private, no-store');
+    header('X-Content-Type-Options: nosniff');
+    echo $response['body'];
 }catch(DomainException $e){
     http_response_code(in_array($e->getCode(),[404,409],true)?$e->getCode():403);
     header('Content-Type: application/json; charset=utf-8');

@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el decimoquinto checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el decimosexto checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -756,4 +756,29 @@ No se verificó reproducción binaria positiva ni HTTP completo de Supervisión;
 no son pruebas universales. El getter global de grabacion_interaccion.php y
 el transporte Range compartido todavía requieren corrección. Los otros
 pendientes del checkpoint13,1,000 universales,8h reales y publicador continúan.
+Producción intacta.
+
+
+## Decimosexto checkpoint — transporte binario compartido
+
+Base:2e0dbaf3. TelefoniaAudioRespuesta reemplaza cinco implementaciones de
+respuesta: Supervisión (adaptador compatible), Ventas, Recepción, transferidas
+PBX e instituciones. Sólo actúa DESPUÉS de la autorización y selección de cada
+endpoint; no consulta SQL, no determina propiedad ni cambia el teléfono.
+Conserva bytes binarios y extensiones de descarga; si el proveedor ignora Range,
+recorta localmente. Si devuelve206, valida total, longitud Y correspondencia
+exacta con el rango pedido, incluyendo sufijo/abierto. Rechaza MIME ausente, HTML,
+fallos HTTP,206 no solicitado, truncamientos y segmentos de otra posición.
+No convierte respuestas de error en grabaciones ni añade sondeos.
+
+786 aserciones con bytes sintéticos: todos los rangos cerrados del archivo de
+prueba comparados entre fallback200 y proveedor206, abiertos/sufijos, bytes NUL,
+rangos imposibles, truncados y respuesta ajena.19 checks de dependencias/roles
+y21 HTTP nativos de alcance de audio pasaron con proveedor real bloqueado.
+Sintaxis de los PHP modificados correcta. Fuente del laboratorio:
+693f0e999914c1c3861d13189f3e7f2d16fff436f2d76951c598fa591349335b.
+Reproducir: tests/audio_response.php, integration/supervision_audio_dependencies.php
+y lab/audio_scope.cjs. No equivale a audio real ni seek en navegador; siguen
+getter global de grabacion_interaccion y endpoints CDR/interno por revisar,
+comandos comerciales diferidos, aceptación universal1,000/8h y publicador.
 Producción intacta.
