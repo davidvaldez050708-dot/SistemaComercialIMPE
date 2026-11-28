@@ -16,6 +16,7 @@ final class TelefoniaInternaGrabacionService
 
     public function asegurarEstructura(): void
     {
+        if(PHP_SAPI!=='cli')throw new LogicException('La estructura de audio requiere preparación explícita por CLI.');
         $this->db->query("CREATE TABLE IF NOT EXISTS telefonia_webrtc_grabaciones_internas (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             usuario_id INT NOT NULL,
@@ -82,7 +83,6 @@ final class TelefoniaInternaGrabacionService
             !preg_match('/^sdk-[a-z0-9-]{12,94}$/D', $sessionId)) {
             throw new DomainException('Sesión telefónica inválida.');
         }
-        $this->asegurarEstructura();
         if ($this->obtener($usuarioId, $sessionId)) {
             return true;
         }

@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el decimoséptimo checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el decimoctavo checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -820,3 +820,27 @@ Producción intacta. Pendientes: endpoints CDR/interno aún tienen transporte
 duplicado; la proyección de duración del historial institucional sigue usando
 interpretación anterior y requiere reductor común. Entrega comercial diferida,
 aceptación1,000 universales/8h y publicador NO completos.
+
+
+## Decimoctavo checkpoint — audio interno sin DDL durante la jornada
+
+Base:e16673d1. Se retiran asegurarEstructura de lectura del historial, reproducción
+y conciliación interna. El método de instalación existente queda restringido a
+CLI; el esquema idéntico se entrega también en schema_internal_audio.sql para
+preparación explícita, NUNCA automática en producción. El CHECK debe exigir
+la tabla y sus vínculos antes de instalar; si falta, no prometer audio listo.
+El endpoint interno conserva la unión exacta sesión/titular/extensiones, ended,
+INTERNA y sin expediente/interacción, y usa TelefoniaAudioRespuesta para Range
+y MIME. No cambia asociación de llamadas ni permisos.
+
+5 casos nativos pasaron con cuenta DML-only: lectura exacta dentro de READ ONLY,
+rechazo de otro titular, catálogo sin DDL, conciliación de vínculo existente sin
+DDL/proveedor y rechazo al vincular la sesión a institución. Se amplió el runner
+a18 scripts y todos pasaron, incluidos recibos, embudos, devolución y transferencias.
+Fuente del fixture:0585cc38352a655f97c1d076b42464f9c4c40495cd496b4ca283f87389eda25e.
+No se probó reproducción binaria positiva ni búsqueda interna real en proveedor.
+La conciliación interna anterior aún busca un CDR único con extensiones/ventana;
+no se sustituyó en este bloque por identidad SDK/PBX fuerte. Revisar esa política
+antes de declarar motor universal terminado. CDR Ventas aún conserva transporte
+duplicado. Persisten entrega diferida,1,000 universales,8h reales y publicador.
+Producción intacta; la única creación de tabla fue explícita en el laboratorio.

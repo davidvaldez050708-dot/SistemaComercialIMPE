@@ -47,7 +47,6 @@ if ($range !== '' && !preg_match('/^bytes=\d*-\d*$/D', $range)) {
 try {
     $db = (new Database())->connect();
     $vinculos = new TelefoniaInternaGrabacionService($db);
-    $vinculos->asegurarEstructura();
     $grabacion = $vinculos->obtener($usuarioId, $sessionId);
     if (!$grabacion) {
         http_response_code(404);
@@ -60,45 +59,13 @@ try {
         exit('Zadarma aún no tiene disponible esta grabación.');
     }
     $audio = $servicio->descargarGrabacion((string)$recurso['link'], $range);
-    $body = (string)($audio['body'] ?? '');
-    $mime = strtolower(trim((string)($audio['content_type'] ?? '')));
-    if ($body === '' ||
-        preg_match('~(?:text/html|application/json|text/plain)~i', $mime)) {
-        throw new RuntimeException('El proveedor no entregó un archivo de audio válido.');
-    }
-    // No servir HTML arbitrario bajo un MIME no confirmado.
-    $mimeSeguro = 'audio/mpeg';
-    if (str_contains($mime, 'wav')) {
-        $mimeSeguro = 'audio/wav';
-    } elseif (str_contains($mime, 'ogg')) {
-        $mimeSeguro = 'audio/ogg';
-    } elseif (str_contains($mime, 'mp4') || str_contains($mime, 'm4a')) {
-        $mimeSeguro = 'audio/mp4';
-    } elseif ($mime !== '' && !str_contains($mime, 'audio/') &&
-        $mime !== 'application/octet-stream') {
-        throw new RuntimeException('Formato de grabación no admitido.');
-    }
-    header('Content-Type: ' . $mimeSeguro);
-    header('Accept-Ranges: bytes');
-    $download = (int)($_GET['download'] ?? 0) === 1;
-    header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') .
-        '; filename="llamada-interna.' .
-        ($mimeSeguro === 'audio/wav' ? 'wav' :
-         ($mimeSeguro === 'audio/ogg' ? 'ogg' :
-          ($mimeSeguro === 'audio/mp4' ? 'm4a' : 'mp3'))) . '"');
-    if ($range !== '' && (int)($audio['status'] ?? 200) === 206 &&
-        !empty($audio['headers']['content-range'])) {
-        $contentRange = (string)$audio['headers']['content-range'];
-        if (!preg_match('~^bytes \d+-\d+/\d+$~', $contentRange)) {
-            throw new RuntimeException('Rango de audio inválido.');
-        }
-        header('Content-Range: ' . $contentRange);
-        http_response_code(206);
-    } else {
-        http_response_code(200);
-    }
-    header('Content-Length: ' . strlen($body));
-    echo $body;
+    require_once $root.'/app/services/TelefoniaAudioRespuesta.php';
+    $response=TelefoniaAudioRespuesta::respuesta($audio,$range);
+    http_response_code($response['status']);
+    foreach($response['headers'] as $name=>$value)header($name.': '.$value);
+    $extension=TelefoniaAudioRespuesta::extension($response['headers']['Content-Type']??'');
+    header('Content-Disposition: '.(($_GET['download']??'')==='1'?'attachment':'inline').'; filename="llamada-interna.'.$extension.'"');
+    echo $response['body'];
 } catch (Throwable $e) {
     if (Database::responderFalloTemporal($e, false)) exit;
     error_log('[grabacion_interna_analista] ' . get_class($e) . ': ' . $e->getCode());

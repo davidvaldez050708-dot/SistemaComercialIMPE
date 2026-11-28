@@ -310,7 +310,6 @@ class TelefoniaEntrantesAnalistaService
         // dispone del reproductor hasta completar su desvinculación segura.
         try {
             $grabacionesInternas = new TelefoniaInternaGrabacionService($this->db);
-            $grabacionesInternas->asegurarEstructura();
             $conAudio = $grabacionesInternas->porUsuario($usuarioId);
         } catch (Throwable $e) {
             error_log('[telefonia_grabaciones_internas] ' . $e->getMessage());

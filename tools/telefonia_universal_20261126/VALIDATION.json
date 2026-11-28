@@ -264,5 +264,15 @@
     "lab_source_sha256": "b7e1fa115e55133e49413eb5e9fab797315dd5820d149abec04cb076ba0bb47b",
     "real_binary_playback": false,
     "production_changed": false
+  },
+  "continuation_internal_audio_without_runtime_ddl": {
+    "base": "e16673d1",
+    "native_internal_audio_checks": 5,
+    "native_regression_scripts_passed": 18,
+    "runtime_ddl_calls_removed_from_history_playback_sync": true,
+    "schema_prepared_only_in_synthetic_lab": true,
+    "lab_source_sha256": "0585cc38352a655f97c1d076b42464f9c4c40495cd496b4ca283f87389eda25e",
+    "real_provider_audio_validated": false,
+    "production_changed": false
   }
 }

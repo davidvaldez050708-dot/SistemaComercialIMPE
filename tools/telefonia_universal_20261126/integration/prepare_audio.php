@@ -6,4 +6,5 @@ if($c['host']!=='127.0.0.1'||$c['port']!==3308||$c['database']!=='impe_telefonia
 mysqli_report(MYSQLI_REPORT_ERROR|MYSQLI_REPORT_STRICT);
 $db=new mysqli($c['host'],$c['root_user'],$c['root_password'],$c['database'],$c['port']);
 $db->query(file_get_contents(dirname(__DIR__).'/schema_audio_evidencias.sql'));
+$db->query(file_get_contents(dirname(__DIR__).'/schema_internal_audio.sql'));
 echo "Synthetic audio evidence table prepared explicitly. No application data or production migration.\n";
