@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el decimotercer checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el decimocuarto checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -718,3 +718,21 @@ CDR nuevo en este bloque. La interpretación de fecha de asignación del histori
 de Recepción se conserva, no se corrigió aquí un supuesto desfase de esa fecha.
 Siguen entrega comercial diferida, integración/aceptación universal1,000 y8h,
 Supervisión selectiva y publicador. Producción intacta.
+
+
+## Decimocuarto checkpoint — dependencias instaladas de Supervisión
+
+Base: b7e7aac8. Se recuperan SupervisionLlamadasAudioService.php y
+SupervisionVentasAudioCdrPolicy.php con los bytes originales de Git. El controlador
+y repositorio instalados ya las requieren, pero faltaban en la copia aislada.
+Se contrastaron ambas mediante lectura del conector Hostinger: contenido idéntico
+al añadir el salto final que omite la respuesta, y tamaño declarado idéntico.
+DEPENDENCIES.json registra origen, hashes locales y limitación: el hash bruto
+productivo todavía requiere preflight. No se fusionó Supervisión de personal.
+
+19 comprobaciones del laboratorio pasaron: carga, denegación de audio de
+supervisión a los tres roles personales, política CDR existente y respuestas
+básicas de audio/Range con bytes sintéticos. Estas clases se recuperan SIN
+modificar su política o transporte. No prueba proveedor, reproducción real,
+Range avanzado ni aceptación universal. Producción intacta. Los pendientes del
+checkpoint13 continúan, incluida selección estable de audio en Supervisión.

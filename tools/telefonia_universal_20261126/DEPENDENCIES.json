@@ -8,5 +8,21 @@
     "source_commit": "cb987672df5d1d05af7e58afc9cf0ed8ce018e32",
     "sha256": "1e8bd874aa192108b537d0104f33a6f520b391ae5d6c72dee12c8f0add5faddd",
     "reason": "Existing native V3 services require this committed dependency; absent from partial personalized baseline. Restored unchanged, no policy rewrite."
+  },
+  "app/services/SupervisionLlamadasAudioService.php": {
+    "source_commit": "b97b7c987cf0630ec25c508649952e506ca2f313",
+    "sha256": "8d02874f53c160cc3b5dbcbebdc99d80db968a344dcb5bdd69130a8b4e678a7b",
+    "hostinger_content_and_size_match": true,
+    "hostinger_terminal_newline_not_returned": true,
+    "raw_server_hash_still_requires_preflight": true,
+    "reason": "Required by installed call-supervision controller/repository; absent from partial baseline. Original Git content equals current Hostinger file content plus final newline, sizes equal. Restored unchanged; no staff-supervision branch merge."
+  },
+  "app/services/SupervisionVentasAudioCdrPolicy.php": {
+    "source_commit": "b97b7c987cf0630ec25c508649952e506ca2f313",
+    "sha256": "47d500cc6721259648cc69f574967af32c13a0835e86ba78993cf59e56c16cd9",
+    "hostinger_content_and_size_match": true,
+    "hostinger_terminal_newline_not_returned": true,
+    "raw_server_hash_still_requires_preflight": true,
+    "reason": "Required by installed call-supervision controller/repository; absent from partial baseline. Original Git content equals current Hostinger file content plus final newline, sizes equal. Restored unchanged; no staff-supervision branch merge."
   }
 }

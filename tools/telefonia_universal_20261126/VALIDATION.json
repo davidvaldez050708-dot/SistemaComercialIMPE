@@ -220,5 +220,13 @@
     "lab_source_sha256": "1f50b8e6ebb22b0a4711fafb4d02f1d0fe298c5febbdc0a7e6e444f080d0f4d2",
     "full_call_acceptance": false,
     "production_changed": false
+  },
+  "continuation_installed_supervision_dependencies": {
+    "base": "b7e7aac8",
+    "checks_passed": 19,
+    "installed_content_and_declared_size_compared": true,
+    "raw_server_hash_requires_preflight": true,
+    "recovered_policy_unchanged": true,
+    "production_changed": false
   }
 }
