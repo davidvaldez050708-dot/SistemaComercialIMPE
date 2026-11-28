@@ -1,3 +1,7 @@
+> Relevo actualizado: leer el décimo checkpoint al final, VALIDATION.json y
+> OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
+> universal y las ocho horas reales siguen pendientes. Producción intacta.
+
 # Relevo de telefonía universal — 27/11/2026
 
 ## Estado de esta entrega
@@ -504,3 +508,63 @@ run_sql.py incluyen la preparación explícita de audio. La descarga binaria,
 Range, fallos de audio y grabaciones reales siguen pendientes. Documentación
 primaria contrastada:https://zadarma.com/en/support/api/ (zona, skip/limit y tipos).
 No se modificó producción. Continúan los demás pendientes del checkpoint8.
+
+
+## Décimo checkpoint — mismo reductor en salientes y validación del Analista
+
+Base:`aba2c092`. El endpoint zadarma_estado_llamada.php ya usa
+TelefoniaPbxSegmentosService::hechos, igual que Ventas, atención entrante y
+transferencias. Se retira su interpretación paralela de ANSWER/END/RECORD y el
+cálculo de duración por diferencia de relojes, que convertía cero/desconocido en
+conversación y podía tomar respuesta/audio de otra extensión del mismo PBX.
+El DTO conserva sus campos y añade duration_known y segmentos_grabacion;
+duration desconocida es NULL. La grabación única sólo existe si es inequívoca.
+El fallback CDR exacto conserva las comprobaciones de propiedad del catálogo.
+
+TelefoniaResultadoAnalistaService también usa el reductor común para sus reglas
+comerciales. Sigue exigiendo expediente/usuario/extensión y teléfono autorizado,
+resultado humano y confirmaciones; una conexión no acredita una efectiva sola.
+Vincular metadata acepta la proyección de cierre del mismo reductor, sin crear
+un webhook artificial ni copiar la duración de otro participante.
+
+NOTIFY_OUT_END sin internal se admite sólo con PBX y call_start exactos, un solo
+OUT_START propio y ningún otro participante/arista de transferencia en los
+eventos de control del grupo. No se usa teléfono ni proximidad horaria para
+inferir ese cierre. Se conserva duración desconocida y no se atribuye su audio
+anónimo. Los cierres entrantes anónimos o transferencias ambiguas siguen
+pendientes de prueba inequívoca/CDR; NO finalizan todos los tramos. Los avisos
+RECORD afectan propiedad de audio, sin inventar participantes de una llamada.
+
+Validación:19 casos puros del reductor; HTTP43 Seguimiento con cierre sin
+extensión,44 equivalente avanzado y35 con ANSWER/END/audio de otra extensión.
+La duración anónima900 no sustituye NULL; sólo END propio posterior de1s confirma
+las evidencias y suma una efectiva nativa. Regresiones SQL:6 entrantes,18 Ventas,
+10 Seguimiento,8 Informativa,13 devolución.23/23 suites JS y15 ciclos salientes
+HTTP adicionales de los tres roles. Sin proveedor ni grabaciones reales.
+
+### Carga saliente de1,000 ciclos concluida (versión anterior congelada)
+
+OUTGOING_1000.json contiene el resumen verificable del ensayo sobre b0b15622,
+fuentes05b8ab2d0351da2561504b456bbbf1b9472d6edb7d1234d6462986f81605218c:
+334 Ventas,333 Vinculación,333 Recepción,682.7274319 segundos monotónicos,
+144 acuses SDK perdidos y201 acuses comerciales perdidos recuperados. Cada ciclo
+pasó host/journal→HTTP/auth/CSRF→SQL→borrador→servicio comercial y verificó un
+solo registro nativo. Se verificaron los548 archivos congelados al terminar.
+No atribuir este ensayo al código posterior: los cambios CDR/cierre tienen sus
+pruebas específicas y deben incluirse en la aceptación final. El harness ahora
+valida fuentes al inicio/fin y guarda su hash en el reporte automáticamente.
+NO son1,000 llamadas universales con transferencias/audio ni ocho horas.
+
+Después del ensayo se detectaron detenidos MySQL y los tres workers de la sesión
+local. No se atribuye causa al producto ni se afirma continuidad: lab/resume.py
+reanuda EXCLUSIVAMENTE la DB sintética existente, sin inicializarla/migrarla,
+y arranca sus workers. Las pruebas nuevas pasaron tras recuperar esos servicios.
+La prueba de ocho horas REALES todavía no comenzó.
+
+**Siguiente bloque:** entrega diferida de comandos comerciales ya aprobados ante
+PBX tardía, recuperación técnica desde servidor sin cola local, transferencias y
+entrantes completos por HTTP/audio/rangos/fallos, retirar bloqueos legacy de
+forma selectiva, regresión visual3roles, Supervisión selectiva, aceptación
+universal1,000 y8h, contraste Hostinger y publicador CHECK/respaldo/ROLLBACK.
+Nada de este trabajo se publicó en producción. No hay publicador universal
+terminado; no reutilizar paquetes viejos para instalar esta intervención.

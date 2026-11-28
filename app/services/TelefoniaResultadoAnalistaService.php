@@ -62,34 +62,31 @@ final class TelefoniaResultadoAnalistaService
     /** Sólo eventos persistidos del proveedor; nunca status/duración enviados por el navegador. */
     public static function reglasEventos(array $eventos, string $ref, string $extension, array $telefonos): array
     {
-        $inicio = null; $fin = null; $respuesta = false;
+        require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
+        $inicio = null;$inicios=0;$raw=[];
         foreach ($eventos as $evento) {
             if ((string)($evento['pbx_call_id'] ?? '') !== $ref) continue;
-            $ext = trim((string)($evento['internal'] ?? ''));
-            if ($ext !== '' && $ext !== $extension) continue;
-            switch ($evento['event'] ?? '') {
-                case 'NOTIFY_OUT_START': if ($ext === $extension) $inicio = $evento; break;
-                case 'NOTIFY_OUT_END': $fin = $evento; break;
-                case 'NOTIFY_ANSWER': if ($ext === $extension) $respuesta = true; break;
-            }
+            $evento['evento']=$evento['event']??$evento['evento']??'';$raw[]=$evento;
+            if($evento['evento']==='NOTIFY_OUT_START' && trim((string)($evento['internal']??''))===$extension){$inicio=$evento;++$inicios;}
         }
-        if (!$inicio || !$fin) throw new DomainException('La centralita todavía no confirma el cierre de esta llamada. Espera y vuelve a comprobar.');
+        $facts=TelefoniaPbxSegmentosService::hechos($raw,$extension,'',max(0,(int)($inicio['id']??0)-1));
+        if (!$inicio || $inicios!==1 || !$facts['finalizada']) throw new DomainException('La centralita todavía no confirma el cierre inequívoco de esta llamada. Espera y vuelve a comprobar.');
         $destino = self::telefono((string)($inicio['destination'] ?? ''));
         $coincide = false;
         foreach ($telefonos as $telefono) {
             if ($destino !== '' && $destino === self::telefono((string)$telefono)) $coincide = true;
         }
         if (!$coincide) throw new DomainException('La llamada no corresponde al teléfono de este seguimiento.');
-        $estado = strtolower(trim((string)($fin['disposition'] ?? '')));
+        $estado = strtolower(trim((string)$facts['disposition']));
         $estado = str_replace(['_', '-'], ' ', $estado);
-        $contestada = in_array($estado, ['answered','answer','connected','success'], true);
+        $contestada = $facts['conectada'];
         if ($estado === 'busy') {
             $label = 'Línea ocupada'; $opciones = ['OCUPADO'];
         } elseif (in_array($estado, ['no answer','noanswer'], true)) {
             $label = 'Sin respuesta'; $opciones = ['SIN_RESPUESTA'];
         } elseif (in_array($estado, ['cancel','canceled','cancelled'], true)) {
             $label = 'Llamada cancelada'; $opciones = ['OTRO'];
-        } elseif ($contestada || ($estado === '' && $respuesta)) {
+        } elseif ($contestada) {
             $contestada = true;
             // ANSWERED incluye buzón/locuciones: la persona aún clasifica lo que escuchó.
             $label = 'Conexión confirmada';

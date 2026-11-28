@@ -5,7 +5,8 @@ const root=process.argv[process.argv.indexOf('--lab-root')+1];if(!process.argv.i
 const c=JSON.parse(fs.readFileSync(path.join(root,'credentials.json'),'utf8')),lab=JSON.parse(fs.readFileSync(path.join(root,'lab.json'),'utf8'));
 if(!lab.synthetic||c.host!=='127.0.0.1'||c.port!==3308||c.database!=='impe_telefonia_lab')throw Error('Synthetic loopback only');
 (async()=>{
- const informative=process.argv.includes('--informative'),pendingDuration=process.argv.includes('--pending-duration'),zeroDuration=process.argv.includes('--zero-duration'),adapter=informative?'INFORMATIVA':'SEGUIMIENTO';
+ const anonymousEnd=process.argv.includes('--anonymous-end'),foreignLeg=process.argv.includes('--foreign-leg');
+ const informative=process.argv.includes('--informative'),pendingDuration=process.argv.includes('--pending-duration')||anonymousEnd,zeroDuration=process.argv.includes('--zero-duration'),adapter=informative?'INFORMATIVA':'SEGUIMIENTO';
  const action=informative?'registrarInformativa':'registrarInteraccionTrabajo';
  const origin='http://127.0.0.1:33181',endpoint='/index.php?controller='+(informative?'seguimientoInteraccion':'seguimientoVinculacion')+'&action='+action;
  let cookie='',drop=false,resultPosts=0,checks=0;
@@ -14,7 +15,9 @@ if(!lab.synthetic||c.host!=='127.0.0.1'||c.port!==3308||c.database!=='impe_telef
   if(url.searchParams.get('action')===action&&options.method==='POST'){resultPosts++;if(drop){headers.set('X-Fixture-Drop-Reply','1');drop=false;}}
   return fetch(url,{...options,headers,signal:AbortSignal.timeout(15000)});};
  const login=await request('/fixture/login?role=ANALISTA',{headers:{'X-Fixture-Key':c.fixture_key}}),account=await login.json();assert.equal(account.user,42);checks++;cookie=login.headers.get('set-cookie').split(';')[0];
- const event=async(pbx,type,extra={})=>{const r=await request('/fixture/event',{method:'POST',headers:{'X-Fixture-Key':c.fixture_key,'Content-Type':'application/json'},body:JSON.stringify({event:type,pbx_call_id:pbx,internal:'102',destination:'5550000101',caller_id:'5550000101',...(type==='NOTIFY_OUT_END'?{disposition:'answered',duration:1}:{}),...extra})});assert.equal((await r.json()).ok,true);checks++;};
+ const starts=new Map();
+ const event=async(pbx,type,extra={})=>{if(type==='NOTIFY_OUT_START')starts.set(pbx,new Date().toLocaleString('sv-SE',{timeZone:'America/Mexico_City'}));
+  const r=await request('/fixture/event',{method:'POST',headers:{'X-Fixture-Key':c.fixture_key,'Content-Type':'application/json'},body:JSON.stringify({event:type,pbx_call_id:pbx,call_start:starts.get(pbx),internal:'102',destination:'5550000101',caller_id:'5550000101',...(type==='NOTIFY_OUT_END'?{disposition:'answered',duration:1}:{}),...extra})});assert.equal((await r.json()).ok,true);checks++;};
  const creation='out_lab_followup_create_'+crypto.randomBytes(6).toString('hex');
  for(const type of ['NOTIFY_OUT_START','NOTIFY_ANSWER','NOTIFY_OUT_END'])await event(creation,type);
  const setup=await request('/index.php?controller=seguimientoVinculacion&action=registrarLlamadaEntrante',{method:'POST',body:new URLSearchParams({csrf_token:account.csrf,pbx_call_id:creation,decision:'nueva',nombre_entidad:'Institución HTTP '+crypto.randomBytes(6).toString('hex'),tipo_entidad:'INSTITUCION',estado_id:'1',resultado:'CONTACTO_CORRECTO',persona_atendio:'Persona sintética',telefono_capturado:'5550000101',correo_capturado:'fixture@example.invalid'})});
@@ -32,9 +35,19 @@ if(!lab.synthetic||c.host!=='127.0.0.1'||c.port!==3308||c.database!=='impe_telef
  const session=f.box.state.callToken,physical=f.window.zdrmWebPhone.webCallSession;
  await event(reference,'NOTIFY_OUT_START');physical.established=true;physical.emit('confirmed');f.pulse();
  await f.window.IMPE_PHONE_HTTP.flushSessions('/prueba_telefonia/api/sesion_local.php');
+ if(foreignLeg){
+  await event(reference,'NOTIFY_ANSWER',{internal:'100'});
+  await event(reference,'NOTIFY_OUT_END',{internal:'100',duration:900,is_recorded:'1',call_id_with_rec:'17490000000000001234567891'});
+  const r=await request('/prueba_telefonia/api/zadarma_estado_llamada.php?'+new URLSearchParams({session_id:session,destination:'5550000101',after_id:'0'})),d=await r.json();
+  assert.equal(r.status,200);assert.equal(d.call.status,'ringing');assert.equal(d.call.duration,null);assert.equal(d.call.call_id_with_rec,'');checks+=4;
+ }
  await event(reference,'NOTIFY_ANSWER');await new Promise(resolve=>setTimeout(resolve,1100));
  physical.ended=true;physical.emit('ended');f.pulse();await f.window.IMPE_PHONE_HTTP.flushSessions('/prueba_telefonia/api/sesion_local.php');
- await event(reference,'NOTIFY_OUT_END',pendingDuration?{duration:undefined}:zeroDuration?{duration:0}:{});
+ await event(reference,'NOTIFY_OUT_END',anonymousEnd?{internal:'',duration:900}:pendingDuration?{duration:undefined}:zeroDuration?{duration:0}:{});
+ if(anonymousEnd){
+  const r=await request('/prueba_telefonia/api/zadarma_estado_llamada.php?'+new URLSearchParams({session_id:session,destination:'5550000101',after_id:'0'})),d=await r.json();
+  assert.equal(r.status,200);assert.equal(d.call.status,'completed');assert.equal(d.call.duration,null);assert.equal(d.call.duration_known,false);checks+=4;
+ }
  const date=new Date(Date.now()-60000).toLocaleString('sv-SE',{timeZone:'America/Mexico_City'}).slice(0,16).replace(' ','T');
  const values={csrf_token:account.csrf,seguimiento_id:String(sid),llamada_pbx_id:reference,canal:'LLAMADA',origen_llamada:'ZADARMA',resultado:'BUZON_VOZ',fecha_inicio:date,observacion:'Resultado sintético de Seguimiento'};
  if(pendingDuration||zeroDuration)Object.assign(values,{resultado:'CONTACTO_CORRECTO',persona_atendio:'Persona sintética',verificacion_telefono_confirmado:'1',verificacion_correo_confirmado:'1'});
@@ -76,6 +89,6 @@ if(!lab.synthetic||c.host!=='127.0.0.1'||c.port!==3308||c.database!=='impe_telef
   await request('/prueba_telefonia/api/vincular_interaccion_zadarma.php',{method:'POST',body:new URLSearchParams(linkBody)});
   const repeated=await read();assert.equal(repeated.efectivas_del_dia,afterLate.efectivas_del_dia);assert.equal(repeated.interacciones_vinculacion,2);checks+=2;
  }
- fs.writeFileSync(path.join(root,(informative?'informative':'followup')+(pendingDuration?'-pending-duration':zeroDuration?'-zero-duration':'')+'-http-validation.json'),JSON.stringify({synthetic:true,checks,native_http:true,lost_ack_recovered:true,unknown_duration:pendingDuration,zero_duration:zeroDuration,complete_call_acceptance:false,production_changed:false},null,2));
+ fs.writeFileSync(path.join(root,(informative?'informative':'followup')+(anonymousEnd?'-anonymous-end':foreignLeg?'-foreign-leg':pendingDuration?'-pending-duration':zeroDuration?'-zero-duration':'')+'-http-validation.json'),JSON.stringify({synthetic:true,checks,native_http:true,lost_ack_recovered:true,unknown_duration:pendingDuration,anonymous_end:anonymousEnd,foreign_leg:foreignLeg,zero_duration:zeroDuration,complete_call_acceptance:false,production_changed:false},null,2));
  console.log(`PASS ${checks} native ${adapter} HTTP receipt checks: fresh CSRF, existing institutional pipeline, lost ACK, exact replay, immutable request and no duplicate interaction. Not complete-call acceptance.`);
 })().catch(error=>{console.error(error);process.exitCode=1;});

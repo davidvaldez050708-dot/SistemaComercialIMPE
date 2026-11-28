@@ -8,7 +8,24 @@ if(!root||!args.includes('--lab-root')||!Number.isInteger(requested)||requested<
 const credentials=JSON.parse(fs.readFileSync(path.join(root,'credentials.json'),'utf8'));
 const lab=JSON.parse(fs.readFileSync(path.join(root,'lab.json'),'utf8'));
 if(!lab.synthetic||credentials.host!=='127.0.0.1'||credentials.port!==3308||credentials.database!=='impe_telefonia_lab')throw Error('Private synthetic fixture only');
-const source=fs.readFileSync(path.join(__dirname,'../../../public/javascript/telefonia_atencion.js'),'utf8');
+const frozenManifest=fs.readFileSync(path.join(root,'sources.json'),'utf8'),frozen=JSON.parse(frozenManifest);
+const verifySources=()=>{
+ if(fs.readFileSync(path.join(root,'sources.json'),'utf8')!==frozenManifest)throw Error('Fixture source manifest changed during acceptance');
+ for(const [name,expected] of Object.entries(frozen.files)){
+  const resolved=path.resolve(root,'site',name),base=path.resolve(root,'site')+path.sep;
+  if(!resolved.startsWith(base)||fs.lstatSync(resolved).isSymbolicLink()||crypto.createHash('sha256').update(fs.readFileSync(resolved)).digest('hex')!==expected)
+   throw Error('Frozen runtime changed; acceptance is invalid');
+ }
+ // The imported host fixture executes actual repository JS in a VM. It must
+ // match the frozen HTTP runtime too, rather than silently testing two versions.
+ for(const name of ['telefonia_host.js','telefonia_http.js','telefonia_atencion.js']){
+  const target='public/javascript/'+name;
+  if(crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname,'../../../',target))).digest('hex')!==frozen.files[target])
+   throw Error('VM host code differs from the frozen HTTP runtime');
+ }
+};
+verifySources();
+const source=fs.readFileSync(path.join(root,'site/public/javascript/telefonia_atencion.js'),'utf8');
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const roles=[['VENTAS',41,'101',33180],['ANALISTA',42,'102',33181],['RECEPCION',43,'100',33182]];
 const run=crypto.randomBytes(8).toString('hex'),results=[],started=process.hrtime.bigint();
@@ -97,7 +114,9 @@ async function actor(config,count){
 }
 (async()=>{
  const workers=await Promise.all(roles.map((role,i)=>actor(role,Math.floor(requested/3)+(i<requested%3?1:0))));
- const report={synthetic:true,run,complete_http_cycles:results.length,requested,elapsed_monotonic_seconds:Number(process.hrtime.bigint()-started)/1e9,workers,results,
+ verifySources();
+ const report={synthetic:true,run,source_sha256:frozen.sha256,source_files_verified:Object.keys(frozen.files).length,
+  complete_http_cycles:results.length,requested,elapsed_monotonic_seconds:Number(process.hrtime.bigint()-started)/1e9,workers,results,
   scope:'Actual host SDK observations, HTTP auth/CSRF, PBX persistence, drafts and native atomic results. Synthetic SDK/provider. Transfers/audio/concurrency faults require separate acceptance scenarios.',
   universal_acceptance_completed:false,eight_hours:false};
  fs.writeFileSync(path.join(root,'http-acceptance-'+run+'.json'),JSON.stringify(report,null,2));

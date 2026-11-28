@@ -3,7 +3,7 @@
   "status": "autonomous_continuation_in_progress",
   "installed_baseline": "1d8f7da23907fabce398c13d924ef5996d839473",
   "portable_unit_suites": {
-    "passed": 21,
+    "passed": 23,
     "failed": 0,
     "runner": "run_unit.cjs"
   },
@@ -146,6 +146,31 @@
     "complete_catalog_required": true,
     "real_binary_audio_validated": false,
     "production_schema_confirmed": false,
+    "full_call_acceptance": false,
+    "production_changed": false
+  },
+  "outgoing_1000": {
+    "completed": true,
+    "evidence": "OUTGOING_1000.json",
+    "tested_commit": "b0b15622",
+    "full_universal_acceptance": false
+  },
+  "continuation_common_outgoing_reducer": {
+    "base": "aba2c092",
+    "pure_reducer_checks": 19,
+    "anonymous_followup_http_checks": 43,
+    "anonymous_informative_http_checks": 44,
+    "foreign_leg_http_checks": 35,
+    "native_sql_regressions": {
+      "incoming": 6,
+      "sales": 18,
+      "followup": 10,
+      "informative": 8,
+      "callback": 13
+    },
+    "additional_outgoing_http_cycles": 15,
+    "unit_suites_passed": 23,
+    "lab_source_sha256": "f015412efca1e0af23883cb130cc3d9b0d4eb954927f794d7fa3e50510711f72",
     "full_call_acceptance": false,
     "production_changed": false
   }

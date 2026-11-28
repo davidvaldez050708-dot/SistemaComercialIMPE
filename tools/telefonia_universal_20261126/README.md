@@ -1,3 +1,9 @@
+Estado vigente: leer el último checkpoint de HANDOFF.md y VALIDATION.json.
+OUTGOING_1000.json documenta1,000 ciclos salientes HTTP/SQL sobre la versión
+congelada indicada; no acredita transferencias/audio universales ni ocho horas.
+El laboratorio nuevo se prepara con lab/prepare.py; si sus servicios terminan,
+lab/resume.py conserva sus datos existentes y no ejecuta migraciones.
+
 # Telefonía universal — trabajo en curso, no instalar
 
 Para continuar con otro perfil, leer primero [HANDOFF.md](HANDOFF.md): contiene
@@ -8,7 +14,7 @@ La base instalada de Hostinger se conserva en el commit local
 en `codex/telefonia-universal-20261126`, aisladas de la instalación de XAMPP.
 
 Todavía no hay un publicador completo con CHECK, respaldo y ROLLBACK.
-Los dos archivos de esquema son propuestas aditivas y sólo se han ejecutado
+Los archivos de esquema son propuestas explícitas y sólo se han ejecutado
 contra un laboratorio sintético. No deben ejecutarse en producción.
 
 ## Correcciones preparadas
@@ -33,7 +39,8 @@ contra un laboratorio sintético. No deben ejecutarse en producción.
 - Adaptador común de sesiones SDK sobre la tabla histórica existente.
 - Cola durable de observaciones SDK, con reintento ordenado y ACK exacto.
   La preparación saliente y sus eventos SDK ya usan esa cola en el host.
-  **La migración del escritor entrante del Analista todavía está pendiente.**
+  En SDK2 el host es el único escritor entrante; se conserva el protocolo legacy
+  únicamente cuando fue negociado para esa sesión.
 - Transporte PHP del proveedor con plazos, TLS, caché exacta y presupuesto
   compartido. No modifica el SDK ni crea sondeos.
 - Resultados, contactos y marcaciones de Ventas no crean tablas al construir
@@ -54,7 +61,7 @@ Las pruebas unitarias portables se ejecutan con Node.js, sin dependencias:
 node tools/telefonia_universal_20261126/run_unit.cjs
 ```
 
-Cubren quince suites de capturas, alias, ACK, sincronización, restauración,
+Cubren23 suites de capturas, alias, ACK, sincronización, restauración,
 pendientes, carreras al marcar/colgar, registro entrante/saliente del host y
 cola de vinculación exacta de transferencias.
 No abren conexiones ni llamadas.
@@ -65,7 +72,8 @@ el laboratorio privado existente indicado por `IMPE_PHONE_LAB_ROOT`. Ambos
 rechazan ejecución web y cualquier destino distinto de `127.0.0.1:3308`, base
 `impe_telefonia_lab`. El primero prepara únicamente ese fixture; el segundo usa
 un usuario sin privilegios de esquema y prueba los servicios comerciales nativos.
-El inicializador completo del laboratorio y la cobertura del embudo siguen pendientes.
+lab/prepare.py prepara el laboratorio reproducible. Existen regresiones nativas
+del embudo; falta su aceptación universal con todos los flujos.
 
 Se ejecutan pruebas sintéticas puras, HTTP y SQL con tres perfiles, además
 de la reproducción de eventos de las transferencias 87, 88 y 89 facilitados

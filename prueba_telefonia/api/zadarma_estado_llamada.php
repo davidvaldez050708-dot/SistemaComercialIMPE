@@ -78,34 +78,7 @@ function timestampRegistro(array $registro): int
     return 0;
 }
 
-function duracionConversacion(?array $respuesta, ?array $fin): int
-{
-    if (!$fin) {
-        return 0;
-    }
 
-    $duracionProveedor = max(0, (int)($fin['duration'] ?? 0));
-    if ($duracionProveedor > 0) {
-        return $duracionProveedor;
-    }
-
-    if (!$respuesta) {
-        return 0;
-    }
-
-    $inicioConversacion = strtotime((string)($respuesta['received_at'] ?? ''));
-    $finConversacion = strtotime((string)($fin['received_at'] ?? ''));
-
-    if (
-        $inicioConversacion === false ||
-        $finConversacion === false ||
-        $finConversacion <= $inicioConversacion
-    ) {
-        return 0;
-    }
-
-    return max(1, $finConversacion - $inicioConversacion);
-}
 
 $usuarioId = (int)($_SESSION['usuario_id'] ?? 0);
 
@@ -361,74 +334,41 @@ if ($pbxCallId === '') {
     responderJson(['ok' => true, 'call' => null]);
 }
 
-$respuesta = null;
-$fin = null;
-$grabacion = null;
-
-foreach ($registros as $registro) {
-    if (!hash_equals($pbxCallId, trim((string)($registro['pbx_call_id'] ?? '')))) {
-        continue;
-    }
-
-    $evento = (string)($registro['event'] ?? '');
-
-    if ($evento === 'NOTIFY_ANSWER') {
-        $respuesta = $registro;
-    } elseif ($evento === 'NOTIFY_OUT_END') {
-        $fin = $registro;
-    } elseif ($evento === 'NOTIFY_RECORD') {
-        $grabacion = $registro;
-    }
+require_once $rootPath.'/app/services/TelefoniaPbxSegmentosService.php';
+$raw=[];
+foreach($registros as $registro){
+    if(!hash_equals($pbxCallId,trim((string)($registro['pbx_call_id']??''))))continue;
+    $registro['evento']=$registro['event']??$registro['evento']??'';$raw[]=$registro;
 }
-
-$status = 'ringing';
-$disposition = '';
-$duration = 0;
-$isRecorded = false;
-$callIdWithRec = '';
-$endTime = null;
-
-if ($fin) {
-    $disposition = strtolower(trim((string)($fin['disposition'] ?? '')));
-    $duration = duracionConversacion($respuesta, $fin);
-    $isRecorded = (string)($fin['is_recorded'] ?? '') === '1';
-    $callIdWithRec = trim((string)($fin['call_id_with_rec'] ?? ''));
-    $endTime = $fin['received_at'] ?? null;
-
-    if ($disposition === 'answered') {
-        $status = 'completed';
-    } elseif ($disposition === 'busy') {
-        $status = 'busy';
-    } elseif (in_array($disposition, ['no answer', 'no-answer', 'no_answer'], true)) {
-        $status = 'no-answer';
-    } elseif (in_array($disposition, ['cancel', 'cancelled', 'canceled'], true)) {
-        $status = 'canceled';
-    } elseif ($respuesta !== null && $duration > 0) {
-        $status = 'completed';
-    } else {
-        $status = 'failed';
-    }
-} elseif ($respuesta) {
-    $status = 'in-progress';
-}
-
-if ($grabacion) {
-    $isRecorded = true;
-    $callIdWithRec = trim((string)($grabacion['call_id_with_rec'] ?? $callIdWithRec));
+$facts=TelefoniaPbxSegmentosService::hechos($raw,$extension,'',max(0,(int)($inicioSeleccionado['id']??0)-1));
+$fin=$facts['finalizada']?[]:null;
+foreach($raw as $event)if((int)$facts['evento_fin_id']>0&&(int)($event['id']??0)===(int)$facts['evento_fin_id'])$fin=$event;
+$disposition=$facts['disposition'];$duration=$facts['segundos'];
+$segments=$facts['segmentos'];$isRecorded=count($segments)>0;
+$callIdWithRec=count($segments)===1?$segments[0]:'';
+$grabacion=null;
+foreach($raw as $event)if($event['evento']==='NOTIFY_RECORD'&&in_array((string)($event['call_id_with_rec']??''),$segments,true))$grabacion=$event;
+$endTime=$facts['end_at']!==''?$facts['end_at']:null;
+$status=$facts['conectada']?'in-progress':'ringing';
+if($facts['finalizada']){
+    $status=$facts['conectada']?'completed':(['busy'=>'busy','no answer'=>'no-answer','no-answer'=>'no-answer','no_answer'=>'no-answer',
+        'cancel'=>'canceled','cancelled'=>'canceled','canceled'=>'canceled'][$disposition]??'failed');
 }
 
 if (
     $forzarFinal &&
-    !$fin &&
+    !$facts['finalizada'] &&
     $usarEstadisticas
 ) {
     try {
         $estadistica = (new ZadarmaCallLookupService())->buscarPorPbxCallId($pbxCallId,$extension);
         if ($estadistica) {
             $disposition = strtolower((string)($estadistica['disposition'] ?? ''));
-            $duration = max($duration, (int)($estadistica['seconds'] ?? 0));
-            $isRecorded = $isRecorded || !empty($estadistica['is_recorded']);
-            $callIdWithRec = trim((string)($estadistica['call_id'] ?? $callIdWithRec));
+            $duration = max((int)($duration??0), (int)($estadistica['seconds'] ?? 0));
+            $recordId=trim((string)($estadistica['call_id']??''));
+            if(!empty($estadistica['is_recorded'])&&ZadarmaPbxIdentifierHelper::callIdValido($recordId)&&!in_array($recordId,$facts['audio_bloqueadas'],true))
+                $segments=array_values(array_unique([...$segments,$recordId]));
+            $isRecorded=count($segments)>0;$callIdWithRec=count($segments)===1?$segments[0]:'';
 
             if ($disposition === 'answered') {
                 $status = 'completed';
@@ -456,9 +396,11 @@ responderJson([
         'destination' => (string)($inicioSeleccionado['destination'] ?? $destino),
         'internal' => $extension,
         'start_time' => $inicioSeleccionado['call_start'] ?? null,
-        'answer_time' => $respuesta['received_at'] ?? null,
+        'answer_time' => $facts['answer_at']!==''?$facts['answer_at']:null,
         'end_time' => $endTime,
         'duration' => $duration,
+        'duration_known' => $duration!==null,
+        'segmentos_grabacion' => $segments,
         'disposition' => $disposition,
         'status_code' => $fin['status_code'] ?? null,
         'is_recorded' => $isRecorded,

@@ -82,6 +82,8 @@ final class TelefoniaPbxSegmentosService
             $sourceEnd = $source !== '' && $source !== $ext && $internal === $source &&
                 $type === 'NOTIFY_OUT_END' && in_array($last, ['', $source], true) &&
                 (($started && $answeredAfterSource) || $boundAnswer);
+            $anonymousOwn = $internal === '' && $last === '' && $type === 'NOTIFY_OUT_END' &&
+                self::cierreSalienteSinExtension($event,$allEvents,$ext);
             // Un intento ofrecido puede terminar en el origen sin ANSWER del destino.
             // Esto libera la operación; no acredita conversación, duración ni entrega.
             if ($afterEventId > 0 && $sourceSeen && $offered && $internal === $source &&
@@ -91,7 +93,7 @@ final class TelefoniaPbxSegmentosService
                 if ($date !== '' && ($attemptEndAt === '' || $date > $attemptEndAt)) $attemptEndAt = $date;
             }
             if (!in_array($type, ['NOTIFY_END', 'NOTIFY_OUT_END'], true) ||
-                !($own || $last === $ext || $sourceEnd)) continue;
+                !($own || $last === $ext || $sourceEnd || $anonymousOwn)) continue;
             $end = true;
             $disposition = strtolower(trim((string)($event['disposition'] ?? '')));
             if ($date !== '' && ($endAt === '' || $date > $endAt)) $endAt = $date;
@@ -102,6 +104,9 @@ final class TelefoniaPbxSegmentosService
                 if ($known) $duration = max($duration ?? 0, max(0, (int)($event['duration'] ?? 0)));
                 if (in_array($disposition, ['answered', 'completed'], true)) $answer = true;
             }
+            // PBX/inicio/único participante acreditan el cierre. La duración
+            // anónima y su grabación siguen sin atribuirse a un tramo propio.
+            if($anonymousOwn && in_array($disposition,['answered','completed'],true))$answer=true;
         }
         $transfer = self::transferencia($events, $ext, $source);
         $allowed = $transfer['atendida'] && $transfer['finalizada'] && $transfer['origen'] !== '' ? [$transfer['origen']] : [];
@@ -109,6 +114,7 @@ final class TelefoniaPbxSegmentosService
         return [
             'finalizada' => $end, 'conectada' => $answer, 'segundos' => $end ? $duration : null,
             'answer_at' => $answerAt, 'end_at' => $endAt, 'evento_fin_id' => $endId,
+            'disposition' => $disposition,
             'intento_finalizado' => $attemptEnded, 'fin_intento_at' => $attemptEndAt,
             'estado_pbx' => !$end ? ($attemptEnded ? 'Respuesta del destino sin confirmar' : ($answer ? 'Respuesta confirmada · Cierre pendiente' : 'Cierre pendiente')) :
                 ($answer ? 'Conectada' : (['busy' => 'Ocupada', 'no answer' => 'Sin respuesta',
@@ -116,6 +122,29 @@ final class TelefoniaPbxSegmentosService
                     'canceled' => 'Cancelada', 'cancelled' => 'Cancelada', 'failed' => 'Fallida'][$disposition] ?? 'Sin respuesta')),
             'audio_extensiones' => $allowed
         ] + $audio;
+    }
+
+    private static function cierreSalienteSinExtension(array $end,array $events,string $ext): bool
+    {
+        $payload=json_decode((string)($end['payload_json']??''),true)?:[];
+        $ref=trim((string)($end['pbx_call_id']??$payload['pbx_call_id']??''));
+        $start=trim((string)($end['call_start']??$payload['call_start']??''));
+        if($ref==='' || $start==='')return false;
+        $starts=0;
+        foreach($events as $event){
+            $p=json_decode((string)($event['payload_json']??''),true)?:[];
+            if((string)($event['pbx_call_id']??$p['pbx_call_id']??'')!==$ref)continue;
+            if(!in_array($event['evento']??'',['NOTIFY_OUT_START','NOTIFY_INTERNAL','NOTIFY_ANSWER','NOTIFY_END','NOTIFY_OUT_END'],true))continue;
+            $internal=trim((string)($event['internal']??''));
+            $from=trim((string)($event['transfer_from']??$p['transfer_from']??''));
+            $last=trim((string)($event['last_internal']??$p['last_internal']??''));
+            foreach([$internal,$from,$last] as $participant)if($participant!==''&&$participant!==$ext)return false;
+            if(($event['evento']??'')==='NOTIFY_OUT_START'){
+                if($internal!==$ext || (string)($event['call_start']??$p['call_start']??'')!==$start)return false;
+                ++$starts;
+            }
+        }
+        return $starts===1;
     }
 
     private static function fechaEvento(string $value): string

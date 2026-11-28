@@ -1,0 +1,32 @@
+{
+  "synthetic": true,
+  "tested_commit": "b0b15622",
+  "source_sha256": "05b8ab2d0351da2561504b456bbbf1b9472d6edb7d1234d6462986f81605218c",
+  "source_files_verified": 548,
+  "report_sha256": "62caeb320018107102529d00a13db7b334a4893dce20c3664b0c54ee51983c3d",
+  "complete_http_cycles": 1000,
+  "elapsed_monotonic_seconds": 682.7274319,
+  "roles": [
+    {
+      "role": "VENTAS",
+      "count": 334,
+      "requests": 4859
+    },
+    {
+      "role": "ANALISTA",
+      "count": 333,
+      "requests": 4845
+    },
+    {
+      "role": "RECEPCION",
+      "count": 333,
+      "requests": 4845
+    }
+  ],
+  "lost_sdk_acks": 144,
+  "lost_result_acks": 201,
+  "scope": "Outgoing only; synthetic SDK/provider, actual HTTP auth/CSRF, SQL, drafts and native atomic results. No transfers or binary audio.",
+  "universal_acceptance_completed": false,
+  "eight_hours": false,
+  "production_changed": false
+}

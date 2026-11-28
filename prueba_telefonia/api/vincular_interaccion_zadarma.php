@@ -216,6 +216,12 @@ if ($pbxCallId !== '') {
         }
     }
     if(count($iniciosPropios)>1)responderJson(['ok'=>false,'mensaje'=>'La referencia contiene inicios incompatibles. Conserva la captura para revisión.'],409);
+    if($inicio && !$fin){
+        $scoped=array_map(static function(array $e):array{$e['evento']=$e['event']??'';return $e;},$eventosLlamada);
+        $closed=TelefoniaPbxSegmentosService::hechos($scoped,$extension,'',max(0,(int)($inicio['id']??0)-1));
+        if($closed['finalizada'])$fin=['event'=>'SCOPED_PBX_END','received_at'=>$closed['end_at'],
+            'disposition'=>$closed['disposition'],'has_duration'=>false];
+    }
 }
 
 $estadistica = null;

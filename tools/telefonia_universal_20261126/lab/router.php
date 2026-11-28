@@ -26,7 +26,8 @@ if(str_starts_with($path,'/fixture/')){
   $event=json_decode((string)file_get_contents('php://input'),true,16,JSON_THROW_ON_ERROR);
   if(!is_array($event)||!fixtureReference((string)($event['pbx_call_id']??''))||
     !in_array($event['event']??'',['NOTIFY_OUT_START','NOTIFY_INTERNAL','NOTIFY_ANSWER','NOTIFY_OUT_END','NOTIFY_END','NOTIFY_RECORD'],true)||
-    !in_array($event['internal']??'',['100','101','102'],true))fixtureReply(['ok'=>false],422);
+    (!in_array($event['internal']??'',['100','101','102'],true)&&
+     !(($event['internal']??null)===''&&($event['event']??'')==='NOTIFY_OUT_END')))fixtureReply(['ok'=>false],422);
   require_once $site.'/app/services/ZadarmaWebhookEventStoreService.php';
   $ok=(new ZadarmaWebhookEventStoreService(Database::compartida()))->registrar($event);
   fixtureReply(['ok'=>(bool)$ok]);
