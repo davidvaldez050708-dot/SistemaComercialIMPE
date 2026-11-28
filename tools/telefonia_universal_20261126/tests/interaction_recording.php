@@ -1,0 +1,25 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__,3).'/app/services/TelefoniaGrabacionInteraccionService.php';
+$checks=0;$check=static function(bool $ok,string $why)use(&$checks){if(!$ok)throw new RuntimeException($why);++$checks;};
+$event=static fn($id,$type,$ext,$audio='',$payload=[])=>['id'=>$id,'evento'=>$type,'internal'=>$ext,'call_id_with_rec'=>$audio,'payload_json'=>json_encode($payload)];
+$a='17490000000000001234567890';$b='fixture-foreign-record';
+$events=[$event(1,'NOTIFY_OUT_START','102'),$event(2,'NOTIFY_ANSWER','102'),$event(3,'NOTIFY_RECORD','',$a)];
+$check(TelefoniaGrabacionInteraccionService::referenciasPropias($events,'')['ids']===[$a],'Legacy exact native PBX with one signed participant accepts anonymous RECORD');
+$check(TelefoniaGrabacionInteraccionService::extensionHistorica($events,[['extension'=>'102','pbx_inicio_evento'=>1]])==='102','Modern immutable journal resolves exact own start');
+$check(TelefoniaGrabacionInteraccionService::extensionHistorica($events,[['extension'=>'102'],['extension'=>'102']])==='102','Same historical extension from both native bindings');
+$reject=static function(callable $f)use($check){$denied=false;try{$f();}catch(DomainException $e){$denied=$e->getCode()===409;}$check($denied,'Ambiguous or unproven historical participation is pending');};
+$reject(static fn()=>TelefoniaGrabacionInteraccionService::extensionHistorica($events,[['extension'=>'102'],['extension'=>'101']]));
+$reject(static fn()=>TelefoniaGrabacionInteraccionService::extensionHistorica($events,[['extension'=>'101','pbx_inicio_evento'=>1]]));
+$reject(static fn()=>TelefoniaGrabacionInteraccionService::extensionHistorica($events,[['extension'=>'102','pbx_inicio_evento'=>99]]));
+$reject(static fn()=>TelefoniaGrabacionInteraccionService::extensionHistorica($events,[['extension'=>'../private']]));
+$multi=array_merge($events,[$event(4,'NOTIFY_ANSWER','101'),$event(5,'NOTIFY_RECORD','101',$b)]);
+$reject(static fn()=>TelefoniaGrabacionInteraccionService::referenciasPropias($multi,''));
+$check(TelefoniaGrabacionInteraccionService::referenciasPropias($multi,'102')['ids']===[],'Multi-person group cannot lend an anonymous first record');
+$multi[]=$event(6,'NOTIFY_RECORD','102',$a);
+$check(TelefoniaGrabacionInteraccionService::referenciasPropias($multi,'102')['ids']===[$a],'Exact historical own record retained, foreign record excluded');
+$multi[]=$event(7,'NOTIFY_RECORD','101',$a);
+$check(TelefoniaGrabacionInteraccionService::referenciasPropias($multi,'102')['ids']===[],'Shared reference requires review, never borrow foreign ownership');
+$withTransfer=array_merge($events,[$event(4,'NOTIFY_INTERNAL','102','',['transfer_from'=>'100'])]);
+$reject(static fn()=>TelefoniaGrabacionInteraccionService::referenciasPropias($withTransfer,''));
+echo "PASS $checks historical recording proof checks: native PBX, exact journal start, own/shared/anonymous/foreign references and transfer ambiguity. No SQL/provider.\n";

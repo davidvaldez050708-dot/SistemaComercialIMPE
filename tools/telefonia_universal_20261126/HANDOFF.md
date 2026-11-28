@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el decimosexto checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el decimoséptimo checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -782,3 +782,41 @@ y lab/audio_scope.cjs. No equivale a audio real ni seek en navegador; siguen
 getter global de grabacion_interaccion y endpoints CDR/interno por revisar,
 comandos comerciales diferidos, aceptación universal1,000/8h y publicador.
 Producción intacta.
+
+
+## Decimoséptimo checkpoint — audio histórico del expediente sin getter global
+
+Base:e7054b7f. TelefoniaGrabacionInteraccionService recibe la interacción cuyo
+expediente ya autorizó el endpoint y conserva su titular histórico. Obtiene
+extensión de los vínculos nativos exactos o diario moderno con inicio PBX
+corroborado; nunca asignación actual del visitante, teléfono o proximidad horaria.
+Sin vínculo histórico, sólo mantiene compatibilidad si el grupo nativo tiene un
+único participante firmado. Grupos múltiples/contradictorios quedan pendientes;
+el reductor común excluye grabación ajena o compartida. Conserva la excepción
+existente de transferencia institucional con ruta y entrega exactas, y aplica
+exclusiones CRM. El resolutor opera en READ ONLY. Requiere las columnas modernas
+del diario que el CHECK deberá acreditar antes de instalar.
+
+El endpoint conserva autorización institucional/rol y resultados sin contacto,
+añade selector estable/metadatos y usa transporte binario común. El historial
+principal ahora usa el reproductor existente también para llamadas individuales,
+sin aceptar URLs externas del DTO ni cambiar su diseño. URLs antiguas siguen
+funcionando con una sola grabación; varias requieren selección inequívoca.
+Retirado del transporte Zadarma el getter global SIN consumidores restantes,
+su búsqueda por log y el segundo almacén/conexión SQL del constructor. Se conserva
+el argumento bool del constructor para compatibilidad; obtenerGrabacionPorCallId
+sigue transmitiendo el ID opaco exacto al SDK. No cambia SDK/SIP/proveedor.
+
+Validación:12 pruebas de identidad histórica,3 SQL con registro nativo y READ ONLY,
+17 del adaptador JS real,7 HTTP nativos (401/403/405/404/416 y502 esperado con
+proveedor bloqueado),27/27 suites JS y compatibilidad getter/SDK con transporte
+sintético. Un intento de la prueba SDK agotó el presupuesto por demora local
+antes de su primera consulta; la repetición aislada pasó sin modificar el plazo
+del producto. No es prueba de audio real ni de ocho horas. Fuente del fixture:
+b7e1fa115e55133e49413eb5e9fab797315dd5820d149abec04cb076ba0bb47b.
+Reproducir:tests/interaction_recording.php,tests/test_institution_audio_url.cjs,
+integration/interaction_recording_sql.php,lab/interaction_audio_scope.cjs.
+Producción intacta. Pendientes: endpoints CDR/interno aún tienen transporte
+duplicado; la proyección de duración del historial institucional sigue usando
+interpretación anterior y requiere reductor común. Entrega comercial diferida,
+aceptación1,000 universales/8h y publicador NO completos.

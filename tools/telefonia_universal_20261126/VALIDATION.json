@@ -249,5 +249,20 @@
     "lab_source_sha256": "693f0e999914c1c3861d13189f3e7f2d16fff436f2d76951c598fa591349335b",
     "real_provider_audio_or_browser_seek": false,
     "production_changed": false
+  },
+  "continuation_historical_institution_audio": {
+    "base": "e7054b7f",
+    "pure_historical_proof_checks": 12,
+    "native_read_only_sql_checks": 3,
+    "actual_js_adapter_checks": 17,
+    "native_scope_http_checks": 7,
+    "unit_suites_passed": 27,
+    "global_group_getter_removed": true,
+    "recording_transport_extra_sql_connection_removed": true,
+    "provider_sdk_fake_transport_passed_on_isolated_rerun": true,
+    "prior_sdk_attempt_hit_deadline_before_first_call": true,
+    "lab_source_sha256": "b7e1fa115e55133e49413eb5e9fab797315dd5820d149abec04cb076ba0bb47b",
+    "real_binary_playback": false,
+    "production_changed": false
   }
 }

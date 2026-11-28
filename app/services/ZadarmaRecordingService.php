@@ -1,6 +1,5 @@
 <?php
 
-require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 require_once __DIR__ . '/../helpers/ZadarmaPbxIdentifierHelper.php';
 
 class ZadarmaRecordingService
@@ -9,7 +8,6 @@ class ZadarmaRecordingService
     private string $apiSecret;
     private string $rootPath;
     private \Zadarma_API\Api $api;
-    private ?ZadarmaWebhookEventStoreService $eventStore = null;
     private ?TelefoniaPbxEstadisticasService $catalogo = null;
 
     public function __construct(bool $cargarEventos=true)
@@ -45,12 +43,8 @@ class ZadarmaRecordingService
         require_once __DIR__.'/TelefoniaZadarmaApi.php';
         $this->api = new TelefoniaZadarmaApi($this->apiKey, $this->apiSecret, false);
 
-        if($cargarEventos)try {
-            $this->eventStore = new ZadarmaWebhookEventStoreService();
-        } catch (Throwable $errorStore) {
-            $this->eventStore = null;
-            error_log('[zadarma_recording_store] ' . $errorStore->getMessage());
-        }
+        // El argumento se conserva para compatibilidad de llamadas existentes.
+        // El transporte no abre otra conexión SQL ni interpreta un grupo PBX.
     }
 
     public function cacheTramosTransferidos(int $usuario,string $extension,string $asignadaDesde,string $pbx,?array $value=null):?array
@@ -59,46 +53,6 @@ class ZadarmaRecordingService
             !preg_match('/^[a-zA-Z0-9_-]{6,100}$/D',$pbx))throw new InvalidArgumentException('Ámbito de audio inválido.');
         $identity=hash('sha256',json_encode([$usuario,$extension,$asignadaDesde,$pbx],JSON_THROW_ON_ERROR));
         return $this->api->cachePrivada('audio-transferido',$identity,$value);
-    }
-
-    public function obtenerGrabacionParaLlamada(string $pbxCallId): ?array
-    {
-        $pbxCallId = trim($pbxCallId);
-
-        // Una grabación PBX puede pertenecer también a una llamada entrante.
-        // La autorización por usuario, extensión y llamada se verifica
-        // previamente en el endpoint antes de invocar este servicio.
-        if (!preg_match('/^[a-zA-Z0-9_-]{6,100}$/', $pbxCallId)) {
-            return null;
-        }
-
-        $callId = $this->buscarCallIdEnWebhook($pbxCallId);
-        $link = '';
-
-        if ($callId !== '') {
-            try {
-                $record = $this->api->getPbxRecord($callId, null, 300);
-                $link = trim((string)($record->link ?? ''));
-            } catch (Throwable $e) {
-                $link = '';
-            }
-        }
-
-        if ($link === '') {
-            $record = $this->api->getPbxRecord(null, $pbxCallId, 300);
-            $links = is_array($record->links ?? null) ? $record->links : [];
-            $link = trim((string)($links[0] ?? ''));
-        }
-
-        if ($link === '' || filter_var($link, FILTER_VALIDATE_URL) === false) {
-            return null;
-        }
-
-        return [
-            'pbx_call_id' => $pbxCallId,
-            'call_id_with_rec' => $callId,
-            'link' => $link,
-        ];
     }
 
     /**
@@ -195,42 +149,4 @@ class ZadarmaRecordingService
         ];
     }
 
-    private function buscarCallIdEnWebhook(string $pbxCallId): string
-    {
-        if ($this->eventStore !== null) {
-            try {
-                $callId = $this->eventStore->buscarCallIdGrabacion($pbxCallId);
-                if ($callId !== '') {
-                    return $callId;
-                }
-            } catch (Throwable $errorStore) {
-                error_log('[zadarma_recording_lookup_store] ' . $errorStore->getMessage());
-            }
-        }
-
-        $logPath = $this->rootPath . '/storage/zadarma_webhooks.log';
-        if (!is_file($logPath)) {
-            return '';
-        }
-
-        $lineas = file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-
-        for ($i = count($lineas) - 1; $i >= 0; $i--) {
-            $fila = json_decode($lineas[$i], true);
-            if (!is_array($fila)) {
-                continue;
-            }
-
-            if (!hash_equals($pbxCallId, trim((string)($fila['pbx_call_id'] ?? '')))) {
-                continue;
-            }
-
-            $callId = trim((string)($fila['call_id_with_rec'] ?? ''));
-            if ($callId !== '') {
-                return $callId;
-            }
-        }
-
-        return '';
-    }
 }

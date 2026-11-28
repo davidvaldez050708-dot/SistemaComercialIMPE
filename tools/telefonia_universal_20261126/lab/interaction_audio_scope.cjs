@@ -1,0 +1,25 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{spawnSync}=require('node:child_process');
+const root=process.argv[process.argv.indexOf('--lab-root')+1];
+if(!process.argv.includes('--lab-root')||!root)throw Error('Private laboratory required');
+const c=JSON.parse(fs.readFileSync(path.join(root,'credentials.json'),'utf8'));
+if(c.host!=='127.0.0.1'||c.port!==3308||c.database!=='impe_telefonia_lab')throw Error('Synthetic loopback only');
+(async()=>{
+ const r=spawnSync('C:/xampp/php/php.exe',[path.join(__dirname,'../integration/interaction_recording_sql.php'),'--emit-fixture'],{env:{...process.env,IMPE_PHONE_LAB_ROOT:root},encoding:'utf8',timeout:30000});
+ if(r.status!==0)throw Error(r.stderr||r.stdout);
+ const fixture=JSON.parse(r.stdout.trim().split(/\r?\n/).at(-1));
+ const origin='http://127.0.0.1:33182',url=origin+'/prueba_telefonia/api/grabacion_interaccion.php?interaccion_id='+fixture.interaccion_id;
+ let checks=0;
+ const login=async role=>{const r=await fetch(origin+'/fixture/login?role='+role,{headers:{'X-Fixture-Key':c.fixture_key}});assert.equal(r.status,200);return r.headers.get('set-cookie').split(';')[0];};
+ const cookie=await login('ANALISTA');
+ const request=(suffix='',extra={})=>fetch(url+suffix,{headers:{Cookie:cookie,...extra},signal:AbortSignal.timeout(15000)});
+ assert.equal((await fetch(url)).status,401);checks++;
+ assert.equal((await fetch(url,{headers:{Cookie:cookie},method:'POST'})).status,405);checks++;
+ assert.equal((await request('&grabacion='+fixture.foreign_record)).status,404);checks++;
+ assert.equal((await request('&grabacion='+fixture.own_record,{Range:'bytes=invalid'})).status,416);checks++;
+ const own=await request('&grabacion='+fixture.own_record);assert.equal(own.status,502,'Lab blocks provider: valid scope cannot invent playable bytes');checks++;
+ const metadata=await request('&verificar=1');assert.equal(metadata.status,502,'Provider construction is deliberately disabled in this fixture');checks++;
+ const foreignRole=await login('VENTAS');assert.equal((await fetch(url,{headers:{Cookie:foreignRole}})).status,403);checks++;
+ fs.writeFileSync(path.join(root,'interaction-audio-http-validation.json'),JSON.stringify({synthetic:true,checks,provider_disabled:true,real_binary_playback:false,production_changed:false},null,2));
+ console.log(`PASS ${checks} native institution audio HTTP checks: native historical binding, own/foreign reference, auth/role, method and Range guards. Provider disabled; no real playback.`);
+})().catch(e=>{console.error(e);process.exitCode=1;});

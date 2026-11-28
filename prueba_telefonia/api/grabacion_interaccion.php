@@ -11,6 +11,10 @@ require_once $root . '/app/models/SeguimientoVinculacionModel.php';
 require_once $root . '/app/services/ZadarmaRecordingService.php';
 require_once $root . '/config/db_connection.php';
 
+if(($_SERVER['REQUEST_METHOD']??'GET')!=='GET'){
+    http_response_code(405);header('Allow: GET');exit;
+}
+
 if (!isset($_SESSION['usuario_id'])) {
     http_response_code(401);
     exit('Sesión no activa.');
@@ -38,6 +42,7 @@ try {
 $sql = "SELECT
             id,
             seguimiento_id,
+            usuario_id,
             canal,
             resultado,
             notas,
@@ -115,115 +120,44 @@ try {
     $audio = null;
 
     if ($proveedor === 'ZADARMA') {
-        if (!preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno)) {
-            http_response_code(404);
-            exit('Esta llamada no tiene una grabación asociada.');
+        require_once $root.'/app/services/TelefoniaGrabacionInteraccionService.php';
+        require_once $root.'/app/services/TelefoniaGrabacionSelector.php';
+        $catalog=(new TelefoniaGrabacionInteraccionService($connection))->resolver($interaccion);
+        $ids=$catalog['ids'];
+        if(isset($_GET['verificar'])){
+            $info=[];$temporary=false;
+            $servicio=new ZadarmaRecordingService(false);
+            foreach($ids as $index=>$id){
+                try{$record=$servicio->obtenerGrabacionPorCallId($id);
+                    if(!empty($record['link']))$info[]=['indice'=>$index,'referencia'=>$id,'etiqueta'=>'Parte '.($index+1).' de la llamada'];
+                }catch(Throwable $error){$temporary=true;}
+            }
+            header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');
+            echo json_encode(['ok'=>true,'disponible'=>(bool)$info,'segmentos'=>count($info),'segmentos_info'=>$info,
+                'catalogo'=>TelefoniaGrabacionSelector::catalogo($ids),
+                'estado'=>$info?(count($info)<count($ids)?'DISPONIBLE_PARCIAL':'DISPONIBLE'):($temporary?'ERROR_TEMPORAL':($ids?'GRABACION_EN_PREPARACION':'TRAMO_PENDIENTE_VINCULACION'))]);exit;
         }
-
-        $servicio = new ZadarmaRecordingService();
-        $grabacion = $servicio->obtenerGrabacionParaLlamada($idExterno);
-
-        if (!$grabacion || empty($grabacion['link'])) {
-            http_response_code(404);
-            exit('La grabación todavía no está disponible.');
-        }
-
-        $audio = $servicio->descargarGrabacion((string)$grabacion['link'], $rangeHeader);
+        $index=TelefoniaGrabacionSelector::indice($ids,$_GET);
+        $servicio=new ZadarmaRecordingService(false);
+        $grabacion=$servicio->obtenerGrabacionPorCallId($ids[$index]);
+        if(!$grabacion||empty($grabacion['link'])){http_response_code(404);exit('La grabación todavía no está disponible.');}
+        $audio=$servicio->descargarGrabacion((string)$grabacion['link'],$rangeHeader);
     } else {
         http_response_code(404);
         exit('Esta llamada no tiene una grabación asociada.');
     }
 
-    $body = (string)($audio['body'] ?? '');
-    $contentType = trim((string)($audio['content_type'] ?? ''));
-    $statusUpstream = (int)($audio['status'] ?? 200);
-    $headersUpstream = is_array($audio['headers'] ?? null) ? $audio['headers'] : [];
-
-    if ($body === '') {
-        http_response_code(404);
-        exit('La grabación todavía no está disponible.');
-    }
-
-    $extension = 'mp3';
-    $contentTypeLower = strtolower($contentType);
-    if (str_contains($contentTypeLower, 'wav')) {
-        $extension = 'wav';
-    } elseif (str_contains($contentTypeLower, 'ogg')) {
-        $extension = 'ogg';
-    }
-
-    $nombreArchivo = 'llamada-' . $interaccionId . '.' . $extension;
-
-    header('Content-Type: ' . ($contentType !== '' ? $contentType : 'audio/mpeg'));
-    header('Accept-Ranges: bytes');
-    header(
-        'Content-Disposition: ' . ($forzarDescarga ? 'attachment' : 'inline') .
-        '; filename="' . $nombreArchivo . '"'
-    );
-    header('Cache-Control: private, max-age=300');
-    header('X-Content-Type-Options: nosniff');
-
-    if (
-        $rangeHeader !== '' &&
-        $statusUpstream === 206 &&
-        !empty($headersUpstream['content-range'])
-    ) {
-        http_response_code(206);
-        header('Content-Range: ' . $headersUpstream['content-range']);
-        header('Content-Length: ' . strlen($body));
-        echo $body;
-        exit;
-    }
-
-    if ($rangeHeader !== '') {
-        $size = strlen($body);
-
-        if (!preg_match('/^bytes=(\d*)-(\d*)$/', $rangeHeader, $matches)) {
-            http_response_code(416);
-            header('Content-Range: bytes */' . $size);
-            exit;
-        }
-
-        $startRaw = $matches[1];
-        $endRaw = $matches[2];
-
-        if ($startRaw === '' && $endRaw === '') {
-            http_response_code(416);
-            header('Content-Range: bytes */' . $size);
-            exit;
-        }
-
-        if ($startRaw === '') {
-            $suffixLength = (int)$endRaw;
-            if ($suffixLength <= 0) {
-                http_response_code(416);
-                header('Content-Range: bytes */' . $size);
-                exit;
-            }
-            $start = max(0, $size - $suffixLength);
-            $end = $size - 1;
-        } else {
-            $start = (int)$startRaw;
-            $end = $endRaw === '' ? $size - 1 : min((int)$endRaw, $size - 1);
-        }
-
-        if ($size <= 0 || $start < 0 || $start >= $size || $end < $start) {
-            http_response_code(416);
-            header('Content-Range: bytes */' . $size);
-            exit;
-        }
-
-        $partial = substr($body, $start, ($end - $start) + 1);
-        http_response_code(206);
-        header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);
-        header('Content-Length: ' . strlen($partial));
-        echo $partial;
-        exit;
-    }
-
-    http_response_code(200);
-    header('Content-Length: ' . strlen($body));
-    echo $body;
+    require_once $root.'/app/services/TelefoniaAudioRespuesta.php';
+    $response=TelefoniaAudioRespuesta::respuesta($audio,$rangeHeader);
+    http_response_code($response['status']);
+    foreach($response['headers'] as $name=>$value)header($name.': '.$value);
+    $extension=TelefoniaAudioRespuesta::extension($response['headers']['Content-Type']??'');
+    header('Content-Disposition: '.($forzarDescarga?'attachment':'inline').'; filename="llamada-'.$interaccionId.'.'.$extension.'"');
+    header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');
+    echo $response['body'];
+} catch (DomainException $error) {
+    http_response_code(in_array($error->getCode(),[404,409],true)?$error->getCode():403);
+    exit('Falta acreditar una grabación propia inequívoca para esta interacción.');
 } catch (Throwable $error) {
     http_response_code(502);
     exit('No fue posible recuperar la grabación en este momento.');

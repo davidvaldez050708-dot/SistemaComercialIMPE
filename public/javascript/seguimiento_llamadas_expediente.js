@@ -1,6 +1,22 @@
 (function () {
     'use strict';
 
+    function urlAudioExpediente(llamada, pbxVerificado) {
+        const transferida = Boolean(pbxVerificado);
+        if (!transferida && !(llamada.tiene_grabacion && !llamada.excluir_grabacion &&
+            String(llamada.proveedor).toUpperCase() === 'ZADARMA' &&
+            Number.isSafeInteger(Number(llamada.id)) && Number(llamada.id) > 0)) return null;
+        const institucion = transferida && llamada.grabacion_transferida_institucion === true;
+        const url = new URL('prueba_telefonia/api/' + (transferida
+            ? (institucion ? 'grabacion_transferida_institucion.php' : 'grabacion_transferida_pbx.php')
+            : 'grabacion_interaccion.php'), document.baseURI);
+        if (transferida) url.searchParams.set('pbx_call_id', pbxVerificado);
+        else url.searchParams.set('interaccion_id', String(Number(llamada.id)));
+        if (institucion) url.searchParams.set('seguimiento_id', String(llamada.seguimiento_id || 0));
+        url.searchParams.set('verificar', '1');
+        return url;
+    }
+
     // Asegura que la paginación del expediente cargue sus estilos incluso
     // si la plantilla del detalle omite la hoja correspondiente.
     (function cargarEstilosPaginacion() {
@@ -675,8 +691,9 @@
                         String(llamada.grabacion_transferida_pbx || '')
                     ) ? String(llamada.grabacion_transferida_pbx) : '';
                     const grabacionSinVincular = llamada.grabacion_sin_vincular === true;
+                    const audioUrl = urlAudioExpediente(llamada, pbxVerificado);
                     let panelAudio = null;
-                    if (pbxVerificado) {
+                    if (audioUrl) {
                         const button = document.createElement('button');
                         button.type = 'button';
                         button.className = 'linkage-call-audio-state is-available linkage-call-recording-toggle';
@@ -704,16 +721,7 @@
                             button.disabled = true;
                             errorBox.hidden = true;
                             try {
-                                const institucionSaliente=llamada.grabacion_transferida_institucion===true;
-                                const url = new URL(
-                                    institucionSaliente
-                                        ? 'prueba_telefonia/api/grabacion_transferida_institucion.php'
-                                        : 'prueba_telefonia/api/grabacion_transferida_pbx.php',
-                                    document.baseURI
-                                );
-                                if(institucionSaliente)url.searchParams.set('seguimiento_id',String(llamada.seguimiento_id||0));
-                                url.searchParams.set('pbx_call_id', pbxVerificado);
-                                url.searchParams.set('verificar', '1');
+                                const url = new URL(audioUrl.toString());
                                 const response = await fetch(url.toString(), {
                                     credentials: 'same-origin', cache: 'no-store'
                                 });
