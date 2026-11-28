@@ -35,6 +35,8 @@
             if(url.origin!==location.origin)return false;
             url.searchParams.delete('verificar');
             url.searchParams.set('segmento', String(Number.isInteger(info?.indice)?info.indice:i));
+            if(typeof info?.referencia==='string'&&(/^[a-zA-Z0-9_-]{6,100}$/.test(info.referencia)||/^[0-9]{1,40}\.[0-9]{1,40}$/.test(info.referencia)))
+                url.searchParams.set('grabacion',info.referencia);
             audio.src = url.toString();
             const play = document.createElement('button');
             play.type = 'button';

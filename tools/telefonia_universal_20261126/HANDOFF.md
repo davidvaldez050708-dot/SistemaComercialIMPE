@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el duodécimo checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el decimotercer checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -659,3 +659,62 @@ considerar audio universal terminado. No se amplió ningún permiso de audio.
 La entrega diferida de comandos aprobados todavía no está implementada;
 siguen pendientes los demás puntos del checkpoint11 y el publicador. Producción
 intacta y rama de Supervisión de personal sin fusionar indiscriminadamente.
+
+
+## Decimotercer checkpoint — selección de audio estable y autorizada
+
+Base:`1db5a390`. TelefoniaGrabacionSelector valida únicamente dentro del catálogo
+que el servidor ya autorizó. Las referencias de grabación siguen siendo strings
+opacos (incluidos decimales largos). El parámetro grabacion NO concede propiedad:
+se contrasta en cada petición con los IDs propios del PBX/rol/asignación/ruta.
+Una llegada tardía no puede cambiar de audio una selección por referencia.
+
+Ventas y transferencias PBX devuelven referencia en segmentos_info y la vuelven
+a verificar al reproducir/descargar. El reproductor común transporta esa misma
+referencia a audio y descarga, conservando el índice para endpoints anteriores.
+Un único audio permite la URL antigua sin selector; varios requieren referencia
+o índice ligado al hash del catálogo. No elegir primero por defecto ni aceptar
+un ordinal antiguo que pueda apuntar ahora a otra parte. Se soportan parciales
+con índices dispersos y máximo8, con rechazo de IDs duplicados/ajenos/malformados.
+
+Recepción usa el MISMO reproductor por segmentos para llamadas individuales y
+transferidas. Se retira su segundo verificador/reproductor individual. Su endpoint
+ya no llama obtenerGrabacionParaLlamada ni pide el primer link del grupo: sólo
+obtenerGrabacionPorCallId para referencias propias. Reutiliza la conexión y
+la autorización del historial actual; el lote PBX se filtra con el mismo corte
+de periodo/asignación, sin consultas paralelas para esa autorización. Conserva
+los filtros de resultado/sin contacto y las rutas de transferencia existentes.
+Si hay aviso propio pero aún falta ID inequívoco, devuelve pendiente, sin pedir
+un audio global como sustituto. No se añadió un sondeo ni se amplió rol/alcance.
+
+Los resolutores de audio transferido añaden referencia desde el ID verificado
+del servidor. El getter/SDK real se probó con transporte sintético: el decimal
+largo llega intacto como call_id y no se convierte en petición por pbx_call_id.
+No hay hooks de proveedor de prueba en el código de producción ni credenciales
+reales del proveedor en el laboratorio.
+
+Validación:26/26 suites JS,21 casos puros del selector,17 del reproductor/adaptador
+reales con DOM sintético,21 de proyección/guardia de Recepción.21 checks HTTP
+nativos de Recepción/Ventas:401/403, ID ajeno404, multigrabación sin selección409,
+índice sin catálogo409, Range malformado416, política comercial de Ventas y
+pendiente sin referencia. El502 esperado para referencia propia sólo demuestra
+que el fixture bloquea proveedor/configuración reales: NO equivale a reproducir
+audio positivo. Compatibilidad getter/SDK con transporte falso también pasó.
+Sintaxis7PHP y2JS correcta. Fuentes del fixture:
+1f50b8e6ebb22b0a4711fafb4d02f1d0fe298c5febbdc0a7e6e444f080d0f4d2.
+
+Reproducir:tests/recording_selector.php,
+tests/test_recording_reference_player.cjs, lab/audio_scope.cjs --lab-root <raíz>
+y integration/provider_sdk.php con IMPE_PHONE_LAB_ROOT. El ensayo HTTP bloquea
+el proveedor y genera sólo eventos/resultados sintéticos.
+
+**Pendientes inmediatos de audio:** grabacion_interaccion.php todavía llama al
+getter por grupo; grabacion_transferida_institucion.php conserva selección sólo
+posicional. Resolver con propiedad histórica acreditable, sin trasladar permisos
+entre personas ni elegir audios ambiguos. Falta descarga binaria positiva,
+Range/seek, respuestas tardías/error y regresión visual/navegador completo.
+Recepción sin ID propio inequívoco permanece pendiente; no se añadió fallback
+CDR nuevo en este bloque. La interpretación de fecha de asignación del historial
+de Recepción se conserva, no se corrigió aquí un supuesto desfase de esa fecha.
+Siguen entrega comercial diferida, integración/aceptación universal1,000 y8h,
+Supervisión selectiva y publicador. Producción intacta.

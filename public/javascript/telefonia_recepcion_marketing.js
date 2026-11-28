@@ -206,9 +206,7 @@
             const button = node('button',
                 'linkage-call-audio-state linkage-call-recording-toggle marketing-reception-record-check');
             button.type = 'button';
-            button.setAttribute('data-sales-recording-toggle', '');
-            button.setAttribute('data-recording-url', url.toString());
-            button.setAttribute('data-recording-seconds', String(call.segundos || 0));
+            button.dataset.marketingPbxAudio=url.toString();
             button.setAttribute('aria-controls', audioId);
             button.setAttribute('aria-expanded', 'false');
             button.title = 'Zadarma reportó una grabación; comprobar disponibilidad.';
@@ -219,11 +217,10 @@
             const detail = node('tr', 'telephony-history-recording-row');
             detail.id = audioId;
             detail.hidden = true;
-            detail.setAttribute('data-sales-recording-row', '');
             const content = node('td');
             content.colSpan = 9;
             const slot = node('div', 'telephony-history-recording-slot');
-            slot.setAttribute('data-sales-recording-slot', '');
+            slot.dataset.marketingPbxAudios='';
             content.appendChild(slot);
             detail.appendChild(content);
             return detail;
@@ -516,66 +513,6 @@
 
         // Cada llamada normal continúa validándose desde el endpoint
         // privado. La fila, el estado de carga y su cierre son inmediatos.
-        tableBody.addEventListener('click', async function (event) {
-            const button = event.target.closest('[data-sales-recording-toggle]');
-            if (!button || button.dataset.recordingVerified === '1') return;
-            event.preventDefault();
-            event.stopPropagation();
-            const detail = document.getElementById(button.getAttribute('aria-controls'));
-            if (!detail) return;
-            if (!detail.hidden) {
-                detail.hidden = true;
-                button.setAttribute('aria-expanded', 'false');
-                button.classList.remove('is-open');
-                return;
-            }
-            detail.hidden = false;
-            button.setAttribute('aria-expanded', 'true');
-            button.classList.add('is-open');
-            const slot = detail.querySelector('[data-sales-recording-slot]');
-            if (!slot || button.dataset.recordingChecking === '1') return;
-            button.dataset.recordingChecking = '1';
-            mostrarComprobacion(slot);
-            const controller = new AbortController();
-            const timeout = window.setTimeout(() => controller.abort(), 12000);
-            try {
-                const url = new URL(button.dataset.recordingUrl, window.location.href);
-                url.searchParams.set('verificar', '1');
-                const response = await window.IMPE_PHONE_HTTP.request(url.toString(), {
-                    credentials: 'same-origin', cache: 'no-store',
-                    headers: {Accept: 'application/json'}, signal: controller.signal
-                });
-                const result = await response.json();
-                if (!response.ok || !result.ok)
-                    throw new Error('No fue posible verificar la grabación.');
-                if (!result.disponible)
-                    throw new Error('La grabación todavía está en preparación.');
-                if (!detail.isConnected) return;
-                button.dataset.recordingVerified = '1';
-                button.classList.add('is-available');
-                button.title = 'Consultar grabación';
-                slot.replaceChildren();
-                if (!detail.hidden) {
-                    // El reproductor compartido de Asesor conserva los mismos
-                    // controles. El cambio de fila es síncrono y no parpadea.
-                    detail.hidden = true;
-                    button.setAttribute('aria-expanded', 'false');
-                    button.click();
-                }
-            } catch (error) {
-                if (!detail.isConnected) return;
-                mostrarErrorGrabacion(slot,
-                    error.name === 'AbortError'
-                        ? 'La consulta tardó demasiado. Inténtalo nuevamente.'
-                        : error.message);
-                button.title = 'La grabación no pudo verificarse. Puedes volver a intentarlo.';
-            } finally {
-                window.clearTimeout(timeout);
-                delete button.dataset.recordingChecking;
-                slot.removeAttribute('aria-busy');
-            }
-        }, true);
-
         tableBody.addEventListener('click', function (event) {
             const button = event.target.closest('[data-marketing-result]');
             if (!button || !resultDialog || savingResult) return;

@@ -3,7 +3,7 @@
   "status": "autonomous_continuation_in_progress",
   "installed_baseline": "1d8f7da23907fabce398c13d924ef5996d839473",
   "portable_unit_suites": {
-    "passed": 25,
+    "passed": 26,
     "failed": 0,
     "runner": "run_unit.cjs"
   },
@@ -202,6 +202,22 @@
     "sql_default_zero_is_not_duration_evidence": true,
     "lab_source_sha256": "c940250d4d4e691377f5895394d7555cd2ad8c1817b7627bcca9e4808111a270",
     "reception_audio_first_group_link_removed": false,
+    "full_call_acceptance": false,
+    "production_changed": false
+  },
+  "continuation_stable_recording_selection": {
+    "base": "1db5a390",
+    "selector_pure_checks": 21,
+    "actual_player_adapter_checks": 17,
+    "reception_projection_and_guard_checks": 21,
+    "native_audio_scope_http_checks": 21,
+    "unit_suites_passed": 26,
+    "native_sdk_exact_recording_reference_verified_with_fake_transport": true,
+    "reception_group_first_link_removed": true,
+    "all_institution_audio_fallbacks_removed": false,
+    "positive_binary_audio_validated": false,
+    "native_provider_deliberately_disabled": true,
+    "lab_source_sha256": "1f50b8e6ebb22b0a4711fafb4d02f1d0fe298c5febbdc0a7e6e444f080d0f4d2",
     "full_call_acceptance": false,
     "production_changed": false
   }

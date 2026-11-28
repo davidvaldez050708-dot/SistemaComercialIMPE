@@ -61,7 +61,7 @@ Las pruebas unitarias portables se ejecutan con Node.js, sin dependencias:
 node tools/telefonia_universal_20261126/run_unit.cjs
 ```
 
-Cubren25 suites de capturas, alias, ACK, sincronización, restauración,
+Cubren26 suites de capturas, alias, ACK, sincronización, restauración,
 pendientes, carreras al marcar/colgar, registro entrante/saliente del host y
 cola de vinculación exacta de transferencias.
 No abren conexiones ni llamadas.

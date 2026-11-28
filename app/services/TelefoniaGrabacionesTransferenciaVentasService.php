@@ -175,7 +175,7 @@ final class TelefoniaGrabacionesTransferenciaVentasService
                 if(!$link||!filter_var($link,FILTER_VALIDATE_URL)||
                     !str_starts_with(strtolower($link),'https://')){$missing++;continue;}
                 $result['records'][$i]=$audio;
-                $result['segmentos_info'][]=['indice'=>$i,'tramo'=>$i+1,
+                $result['segmentos_info'][]=['indice'=>$i,'referencia'=>(string)$part['id'],'tramo'=>$i+1,
                     'etiqueta'=>$part['etiqueta'],'extension'=>$part['extension'],
                     'segundos'=>$part['segundos']];
                 $available++;

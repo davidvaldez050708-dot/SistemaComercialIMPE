@@ -44,7 +44,7 @@ final class TelefoniaAudioTransferidoService
         foreach($ids as $i=>$id){
             try{$audio=$record($id);if(empty($audio['link']))continue;
                 if(!filter_var($audio['link'],FILTER_VALIDATE_URL)||!str_starts_with(strtolower($audio['link']),'https://'))continue;
-                $reply['records'][$i]=$audio;$reply['segmentos_info'][]=($info[$i]??[])+['indice'=>$i];
+                $reply['records'][$i]=$audio;$reply['segmentos_info'][]=array_replace($info[$i]??[],['indice'=>$i,'referencia'=>(string)$id]);
             }catch(Throwable $e){$temporary=true;error_log('[audio_transferido] RECORD_TEMPORARY ref='.substr(hash('sha256',$pbx),0,12));}
         }
         $reply['segmentos']=count($reply['records']);$reply['disponible']=$reply['segmentos']>0;

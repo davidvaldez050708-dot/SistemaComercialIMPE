@@ -4,6 +4,7 @@ if(PHP_SAPI!=='cli')exit;
 $lab=getenv('IMPE_PHONE_LAB_ROOT');$c=json_decode(file_get_contents($lab.'/credentials.json'),true);
 if($c['host']!=='127.0.0.1'||$c['port']!==3308||$c['database']!=='impe_telefonia_lab')throw new RuntimeException('Synthetic fixture only');
 require_once $lab.'/site/app/services/TelefoniaRecepcionMarketingService.php';
+require_once $lab.'/site/app/services/TelefoniaGrabacionSalienteMarketingService.php';
 $count=0;$check=static function(bool $ok,string $why)use(&$count){if(!$ok)throw new RuntimeException($why);++$count;};
 $e=static function(int $id,string $type,string $ext,array $extra=[]):array{
  return array_replace(['id'=>$id,'evento'=>$type,'internal'=>$ext,'pbx_call_id'=>'out_fixture_reception_projection',
@@ -38,4 +39,9 @@ $check($call['segundos']===null&&!$call['duracion_conocida'],'SQL default zero w
 $call=$project([$out,$answer,$e(3,'NOTIFY_OUT_END','',['duration'=>900,'disposition'=>'answered'])]);
 $check($call['estado']==='Completada'&&$call['segundos']===null,'Common scoped anonymous outgoing end used by Reception too');
 foreach([-1,999999,'invalid'] as $value){$call=$project([$out,$answer,$e(3,'NOTIFY_OUT_END','100',['duration'=>$value,'disposition'=>'answered'])]);$check($call['segundos']===null,'Malformed provider duration cannot become zero or positive evidence');}
+$ownAudio=[$out,$answer,$e(3,'NOTIFY_OUT_END','100',['duration'=>37,'disposition'=>'answered','is_recorded'=>'1','call_id_with_rec'=>'17490000000000001234567890'])];
+$check(TelefoniaGrabacionSalienteMarketingService::eventosAutorizados($ownAudio,'100'),'Direct audio guard uses the same own PBX facts');
+$foreignAudio=[$out,$answer,$e(3,'NOTIFY_OUT_END','100',['duration'=>37,'disposition'=>'answered']),$e(4,'NOTIFY_RECORD','101',['call_id_with_rec'=>'17490000000000001234567891'])];
+$check(!TelefoniaGrabacionSalienteMarketingService::eventosAutorizados($foreignAudio,'100'),'Foreign RECORD alone cannot grant direct audio');
+$check(!TelefoniaGrabacionSalienteMarketingService::eventosAutorizados([$out,$answer,$transfer,$e(5,'NOTIFY_OUT_END','100',['duration'=>37,'disposition'=>'answered','last_internal'=>'101'])],'100'),'Transfer audio retains its separate authorization path');
 echo "PASS $count actual Reception projection checks: shared PBX facts, incoming/outgoing/transfer/return, no phone suffix association, parent/unknown/zero duration, scoped audio and original commercial requirements. No SQL or provider calls.\n";

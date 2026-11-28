@@ -13,7 +13,8 @@ class TelefoniaGrabacionSalienteMarketingService
         mysqli $db,
         int $usuarioId,
         string $extension,
-        string $pbxCallId
+        string $pbxCallId,
+        ?array $eventos = null
     ): bool {
         if ($usuarioId <= 0 ||
             preg_match('/^\\d{3,6}$/', $extension) !== 1 ||
@@ -30,7 +31,7 @@ class TelefoniaGrabacionSalienteMarketingService
               AND te.proveedor = 'ZADARMA'
               AND te.activo = 1
               AND te.permite_salientes = 1
-             WHERE inicio.pbx_call_id = ?
+             WHERE inicio.pbx_call_id = BINARY ?
                AND inicio.internal = ?
                AND inicio.evento = 'NOTIFY_OUT_START'
                AND inicio.received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -46,49 +47,22 @@ class TelefoniaGrabacionSalienteMarketingService
         $stmt->close();
         if (!$pertenece) return false;
 
-        $eventos = (new ZadarmaWebhookEventStoreService())
-            ->obtenerPorPbxCallId($pbxCallId);
+        $eventos ??= (new ZadarmaWebhookEventStoreService($db))->obtenerPorPbxCallId($pbxCallId);
         return self::eventosAutorizados($eventos, $extension);
     }
 
     // La revisión de eventos puede probarse sin consultar MySQL ni Zadarma.
     public static function eventosAutorizados(array $eventos, string $extension): bool
     {
-        $iniciada = false;
-        $finalizada = false;
-        $contestada = false;
-        $grabada = false;
-        $transferida = false;
-        foreach ($eventos as $evento) {
-            $tipo = strtoupper(trim((string)($evento['event'] ?? '')));
-            $interno = trim((string)($evento['internal'] ?? ''));
-            if ($tipo === 'NOTIFY_OUT_START' && $interno === $extension) {
-                $iniciada = true;
-            }
-            if ($tipo === 'NOTIFY_OUT_END' &&
-                ($interno === '' || $interno === $extension)) {
-                $finalizada = true;
-                if (in_array(strtolower(trim(
-                    (string)($evento['disposition'] ?? '')
-                )), ['answered', 'completed'], true)) {
-                    $contestada = true;
-                }
-            }
-            if ($tipo === 'NOTIFY_ANSWER' &&
-                ($interno === '' || $interno === $extension)) {
-                $contestada = true;
-            }
-            if ($tipo === 'NOTIFY_RECORD' ||
-                (int)($evento['is_recorded'] ?? 0) === 1 ||
-                trim((string)($evento['call_id_with_rec'] ?? '')) !== '') {
-                $grabada = true;
-            }
-            if ($tipo === 'NOTIFY_INTERNAL' &&
-                $interno !== $extension &&
-                trim((string)($evento['transfer_from'] ?? '')) === $extension) {
-                $transferida = true;
-            }
+        require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
+        $raw=[];$iniciada=false;
+        foreach($eventos as $event){
+            $event['evento']=strtoupper((string)($event['event']??$event['evento']??''));$raw[]=$event;
+            if($event['evento']==='NOTIFY_OUT_START'&&(string)($event['internal']??'')===$extension)$iniciada=true;
         }
-        return $iniciada && $finalizada && $contestada && $grabada && !$transferida;
+        $facts=TelefoniaPbxSegmentosService::hechos($raw,$extension);
+        return $iniciada&&$facts['finalizada']&&$facts['conectada']&&$facts['transferida_a']===''&&
+            (count($facts['segmentos'])>0||$facts['audio_motivo']==='pendiente_referencia');
+
     }
 }

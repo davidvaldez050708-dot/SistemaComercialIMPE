@@ -16,6 +16,7 @@ require_once $root . '/app/services/ZadarmaRecordingService.php';
 require_once $root . '/app/services/ZadarmaWebhookEventStoreService.php';
 require_once $root . '/app/services/TelefoniaRecepcionMarketingService.php';
 require_once $root . '/app/services/TelefoniaGrabacionSalienteMarketingService.php';
+require_once $root . '/app/services/TelefoniaGrabacionSelector.php';
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
     http_response_code(405);
@@ -54,7 +55,8 @@ if ($rangeHeader !== '' && !preg_match('/^bytes=\d*-\d*$/', $rangeHeader)) {
 }
 
 try {
-    $recepcion = new TelefoniaRecepcionMarketingService();
+    $db=Database::compartida();
+    $recepcion = new TelefoniaRecepcionMarketingService($db);
     $asignacion = $recepcion->asignacion($usuarioId);
     if (!$asignacion) {
         http_response_code(403);
@@ -77,85 +79,48 @@ try {
         http_response_code(404);
         exit('Esta llamada no tiene una grabación disponible en recepción.');
     }
-    $db = (new Database())->connect();
+    $cutoff=max((string)$asignacion['asignada_desde'],date('Y-m-d H:i:s',strtotime('-30 days')));
+    $events=array_values(array_filter((new ZadarmaWebhookEventStoreService($db))->obtenerPorPbxCallId($pbxCallId),
+        static fn(array $event):bool=>(string)($event['received_at']??'')>=$cutoff));
+    $raw=array_map(static function(array $event):array{$event['evento']=$event['event']??$event['evento']??'';return $event;},$events);
+    $facts=TelefoniaPbxSegmentosService::hechos($raw,$extension);
 
-    if ($tipo === 'entrante') {
-    $consulta = $db->prepare(
-        "SELECT 1
-         FROM telefonia_zadarma_eventos entrada
-         INNER JOIN telefonia_extensiones te
-            ON te.usuario_id = ?
-           AND te.extension = entrada.internal
-           AND te.proveedor = 'ZADARMA'
-           AND te.activo = 1
-           AND te.permite_entrantes = 1
-         WHERE entrada.pbx_call_id = ?
-           AND entrada.internal = ?
-           AND entrada.evento = 'NOTIFY_INTERNAL'
-           AND entrada.received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-           AND entrada.received_at >= GREATEST(te.created_at, te.updated_at)
-           AND EXISTS (
-               SELECT 1 FROM telefonia_zadarma_eventos respuesta
-               WHERE respuesta.pbx_call_id = entrada.pbx_call_id
-                 AND respuesta.evento = 'NOTIFY_ANSWER'
-           )
-           AND EXISTS (
-               SELECT 1 FROM telefonia_zadarma_eventos grab
-               WHERE grab.pbx_call_id = entrada.pbx_call_id
-                 AND (grab.evento = 'NOTIFY_RECORD' OR grab.is_recorded = 1
-                     OR NULLIF(grab.call_id_with_rec, '') IS NOT NULL)
-           )
-         LIMIT 1"
-    );
-    if (!$consulta) {
-        throw new RuntimeException('No fue posible verificar la grabación de recepción.');
-    }
-    $consulta->bind_param('iss', $usuarioId, $pbxCallId, $extension);
-    $consulta->execute();
-    $autorizada = (bool)$consulta->get_result()->fetch_assoc();
-    $consulta->close();
-
-    // El audio PBX de una transferencia puede incluir una conversación de
-    // otra persona: no permitirlo desde el historial de recepción.
-    $estado = (new ZadarmaWebhookEventStoreService())
-        ->obtenerEstadoEntrantePorPbxCallId($extension, $pbxCallId);
-    if (
-        !$autorizada || !$estado ||
-        ($estado['estado'] ?? '') !== 'ended' ||
-        trim((string)($estado['answer_at'] ?? '')) === '' ||
-        trim((string)($estado['transfer_to'] ?? '')) !== ''
-    ) {
-        http_response_code(404);
-        exit('No hay una grabación de recepción disponible para esta llamada.');
-    }
-
-    } else {
-        if (empty($asignacion['permite_salientes']) ||
-            !TelefoniaGrabacionSalienteMarketingService::autorizada(
-                $db, $usuarioId, $extension, $pbxCallId
-            )) {
-            http_response_code(404);
-            exit('No hay una grabación saliente autorizada para esta llamada.');
+    // El historial ya releyó usuario, rol, extensión y fecha de asignación.
+    // Corroborar el mismo tramo con el lote filtrado, sin otra conexión ni
+    // consultas de autorización paralelas con fechas diferentes.
+    if($tipo==='entrante'){
+        $ownStart=false;
+        foreach($raw as $event)if($event['evento']==='NOTIFY_INTERNAL'&&(string)($event['internal']??'')===$extension)$ownStart=true;
+        if(!$ownStart||!$facts['finalizada']||$facts['answer_at']===''||$facts['transferida_a']!==''){
+            http_response_code(404);exit('No hay una grabación de recepción disponible para esta llamada.');
         }
+    }elseif(empty($asignacion['permite_salientes'])||!TelefoniaGrabacionSalienteMarketingService::eventosAutorizados($events,$extension)){
+        http_response_code(404);exit('No hay una grabación saliente autorizada para esta llamada.');
     }
 
-    $service = new ZadarmaRecordingService();
-    $recording = $service->obtenerGrabacionParaLlamada($pbxCallId);
-    // El webhook indica una grabación reportada, no necesariamente lista.
-    // La consulta de disponibilidad NO expone la URL ni descarga audio.
-    if ((string)($_GET['verificar'] ?? '') === '1') {
+    $ids=$facts['segmentos'];
+    if((string)($_GET['verificar']??'')==='1'){
+        $info=[];$temporary=false;
+        if($ids){
+            $service=new ZadarmaRecordingService(false);
+            foreach($ids as $i=>$id)try{
+                $record=$service->obtenerGrabacionPorCallId($id);
+                if(!empty($record['link']))$info[]=array_replace($facts['segmentos_info'][$i]??[],['indice'=>$i,'referencia'=>(string)$id]);
+            }catch(Throwable $e){$temporary=true;}
+        }
         header('Content-Type: application/json; charset=utf-8');
-        header('Cache-Control: private, no-store');
-        header('X-Content-Type-Options: nosniff');
-        echo json_encode([
-            'ok' => true,
-            'disponible' => $recording !== null && !empty($recording['link'])
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');
+        echo json_encode(['ok'=>true,'disponible'=>(bool)$info,'segmentos'=>count($info),'segmentos_info'=>$info,
+            'catalogo'=>TelefoniaGrabacionSelector::catalogo($ids),
+            'estado'=>$info?(count($info)<count($ids)?'DISPONIBLE_PARCIAL':'DISPONIBLE'):($temporary?'ERROR_TEMPORAL':($ids?'GRABACION_EN_PREPARACION':'TRAMO_PENDIENTE_VINCULACION'))]);
         exit;
     }
-    if (!$recording || empty($recording['link'])) {
-        http_response_code(404);
-        exit('La grabación todavía no está disponible en Zadarma.');
+    try{$index=TelefoniaGrabacionSelector::indice($ids,$_GET);}
+    catch(DomainException $e){http_response_code($e->getCode());exit($e->getMessage());}
+    $service=new ZadarmaRecordingService(false);
+    $recording=$service->obtenerGrabacionPorCallId($ids[$index]);
+    if(!$recording||empty($recording['link'])){
+        http_response_code(404);exit('La grabación todavía no está disponible en Zadarma.');
     }
 
     $audio = $service->descargarGrabacion((string)$recording['link'], $rangeHeader);

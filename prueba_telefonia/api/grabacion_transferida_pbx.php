@@ -1,7 +1,8 @@
 <?php
 /**
  * Segmentos PBX de una entrante transferida, para participantes verificados.
- * Nunca acepta call_id_with_rec ni URLs de audio aportados por el navegador.
+ * El selector sólo elige un ID dentro del catálogo autorizado de la petición.
+ * Nunca acepta URLs de audio ni usa el ID del navegador para probar propiedad.
  */
 declare(strict_types=1);
 session_start();
@@ -16,6 +17,7 @@ require_once $root . '/app/services/ZadarmaRecordingService.php';
 require_once $root . '/app/helpers/ZadarmaPbxIdentifierHelper.php';
 require_once $root . '/app/services/TelefoniaAudioTransferidoService.php';
 require_once $root . '/app/services/TelefoniaGrabacionesTransferenciaVentasService.php';
+require_once $root . '/app/services/TelefoniaGrabacionSelector.php';
 header('Cache-Control: private, no-store');
 header('X-Content-Type-Options: nosniff');
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') { http_response_code(405); exit; }
@@ -67,7 +69,7 @@ try {
             $q->bind_param('s',$pbx);$q->execute();$events=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();
             $parts=TelefoniaPbxSegmentosService::deEventos($events,$ext,[$receiver]);
             $records=[];$info=[];
-            foreach($parts['segmentos'] as $i=>$id){$r=$service->obtenerGrabacionPorCallId($id);if(!empty($r['link'])){$records[$i]=$r;$info[]=($parts['segmentos_info'][$i]??[])+['indice'=>$i];}}
+            foreach($parts['segmentos'] as $i=>$id){$r=$service->obtenerGrabacionPorCallId($id);if(!empty($r['link'])){$records[$i]=$r;$info[]=array_replace($parts['segmentos_info'][$i]??[],['indice'=>$i,'referencia'=>(string)$id]);}}
             $result=['ok'=>true,'estado'=>$records?'DISPONIBLE':'GRABACION_EN_PREPARACION','disponible'=>(bool)$records,'segmentos'=>count($records),'segmentos_info'=>$info];
         }
     } else {
@@ -87,16 +89,15 @@ try {
         }
         $records=$result['records'];
     }
+    $ids=TelefoniaGrabacionSelector::referencias($records,$result['segmentos_info']);
     if (isset($_GET['verificar'])) {
+        $result['catalogo']=TelefoniaGrabacionSelector::catalogo($ids);
         unset($result['ids'],$result['records'],$result['cache_tramos']);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($result);exit;
     }
-    $index = filter_var($_GET['segmento'] ?? null,FILTER_VALIDATE_INT,
-        ['options'=>['min_range'=>0,'max_range'=>7]]);
-    if ($index===false || $index===null || !isset($records[$index])) {
-        http_response_code(404); exit;
-    }
+    try{$index=TelefoniaGrabacionSelector::indice($ids,$_GET);}
+    catch(DomainException $e){http_response_code($e->getCode());exit($e->getMessage());}
     $range = trim((string)($_SERVER['HTTP_RANGE'] ?? ''));
     if ($range!=='' && !preg_match('/^bytes=\\d*-\\d*$/D',$range)) {
         http_response_code(416); exit;

@@ -56,7 +56,8 @@ if ($rangeHeader !== '' && !preg_match('/^bytes=\d*-\d*$/', $rangeHeader)) {
 
 try {
     require_once $root.'/app/services/TelefoniaVentasLlamadasService.php';
-    $calls=new TelefoniaVentasLlamadasService();
+    require_once $root.'/app/services/TelefoniaGrabacionSelector.php';
+    $db=Database::compartida();$calls=new TelefoniaVentasLlamadasService($db);
     try {$call=$calls->obtener($usuarioId,$pbxCallId,(string)($_GET['extension']??''));}
     catch(DomainException $e){http_response_code(404);exit('No hay un tramo autorizado para esta llamada.');}
     $transferida=($call['direccion']??'')==='Entrante' &&
@@ -69,7 +70,6 @@ try {
         // identidad y ruta comercial en la operación PBX exacta; devolver
         // tantos segmentos NOTIFY_RECORD como hayan sido corroborados.
         require_once $root.'/app/services/TelefoniaGrabacionesTransferenciaVentasService.php';
-        $db=(new Database())->connect(false);
         $svc=new TelefoniaGrabacionesTransferenciaVentasService($db);
         $provider=new ZadarmaRecordingService(false);
         $service=$provider; // La descarga Range final reutiliza el mismo proveedor.
@@ -80,30 +80,29 @@ try {
         }catch(DomainException $e){
             http_response_code(404);exit('No hay tramos transferidos autorizados.');
         }
+        $ids=TelefoniaGrabacionSelector::referencias($response['records'],$response['segmentos_info']);
         if(isset($_GET['verificar'])){
+            $response['catalogo']=TelefoniaGrabacionSelector::catalogo($ids);
             unset($response['records']);
             header('Content-Type: application/json; charset=utf-8');
             header('Cache-Control: private, no-store');
             echo json_encode($response,JSON_UNESCAPED_UNICODE);exit;
         }
-        $index=filter_var($_GET['segmento']??null,FILTER_VALIDATE_INT,
-            ['options'=>['min_range'=>0,'max_range'=>7]]);
-        if($index===false||$index===null||!isset($response['records'][$index])){
-            http_response_code(404);exit('El tramo solicitado no está disponible.');
-        }
+        try{$index=TelefoniaGrabacionSelector::indice($ids,$_GET);}
+        catch(DomainException $e){http_response_code($e->getCode());exit($e->getMessage());}
         $recording=$response['records'][$index];
     }else{
     $ids=$call['segmentos'];
     if(isset($_GET['verificar'])){
         $service=new ZadarmaRecordingService(false);$info=[];$temporary=false;
-        foreach($ids as $i=>$id){try{$r=$service->obtenerGrabacionPorCallId($id);if(!empty($r['link']))$info[]=($call['segmentos_info'][$i]??[])+['indice'=>$i];}catch(Throwable $e){$temporary=true;error_log('[ventas_audio] RECORD_TEMPORARY ref='.substr(hash('sha256',$pbxCallId),0,12));}}
+        foreach($ids as $i=>$id){try{$r=$service->obtenerGrabacionPorCallId($id);if(!empty($r['link']))$info[]=array_replace($call['segmentos_info'][$i]??[],['indice'=>$i,'referencia'=>(string)$id]);}catch(Throwable $e){$temporary=true;error_log('[ventas_audio] RECORD_TEMPORARY ref='.substr(hash('sha256',$pbxCallId),0,12));}}
         header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');
-        echo json_encode(['ok'=>true,'disponible'=>(bool)$info,'segmentos'=>count($info),'segmentos_info'=>$info,'estado'=>$info?(count($info)<count($ids)?'DISPONIBLE_PARCIAL':'DISPONIBLE'):($temporary?'ERROR_TEMPORAL':($ids?'GRABACION_EN_PREPARACION':'TRAMO_PENDIENTE_VINCULACION'))]);exit;
+        echo json_encode(['ok'=>true,'disponible'=>(bool)$info,'segmentos'=>count($info),'segmentos_info'=>$info,'catalogo'=>TelefoniaGrabacionSelector::catalogo($ids),'estado'=>$info?(count($info)<count($ids)?'DISPONIBLE_PARCIAL':'DISPONIBLE'):($temporary?'ERROR_TEMPORAL':($ids?'GRABACION_EN_PREPARACION':'TRAMO_PENDIENTE_VINCULACION'))]);exit;
     }
-    $segment=filter_var($_GET['segmento']??'0',FILTER_VALIDATE_INT);
-    if($segment===false||$segment<0||!isset($ids[$segment])){http_response_code(404);exit('No hay audio confirmado para tu extensión.');}
+    try{$segment=TelefoniaGrabacionSelector::indice($ids,$_GET);}
+    catch(DomainException $e){http_response_code($e->getCode());exit($e->getMessage());}
     // Resolver cada ID autorizado; nunca pedir audio global del PBX.
-    $service=new ZadarmaRecordingService();$recording=$service->obtenerGrabacionPorCallId($ids[$segment]);
+    $service=new ZadarmaRecordingService(false);$recording=$service->obtenerGrabacionPorCallId($ids[$segment]);
     if(!$recording||empty($recording['link'])){http_response_code(404);exit('La grabación aún no está disponible en Zadarma.');}
     } // Fin del reproductor original de llamada individual.
 
