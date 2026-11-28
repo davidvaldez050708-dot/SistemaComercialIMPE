@@ -228,5 +228,16 @@
     "raw_server_hash_requires_preflight": true,
     "recovered_policy_unchanged": true,
     "production_changed": false
+  },
+  "continuation_supervision_institution_stable_audio": {
+    "base": "3d3c739f",
+    "supervision_sanitizer_selector_checks": 8,
+    "common_selector_checks": 21,
+    "actual_player_checks": 17,
+    "lab_permission_policy_range_checks": 19,
+    "php_syntax_files": 4,
+    "lab_source_sha256": "ccef28d22cbb22f9aa82ec5fa424cc28341bd823c61f1ec9869d15a9c85dad41",
+    "positive_binary_audio_validated": false,
+    "production_changed": false
   }
 }

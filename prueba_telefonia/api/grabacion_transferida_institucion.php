@@ -15,6 +15,7 @@ require_once $root.'/app/helpers/PermissionHelper.php';
 require_once $root.'/app/models/RolModel.php';
 require_once $root.'/app/services/ZadarmaRecordingService.php';
 require_once $root.'/app/services/TelefoniaGrabacionesTransferenciaInstitucionService.php';
+require_once $root.'/app/services/TelefoniaGrabacionSelector.php';
 header('Cache-Control: private, no-store');
 header('X-Content-Type-Options: nosniff');
 if(($_SERVER['REQUEST_METHOD']??'')!=='GET'){http_response_code(405);exit;}
@@ -52,11 +53,8 @@ try{
         echo json_encode($result,JSON_UNESCAPED_UNICODE);
         exit;
     }
-    $index=filter_var($_GET['segmento']??null,FILTER_VALIDATE_INT,
-        ['options'=>['min_range'=>0,'max_range'=>7]]);
-    if($index===null||$index===false||!isset($result['records'][$index])){
-        http_response_code(404);exit;
-    }
+    $index=TelefoniaGrabacionSelector::indice(
+        TelefoniaGrabacionSelector::referencias($result['records'],$result['segmentos_info']),$_GET);
     $audio=$provider->descargarGrabacion((string)$result['records'][$index]['link'],$range);
     $body=(string)($audio['body']??'');
     $type=strtolower(trim((string)($audio['content_type']??'')));
@@ -98,9 +96,9 @@ try{
     header('Content-Length: '.strlen($body));
     echo $body;
 }catch(DomainException $e){
-    http_response_code(403);
+    http_response_code(in_array($e->getCode(),[404,409],true)?$e->getCode():403);
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['ok'=>false,'estado'=>'ACCESO_NO_AUTORIZADO']);
+    echo json_encode(['ok'=>false,'estado'=>in_array($e->getCode(),[404,409],true)?'SELECCION_NO_DISPONIBLE':'ACCESO_NO_AUTORIZADO']);
 }catch(Throwable $e){
     error_log('[grabacion_institucion_transferida] '.get_class($e));
     http_response_code(502);

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/../services/SupervisionLlamadasRepository.php';
 require_once __DIR__.'/../services/SupervisionLlamadasAudioService.php';
+require_once __DIR__.'/../services/TelefoniaGrabacionSelector.php';
 
 class SupervisionLlamadasController
 {
@@ -43,8 +44,7 @@ class SupervisionLlamadasController
                 $provider=$this->proveedor();
                 $out=(new SupervisionLlamadasAudioService($db))->resolver($uid,$key,$provider,isset($_GET['verificar']));
                 if(isset($_GET['verificar'])){unset($out['records']);header('Content-Type: application/json; charset=utf-8');echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_INVALID_UTF8_SUBSTITUTE);return;}
-                $index=filter_var($_GET['segmento']??'0',FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>7]]);
-                if($index===false||!isset($out['records'][$index]['link'])){http_response_code(404);echo 'Esta parte de la grabación aún no está disponible.';return;}
+                $index=TelefoniaGrabacionSelector::indice(TelefoniaGrabacionSelector::referencias($out['records'],$out['segmentos_info']),$_GET);
                 // Liberar la sesión evita bloquear la navegación o el teléfono.
                 if(session_status()===PHP_SESSION_ACTIVE)session_write_close();
                 $response=SupervisionLlamadasAudioService::respuesta($provider->descargarGrabacion($out['records'][$index]['link'],$range),$range);
@@ -57,7 +57,7 @@ class SupervisionLlamadasController
             $tituloPagina='Supervisión de llamadas';$subtituloPagina='Historial y grabaciones de analistas y asesores';$opcionActiva='supervision_llamadas';
             require __DIR__.'/../views/layout/dashboard_head.php';require __DIR__.'/../views/layout/sidebar.php';require __DIR__.'/../views/layout/topbar.php';
             require __DIR__.'/../views/telefonia/supervision_llamadas.php';require __DIR__.'/../views/layout/dashboard_footer.php';
-        }catch(DomainException $e){http_response_code(403);header('Content-Type: text/plain; charset=utf-8');echo preg_match('/^[A-Z_]+$/D',$e->getMessage())?'No hay una grabación verificada disponible para esta llamada.':$e->getMessage();}
+        }catch(DomainException $e){http_response_code(in_array($e->getCode(),[404,409],true)?$e->getCode():403);header('Content-Type: text/plain; charset=utf-8');echo preg_match('/^[A-Z_]+$/D',$e->getMessage())?'No hay una grabación verificada disponible para esta llamada.':$e->getMessage();}
         catch(InvalidArgumentException $e){http_response_code(422);header('Content-Type: text/plain; charset=utf-8');echo $e->getMessage();}
         catch(Throwable $e){error_log('[supervision_llamadas] '.get_class($e));http_response_code(503);header('Content-Type: text/plain; charset=utf-8');echo 'No se pudo consultar la información. Vuelve a intentarlo.';}
     }

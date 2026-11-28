@@ -101,7 +101,7 @@ final class TelefoniaGrabacionesTransferenciaInstitucionService
                 if(!$link||!filter_var($link,FILTER_VALIDATE_URL)||
                     !str_starts_with(strtolower($link),'https://'))continue;
                 $records[$i]=$audio;
-                $segments[]=['indice'=>$i,'tramo'=>$i+1,
+                $segments[]=['indice'=>$i,'tramo'=>$i+1,'referencia'=>(string)$id,
                     // NOTIFY_RECORD no certifica la extensión que produjo audio.
                     'etiqueta'=>'Tramo PBX '.($i+1).' · extensión por verificar',
                     'extension'=>'','segundos'=>null];

@@ -75,7 +75,7 @@ final class SupervisionLlamadasAudioService
         if(count($ids)>8)throw new DomainException('La identidad de los audios requiere revisión.');
         $records=[];$info=[];$temporary=false;
         foreach($ids as $i=>$id){
-            try{$record=$provider->obtenerGrabacionPorCallId($id);if(!empty($record['link'])){$records[$i]=$record;$info[]=($infos[$i]??[])+['indice'=>$i,'etiqueta'=>'Parte '.($i+1).' de la llamada'];}}
+            try{$record=$provider->obtenerGrabacionPorCallId($id);if(!empty($record['link'])){$records[$i]=$record;$info[]=array_replace($infos[$i]??[],['indice'=>$i,'referencia'=>(string)$id])+['etiqueta'=>'Parte '.($i+1).' de la llamada'];}}
             catch(Throwable $e){$temporary=true;}
         }
         return self::sanear(['ok'=>true,'disponible'=>(bool)$records,'segmentos'=>count($records),'segmentos_info'=>$info,'records'=>$records,
@@ -111,7 +111,7 @@ final class SupervisionLlamadasAudioService
             'estado'=>'GRABACION_EN_PREPARACION']);
         return self::sanear([
             'disponible'=>true,'segmentos_info'=>[[
-                'indice'=>0,'etiqueta'=>'Grabación de la llamada',
+                'indice'=>0,'referencia'=>(string)$cdr['call_id'],'etiqueta'=>'Grabación de la llamada',
                 'segundos'=>(int)$cdr['seconds']]],
             'records'=>[0=>$record],'estado'=>'DISPONIBLE']);
     }
@@ -124,6 +124,8 @@ final class SupervisionLlamadasAudioService
             $label=(string)($part['etiqueta']??'');
             if($label===''||preg_match('/PBX|WebRTC|SDK/i',$label))$label='Parte '.($index+1).' de la llamada';
             $info[]=['indice'=>$index,'etiqueta'=>$label,'segundos'=>isset($part['segundos'])?(int)$part['segundos']:null];
+            if(is_string($part['referencia']??null)&&ZadarmaPbxIdentifierHelper::callIdValido($part['referencia']))
+                $info[array_key_last($info)]['referencia']=$part['referencia'];
         }
         return ['ok'=>true,'disponible'=>(bool)($response['disponible']??false),'segmentos'=>count($info),'segmentos_info'=>$info,
             'estado'=>(string)($response['estado']??'TRAMO_PENDIENTE_VINCULACION'),'records'=>$response['records']??[]];

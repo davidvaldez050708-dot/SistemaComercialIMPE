@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el decimocuarto checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el decimoquinto checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -736,3 +736,24 @@ básicas de audio/Range con bytes sintéticos. Estas clases se recuperan SIN
 modificar su política o transporte. No prueba proveedor, reproducción real,
 Range avanzado ni aceptación universal. Producción intacta. Los pendientes del
 checkpoint13 continúan, incluida selección estable de audio en Supervisión.
+
+
+## Decimoquinto checkpoint — audio estable en Supervisión e instituciones
+
+Base:3d3c739f. Supervisión conserva referencias opacas verificadas al sanear
+metadatos, incluidos CDR y catálogos de transferencias. El controlador usa el
+selector común tras revalidar su alcance vigente. Transferencias a instituciones
+publican la referencia conocida del servidor y usan el mismo selector. El
+reproductor existente ya la transporta a reproducción y descarga. No cambia
+permisos, consultas, diseño, resultados ni grabaciones. Una sola referencia
+conserva URL antigua; múltiples sin identidad estable responden409 y una ajena404.
+
+Pasaron8 casos del sanitizador real/selector de Supervisión,21 del selector
+común,17 del reproductor con DOM sintético,19 de carga/permisos/política/Range
+básico del laboratorio y sintaxis de4PHP. Fuentes de laboratorio:
+ccef28d22cbb22f9aa82ec5fa424cc28341bd823c61f1ec9869d15a9c85dad41.
+No se verificó reproducción binaria positiva ni HTTP completo de Supervisión;
+no son pruebas universales. El getter global de grabacion_interaccion.php y
+el transporte Range compartido todavía requieren corrección. Los otros
+pendientes del checkpoint13,1,000 universales,8h reales y publicador continúan.
+Producción intacta.
