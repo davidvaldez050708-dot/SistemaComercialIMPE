@@ -77,7 +77,7 @@ $files=['/prueba_telefonia/api/sesion_local.php','/prueba_telefonia/api/borrador
  '/prueba_telefonia/api/zadarma_estado_llamada.php','/prueba_telefonia/api/resultado_recepcion_marketing.php',
  '/prueba_telefonia/api/vincular_interaccion_zadarma.php','/prueba_telefonia/api/grabacion_recepcion_marketing.php',
  '/prueba_telefonia/api/grabacion_ventas.php','/prueba_telefonia/api/grabacion_transferida_pbx.php',
- '/prueba_telefonia/api/grabacion_interaccion.php'];
+ '/prueba_telefonia/api/grabacion_interaccion.php','/prueba_telefonia/api/llamadas_seguimiento.php'];
 if(in_array($path,$files,true)||$path==='/index.php'){
  if(($_SERVER['HTTP_X_FIXTURE_DROP_REPLY']??'')==='1'){
   ob_start();register_shutdown_function(static function(){if(http_response_code()<300){ob_clean();http_response_code(503);header('Content-Type: application/json');echo '{"ok":false,"mensaje":"Synthetic lost ACK"}';}});

@@ -16,8 +16,7 @@ $root = dirname(__DIR__, 2);
 require_once $root . '/app/helpers/PermissionHelper.php';
 require_once $root . '/app/models/RolModel.php';
 require_once $root . '/app/models/SeguimientoVinculacionModel.php';
-require_once $root . '/app/services/ZadarmaCallLookupService.php';
-require_once $root . '/app/services/ZadarmaWebhookEventStoreService.php';
+require_once $root . '/app/services/TelefoniaHistorialInteraccionPbxService.php';
 require_once $root . '/app/services/TelefoniaGrabacionExpedienteTransferidaService.php';
 require_once $root . '/app/helpers/TelefoniaFechaHoraHelper.php';
 
@@ -78,64 +77,6 @@ $marcadorPrueba = '[REGISTRO_LLAMADA_PRUEBA]';
 $marcadorManual = '[REGISTRO_LLAMADA_MANUAL]';
 $marcadorWebrtcSinPbx = '[WEBRTC OBSERVADO; SIN EVENTO PBX FIRMADO; RESULTADO DECLARADO POR ANALISTA]';
 
-// Zadarma entrega NOTIFY_RECORD cuando el audio ya está listo.
-// Los eventos persistidos son la fuente primaria. El log se conserva únicamente
-// como respaldo para llamadas antiguas o contingencia de base de datos.
-$estadoZadarma = [];
-$zadarmaEventStore = null;
-$logPath = $root . '/storage/zadarma_webhooks.log';
-
-function acumularEventoZadarma(array &$estadoZadarma, array $fila): void
-{
-    $pbxCallId = trim((string)($fila['pbx_call_id'] ?? ''));
-    if ($pbxCallId === '') {
-        return;
-    }
-
-    if (!isset($estadoZadarma[$pbxCallId])) {
-        $estadoZadarma[$pbxCallId] = [
-            'respuesta' => null,
-            'fin' => null,
-            'grabada' => false,
-            'grabacion' => false,
-        ];
-    }
-
-    $evento = (string)($fila['event'] ?? '');
-
-    if ($evento === 'NOTIFY_ANSWER') {
-        $estadoZadarma[$pbxCallId]['respuesta'] = $fila;
-    } elseif ($evento === 'NOTIFY_OUT_END') {
-        $estadoZadarma[$pbxCallId]['fin'] = $fila;
-        $estadoZadarma[$pbxCallId]['grabada'] =
-            (string)($fila['is_recorded'] ?? '') === '1' ||
-            trim((string)($fila['call_id_with_rec'] ?? '')) !== '';
-    } elseif ($evento === 'NOTIFY_RECORD') {
-        $estadoZadarma[$pbxCallId]['grabacion'] = true;
-    }
-}
-
-try {
-    $zadarmaEventStore = new ZadarmaWebhookEventStoreService($conexionHistorial);
-} catch (Throwable $errorStore) {
-    $zadarmaEventStore = null;
-    error_log('[llamadas_seguimiento_zadarma_store] ' . $errorStore->getMessage());
-
-    if (is_file($logPath)) {
-        $lineas = file(
-            $logPath,
-            FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES
-        ) ?: [];
-
-        foreach ($lineas as $linea) {
-            $fila = json_decode($linea, true);
-            if (is_array($fila)) {
-                acumularEventoZadarma($estadoZadarma, $fila);
-            }
-        }
-    }
-}
-
 $resultadosConContacto = [
     'CONTACTADO',
     'CONTACTO_INCORRECTO',
@@ -145,8 +86,6 @@ $resultadosConContacto = [
     'NO_INTERESADO',
 ];
 
-$zadarmaLookup = null;
-$zadarmaLookupDisponible = true;
 
 function descomponerNotasLlamada(string $notas, string $contactoReferencia = ''): array
 {
@@ -195,7 +134,10 @@ function descomponerNotasLlamada(string $notas, string $contactoReferencia = '')
 
 $etapaHistorial = 'consultar_interacciones';
 $asociadorTransferencia = new TelefoniaGrabacionExpedienteTransferidaService($conexionHistorial);
-foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccion) {
+$interaccionesHistorial=$modelo->obtenerInteraccionesSeguimiento($seguimientoId);
+try{$estadoZadarma=(new TelefoniaHistorialInteraccionPbxService($conexionHistorial))->lote($interaccionesHistorial,$seguimientoId);}
+catch(Throwable $errorPbx){$estadoZadarma=[];error_log('[historial_pbx] '.get_class($errorPbx));}
+foreach ($interaccionesHistorial as $interaccion) {
     if (strtoupper((string)($interaccion['canal'] ?? '')) !== 'LLAMADA_IP') {
         continue;
     }
@@ -208,43 +150,10 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
     $idExterno = trim((string)($interaccion['id_externo'] ?? ''));
     $duracion = max(0, (int)($interaccion['duracion_segundos'] ?? 0));
 
-    if (
-        $proveedor === 'ZADARMA' &&
-        $idExterno !== '' &&
-        !isset($estadoZadarma[$idExterno]) &&
-        $zadarmaEventStore !== null
-    ) {
-        try {
-            foreach ($zadarmaEventStore->obtenerPorPbxCallId($idExterno) as $eventoZadarma) {
-                acumularEventoZadarma($estadoZadarma, $eventoZadarma);
-            }
-        } catch (Throwable $errorStore) {
-            error_log('[llamadas_seguimiento_zadarma_eventos] ' . $errorStore->getMessage());
-        }
-    }
-
-    if ($proveedor === 'ZADARMA' && $duracion <= 0 && isset($estadoZadarma[$idExterno])) {
-        $metaZadarma = $estadoZadarma[$idExterno];
-        $finZadarma = is_array($metaZadarma['fin'] ?? null) ? $metaZadarma['fin'] : null;
-        $respuestaZadarma = is_array($metaZadarma['respuesta'] ?? null)
-            ? $metaZadarma['respuesta']
-            : null;
-
-        $duracion = max(0, (int)($finZadarma['duration'] ?? 0));
-
-        if ($duracion <= 0 && $respuestaZadarma && $finZadarma) {
-            $inicioConversacion = strtotime((string)($respuestaZadarma['received_at'] ?? ''));
-            $finConversacion = strtotime((string)($finZadarma['received_at'] ?? ''));
-
-            if (
-                $inicioConversacion !== false &&
-                $finConversacion !== false &&
-                $finConversacion > $inicioConversacion
-            ) {
-                $duracion = max(1, $finConversacion - $inicioConversacion);
-            }
-        }
-    }
+    $metaPbx=$estadoZadarma[$interaccionId]??null;
+    // Conservar duración nativa positiva. Completar sólo con el tramo propio,
+    // nunca END general, diferencia de relojes ni duración de otro participante.
+    if($proveedor==='ZADARMA'&&$duracion<=0)$duracion=$metaPbx['segundos']??null;
 
     $resultado = strtoupper(trim((string)($interaccion['resultado'] ?? '')));
     $notas = trim((string)($interaccion['notas'] ?? ''));
@@ -311,42 +220,12 @@ foreach ($modelo->obtenerInteraccionesSeguimiento($seguimientoId) as $interaccio
         trim((string)($seguimiento['contacto_nombre'] ?? ''))
     );
 
-    $zadarmaValida =
-        $proveedor === 'ZADARMA' &&
-        $duracion > 0 &&
-        preg_match('/^out_[a-fA-F0-9]{32,64}$/', $idExterno);
-
-    $llamadaTecnicaValida =
-        $duracion > 0 &&
-        $idExterno !== '' &&
-        $proveedor !== '';
-    $verificacionEfectiva =
-        $verificacionMarcada &&
-        $llamadaTecnicaValida;
-
-    $zadarmaGrabada = $zadarmaValida &&
-        (
-            !empty($estadoZadarma[$idExterno]['grabada']) ||
-            !empty($estadoZadarma[$idExterno]['grabacion'])
-        );
-
-    if ($zadarmaValida && !$zadarmaGrabada && $zadarmaLookupDisponible) {
-        try {
-            if (!$zadarmaLookup) {
-                $zadarmaLookup = new ZadarmaCallLookupService();
-            }
-
-            $estadisticaZadarma = $zadarmaLookup->buscarPorPbxCallId($idExterno);
-            $zadarmaGrabada = !empty($estadisticaZadarma['is_recorded']);
-        } catch (Throwable $error) {
-            $zadarmaLookupDisponible = false;
-            error_log('[llamadas_seguimiento_zadarma_stats] ' . $error->getMessage());
-        }
-    }
-
-    $grabacionWebhookLista =
-        $zadarmaValida &&
-        !empty($estadoZadarma[$idExterno]['grabacion']);
+    $zadarmaValida = $proveedor==='ZADARMA' && $metaPbx!==null &&
+        ZadarmaPbxIdentifierHelper::pbxValido($idExterno);
+    $llamadaTecnicaValida = $duracion > 0 && $idExterno!=='' && $proveedor!=='';
+    $verificacionEfectiva = $verificacionMarcada && $llamadaTecnicaValida;
+    $zadarmaGrabada = $zadarmaValida && !empty($metaPbx['grabada']);
+    $grabacionWebhookLista = $zadarmaValida && !empty($metaPbx['ids']);
 
     $fechaFinZadarma = strtotime((string)($interaccion['fecha_fin'] ?? ''));
     $edadGrabacion = $fechaFinZadarma !== false

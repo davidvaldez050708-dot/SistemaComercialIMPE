@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el decimonoveno checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el vigésimo checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -864,3 +864,34 @@ sincronizó en este bloque, por lo que su hash anterior NO acredita este endpoin
 Faltan aceptación HTTP positiva/CDR y navegador. Los pendientes anteriores
 (incluida proyección institucional, entrega diferida,1,000 universales/8h y
 publicador) continúan. Producción intacta.
+
+
+## Vigésimo checkpoint — historial institucional usa el reductor PBX común
+
+Base:47b8e169. TelefoniaHistorialInteraccionPbxService consulta eventos y vínculos
+históricos en lotes de hasta200 interacciones,3 consultas por lote, reutilizando
+la conexión. El vínculo nativo exige mismo titular/interacción/expediente/PBX;
+el diario exige titular/PBX e inicio firmado exacto. Reutiliza las pruebas de
+participación y reductor comunes; el END ajeno/general no completa duración del
+analista. Duración ausente sigue desconocida y cero explícito se conserva.
+
+llamadas_seguimiento.php deja de interpretar eventos por su cuenta, restar horas,
+leer todo el log o consultar proveedor por cada llamada. Completa sólo duración
+nativa ausente/no positiva con evidencia propia; los valores positivos ya
+guardados y resultados/notas comerciales se conservan, sin escrituras históricas.
+Disponibilidad inicial usa referencias propias y avisos propios; la reproducción
+sigue revalidando todo. Se conserva la política especial de transferencias
+institucionales y la separación entre contacto/resultado humano y conexión PBX.
+No hay sondeo nuevo ni conexión SQL adicional.
+
+7 casos puros del proyector real y5 SQL nativos de resolución/proyección dentro
+de READ ONLY pasaron.11 checks HTTP nativos incluyen carga del historial con
+proveedor bloqueado, audio propio/ajeno, sesión/rol, método y Range. El502 para
+audio sigue siendo esperado en el fixture, no éxito de reproducción real.
+Sintaxis de2PHP correcta. Fuentes sincronizadas:
+c9dd265eaee94b99888027498744e4b7bc344be30a0608233634dc55fb4665ca.
+Reproducir:tests/institution_history_projection.php,
+integration/interaction_recording_sql.php,lab/interaction_audio_scope.cjs.
+Persisten la conciliación interna anterior sin identidad SDK/PBX fuerte, entrega
+diferida comercial, aceptación1,000 universales/8h reales y publicador. Este
+bloque no corrige duraciones históricas positivas ni instala nada en producción.

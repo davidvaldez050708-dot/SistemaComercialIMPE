@@ -20,6 +20,9 @@ if(c.host!=='127.0.0.1'||c.port!==3308||c.database!=='impe_telefonia_lab')throw 
  const own=await request('&grabacion='+fixture.own_record);assert.equal(own.status,502,'Lab blocks provider: valid scope cannot invent playable bytes');checks++;
  const metadata=await request('&verificar=1');assert.equal(metadata.status,502,'Provider construction is deliberately disabled in this fixture');checks++;
  const foreignRole=await login('VENTAS');assert.equal((await fetch(url,{headers:{Cookie:foreignRole}})).status,403);checks++;
+ const history=await fetch(origin+'/prueba_telefonia/api/llamadas_seguimiento.php?seguimiento_id='+fixture.seguimiento_id,{headers:{Cookie:cookie}});
+ assert.equal(history.status,200);const data=await history.json();assert.equal(data.ok,true);
+ const call=data.llamadas.find(row=>row.id===fixture.interaccion_id);assert(call);assert.equal(call.tiene_grabacion,true);checks+=4;
  fs.writeFileSync(path.join(root,'interaction-audio-http-validation.json'),JSON.stringify({synthetic:true,checks,provider_disabled:true,real_binary_playback:false,production_changed:false},null,2));
  console.log(`PASS ${checks} native institution audio HTTP checks: native historical binding, own/foreign reference, auth/role, method and Range guards. Provider disabled; no real playback.`);
 })().catch(e=>{console.error(e);process.exitCode=1;});
