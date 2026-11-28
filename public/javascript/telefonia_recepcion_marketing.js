@@ -130,6 +130,7 @@
         }
 
         function formatDuration(seconds) {
+            if(seconds===null||seconds===undefined||seconds===''||!Number.isFinite(Number(seconds))||Number(seconds)<0)return '—';
             const s = Math.max(0, Number(seconds) || 0);
             const hours = Math.floor(s / 3600);
             const minutes = Math.floor((s % 3600) / 60);

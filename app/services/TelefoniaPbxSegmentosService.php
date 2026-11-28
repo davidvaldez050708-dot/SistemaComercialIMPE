@@ -23,6 +23,18 @@ final class TelefoniaPbxSegmentosService
             if(in_array($type,['NOTIFY_INTERNAL','NOTIFY_ANSWER'],true)&&$internal!==$ext&&$from===$ext&&preg_match('/^[0-9]{3,6}$/D',$internal))$sentTo=$internal;
             if($type==='NOTIFY_INTERNAL'&&$internal===$ext&&$sentTo!==''&&$from===$sentTo){$returnAt=$position;$sentTo='';}
         }
+        // En algunas salientes sólo END identifica al último participante.
+        // Es un destino de transferencia, no prueba de que ese destino habló.
+        if($sentTo===''&&$returnAt===null){
+            $ownOutgoing=false;foreach($events as $event)if(($event['evento']??'')==='NOTIFY_OUT_START'&&(string)($event['internal']??'')===$ext)$ownOutgoing=true;
+            if($ownOutgoing)foreach($events as $event){
+                $p=json_decode((string)($event['payload_json']??''),true)?:[];
+                $last=trim((string)($event['last_internal']??$p['last_internal']??''));
+                if(($event['evento']??'')==='NOTIFY_OUT_END'&&(string)($event['internal']??'')===$ext&&
+                    preg_match('/^[0-9]{3,6}$/D',$last)&&$last!==$ext&&
+                    in_array(strtolower((string)($event['disposition']??'')),['answered','completed'],true))$sentTo=$last;
+            }
+        }
         if($returnAt!==null){
             $context=$source!==''?array_values(array_filter(array_slice($events,0,$returnAt),static fn($e)=>
                 (string)($e['internal']??'')===$source&&in_array($e['evento']??'',['NOTIFY_INTERNAL','NOTIFY_OUT_START'],true))):[];
@@ -96,12 +108,15 @@ final class TelefoniaPbxSegmentosService
                 !($own || $last === $ext || $sourceEnd || $anonymousOwn)) continue;
             $end = true;
             $disposition = strtolower(trim((string)($event['disposition'] ?? '')));
-            if ($date !== '' && ($endAt === '' || $date > $endAt)) $endAt = $date;
+            if (!($own&&($sentTo!==''||($last!==''&&$last!==$ext)))&&$date !== '' && ($endAt === '' || $date > $endAt)) $endAt = $date;
             $endId = max($endId, (int)($event['id'] ?? 0));
             if ($own) {
                 $known = array_key_exists('has_duration', $event) ? (bool)$event['has_duration'] :
-                    ($payload ? array_key_exists('duration', $payload) : array_key_exists('duration', $event));
-                if ($known) $duration = max($duration ?? 0, max(0, (int)($event['duration'] ?? 0)));
+                    (array_key_exists('payload_json',$event) ? array_key_exists('duration',$payload) : array_key_exists('duration', $event));
+                $seconds=filter_var($payload['duration']??$event['duration']??null,FILTER_VALIDATE_INT,
+                    ['options'=>['min_range'=>0,'max_range'=>86400]]);
+                if ($known&&$seconds!==false&&$sentTo===''&&$returnAt===null&&in_array($last,['',$ext],true))
+                    $duration = max($duration ?? 0,$seconds);
                 if (in_array($disposition, ['answered', 'completed'], true)) $answer = true;
             }
             // PBX/inicio/único participante acreditan el cierre. La duración
@@ -115,6 +130,7 @@ final class TelefoniaPbxSegmentosService
             'finalizada' => $end, 'conectada' => $answer, 'segundos' => $end ? $duration : null,
             'answer_at' => $answerAt, 'end_at' => $endAt, 'evento_fin_id' => $endId,
             'disposition' => $disposition,
+            'transferida_a' => $sentTo, 'tramo_devuelto' => $returnAt!==null,
             'intento_finalizado' => $attemptEnded, 'fin_intento_at' => $attemptEndAt,
             'estado_pbx' => !$end ? ($attemptEnded ? 'Respuesta del destino sin confirmar' : ($answer ? 'Respuesta confirmada · Cierre pendiente' : 'Cierre pendiente')) :
                 ($answer ? 'Conectada' : (['busy' => 'Ocupada', 'no answer' => 'Sin respuesta',

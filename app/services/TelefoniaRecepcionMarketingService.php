@@ -4,7 +4,7 @@ require_once __DIR__ . '/ZadarmaWebhookEventStoreService.php';
 require_once __DIR__.'/TelefoniaLimpiezaGuard.php';
 
 /**
- * Recepción telefónica de Marketing, independiente de Ventas y Vinculación.
+ * Recepción telefónica de Marketing sobre el mismo reductor PBX de los demás roles.
  * Muestra entrantes y salientes de la extensión asignada al usuario,
  * desde la fecha en que adquirió esa extensión. Nunca mezcla datos
  * de una extensión antes de que pertenezca a ese usuario.
@@ -123,7 +123,7 @@ class TelefoniaRecepcionMarketingService
         $limpieza=$this->condicionLimpieza();
         $permitirSalientes = !empty($asignacion['permite_salientes']) ? 1 : 0;
         $stmt = $this->db->prepare(
-            "SELECT e.evento, e.pbx_call_id, e.internal, e.destination,
+            "SELECT e.id, e.call_start, e.evento, e.pbx_call_id, e.internal, e.destination,
                     e.caller_id, e.received_at, e.duration, e.disposition,
                     e.is_recorded, e.call_id_with_rec, e.payload_json
              FROM telefonia_zadarma_eventos e
@@ -249,89 +249,23 @@ class TelefoniaRecepcionMarketingService
             ];
         }
 
-        foreach ($eventos as $row) {
-            $id = trim((string)($row['pbx_call_id'] ?? ''));
-            if (!isset($registros[$id])) continue;
-            $call = &$registros[$id];
-            $tipo = strtoupper(trim((string)($row['evento'] ?? '')));
-            $interno = trim((string)($row['internal'] ?? ''));
-            $esSaliente = $call['tipo'] === 'Saliente';
-            $p=json_decode((string)($row['payload_json'] ?? ''),true) ?: [];
-            if ($tipo==='NOTIFY_INTERNAL' && $interno===$extension && $call['transferida'] &&
-                (string)($p['transfer_from'] ?? '')===$call['destino_transferencia']) {
-                $call['transferida']=false;$call['destino_transferencia']='';
-                $call['saliente_transferida']=false;$call['finalizada']=false;$call['fecha_fin']='';
-            }
-
-            // La centralita identifica el origen también en NOTIFY_ANSWER.
-            // Aplicar la misma evidencia a salientes y entrantes; nunca inferir
-            // transferencias por coincidencia de teléfono o por una orden UI.
-            if (in_array($tipo, ['NOTIFY_INTERNAL','NOTIFY_ANSWER'], true) &&
-                $interno !== $extension && preg_match('/^\d{3,6}$/D', $interno)) {
-                $payloadTransferencia = json_decode((string)($row['payload_json'] ?? ''), true);
-                if (is_array($payloadTransferencia) &&
-                    trim((string)($payloadTransferencia['transfer_from'] ?? '')) === $extension) {
-                    $call['transferida'] = true;
-                    $call['destino_transferencia'] = $interno;
-                    if ($esSaliente) $call['saliente_transferida'] = true;
-                }
-            }
-
-            // En salientes Zadarma puede confirmar el último tramo sólo en
-            // OUT_END: no necesariamente emite INTERNAL/transfer_from.
-            // El inicio propio y el mismo PBX ID ya se comprobaron arriba.
-            $ultimoInterno=trim((string)($p['last_internal'] ?? ''));
-            $salienteEntregada=$esSaliente && $tipo==='NOTIFY_OUT_END' &&
-                preg_match('/^\d{3,6}$/D',$ultimoInterno) && $ultimoInterno!==$extension &&
-                in_array(strtolower(trim((string)($row['disposition'] ?? ''))),['answered','completed'],true);
-            if($salienteEntregada){
-                $call['transferida']=true;$call['saliente_transferida']=true;
-                $call['destino_transferencia']=$ultimoInterno;
-            }
-
-            if ($esSaliente) {
-                if ($tipo === 'NOTIFY_ANSWER' &&
-                    ($interno === $extension || $interno === '')) {
-                    $call['contestada'] = true;
-                }
-                if ($tipo === 'NOTIFY_OUT_END' &&
-                    ($interno === $extension || $interno === '' || $salienteEntregada)) {
-                    $call['finalizada'] = true;
-                    $call['fecha_fin'] = (string)($row['received_at'] ?? '');
-                    $call['disposition'] = strtolower(trim(
-                        (string)($row['disposition'] ?? '')
-                    ));
-                    if (in_array($call['disposition'], ['answered','completed'], true)) {
-                        $call['contestada'] = true;
-                    }
-                    $call['segundos'] = max(
-                        $call['segundos'], (int)($row['duration'] ?? 0)
-                    );
-                }
-            } else {
-                $digits = preg_replace('/\D+/', '', (string)($row['destination'] ?? '')) ?: '';
-                $respuestaPropia = $interno === $extension ||
-                    ($interno === '' && $digits !== '' &&
-                        substr($digits, -strlen($extension)) === $extension);
-                if ($tipo === 'NOTIFY_ANSWER' && $respuestaPropia) {
-                    $call['contestada'] = true;
-                }
-                if ($tipo === 'NOTIFY_END' &&
-                    ($interno === $extension || $interno === '')) {
-                    $call['finalizada'] = true;
-                    $call['fecha_fin'] = (string)($row['received_at'] ?? '');
-                    $call['segundos'] = max(
-                        $call['segundos'], (int)($row['duration'] ?? 0)
-                    );
-                }
-            }
-            if ($tipo === 'NOTIFY_RECORD' ||
-                (int)($row['is_recorded'] ?? 0) === 1 ||
-                trim((string)($row['call_id_with_rec'] ?? '')) !== '') {
-                $call['audio_reportado'] = true;
-            }
-            unset($call);
+        require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
+        $groups=[];
+        foreach($eventos as $row){
+            $id=trim((string)($row['pbx_call_id']??''));
+            if(isset($registros[$id]))$groups[$id][]=$row;
         }
+        foreach($registros as $id=>&$call){
+            $facts=TelefoniaPbxSegmentosService::hechos($groups[$id]??[],$extension);
+            $call['contestada']=$facts['conectada'];$call['finalizada']=$facts['finalizada'];
+            $call['fecha_fin']=$facts['end_at'];$call['disposition']=$facts['disposition'];
+            $call['segundos']=$facts['segundos'];$call['duracion_conocida']=$facts['segundos']!==null;
+            $call['destino_transferencia']=$facts['transferida_a'];
+            $call['transferida']=$facts['transferida_a']!=='';
+            $call['saliente_transferida']=$call['tipo']==='Saliente'&&$call['transferida'];
+            $call['audio_reportado']=count($facts['segmentos'])>0||$facts['audio_motivo']==='pendiente_referencia';
+        }
+        unset($call);
 
         $resultado = [];
         foreach ($registros as $call) {

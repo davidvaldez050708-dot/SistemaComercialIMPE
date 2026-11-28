@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el undécimo checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el duodécimo checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -614,3 +614,48 @@ de comandos comerciales aún no aplicados: eso sigue siendo el próximo bloque.
 Continúan pendientes integración universal entrantes/transferencias/audio,
 regresión visual, Supervisión selectiva, aceptación universal1,000,8h reales y
 publicador Hostinger con CHECK/respaldo/ROLLBACK. Producción sin cambios.
+
+
+## Duodécimo checkpoint — Recepción usa los hechos del mismo motor
+
+Base:`7d221355`. TelefoniaRecepcionMarketingService conserva la identidad inicial
+por extensión/periodo y el DTO institucional, pero retira su intérprete paralelo
+de ANSWER/END/RECORD. Agrupa por PBX exacto en una sola pasada y utiliza
+TelefoniaPbxSegmentosService::hechos, como Ventas, Vinculación y transferencias.
+La consulta existente añade id/call_start para las mismas cercas; no añade
+consultas/conexiones. Se elimina la asociación de respuesta anónima por sufijo
+del destino. Los avisos de grabación ajenos dejan de anunciarse como propios.
+
+El motor expone transferida_a/tramo_devuelto. Preserva la entrega explícita y el
+último participante autenticado de una saliente, sin afirmar que ese destino
+contestó. Un retorno no hereda la respuesta del tramo previo: requiere su propio
+ANSWER para pedir/aceptar un resultado de conversación. La duración y fecha de
+fin del grupo no se atribuyen al origen tras transferir; una duración de grupo
+devuelto tampoco se transforma en duración de su tramo actual. Esto deja la
+evidencia desconocida hasta una comprobación propia/CDR exacta.
+
+Cero SQL con duration ausente del payload ahora es desconocido, no un cero
+acreditado. Valores negativos, no enteros o mayores de24h no acreditan duración.
+El cero explícito propio se conserva. La conciliación usa el end_at del motor,
+no el END padre; cuando falta evidencia no borra datos técnicos históricos ya
+asociados. Recepción muestra un guion para duración desconocida o inválida,
+conservando el formato de minutos/horas y el diseño.
+
+Validación:18 casos de la proyección REAL de Recepción (sin SQL/proveedor),
+11 del formateador REAL y25/25 suites JS. El runner nativo completo pasó sus17
+scripts, incluidos resultados/recibos de3roles, Seguimiento/Informativa, devoluciones,
+embudo V1/V3, sucesores/transferencias/captura canónica y audio CDR sintético.
+15 ciclos salientes HTTP adicionales con fuentes congeladas:
+c940250d4d4e691377f5895394d7555cd2ad8c1817b7627bcca9e4808111a270.
+También19 casos de cierre y6 de fechas. No sustituir estas verificaciones por la
+aceptación universal/soak pendientes. `integration/reception_projection.php` se
+incluye en run_sql.py aunque su proyección es pura y no consulta MySQL.
+
+**Hallazgo para el siguiente bloque:** grabacion_recepcion_marketing.php todavía
+invoca obtenerGrabacionParaLlamada, que admite un primer link de grupo PBX.
+La autorización del historial es necesaria pero no sustituye seleccionar un
+call_id propio inequívoco. Resolver esto y las múltiples grabaciones antes de
+considerar audio universal terminado. No se amplió ningún permiso de audio.
+La entrega diferida de comandos aprobados todavía no está implementada;
+siguen pendientes los demás puntos del checkpoint11 y el publicador. Producción
+intacta y rama de Supervisión de personal sin fusionar indiscriminadamente.

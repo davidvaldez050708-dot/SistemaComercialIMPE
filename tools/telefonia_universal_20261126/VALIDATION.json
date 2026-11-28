@@ -3,7 +3,7 @@
   "status": "autonomous_continuation_in_progress",
   "installed_baseline": "1d8f7da23907fabce398c13d924ef5996d839473",
   "portable_unit_suites": {
-    "passed": 24,
+    "passed": 25,
     "failed": 0,
     "runner": "run_unit.cjs"
   },
@@ -187,6 +187,21 @@
     "read_only_sql_verified": true,
     "scope": "Modern Seguimiento/Informativa outgoing receipts with pending verification evidence only",
     "lab_source_sha256": "67f080dc6012e2e57384ff2c21d3a0aeb92dd636590a78ebdaa56f9d9bfde080",
+    "full_call_acceptance": false,
+    "production_changed": false
+  },
+  "continuation_common_reception_projection": {
+    "base": "7d221355",
+    "actual_projection_checks": 18,
+    "actual_duration_formatter_checks": 11,
+    "native_runner_scripts_passed": 17,
+    "additional_outgoing_http_cycles": 15,
+    "unit_suites_passed": 25,
+    "parent_duration_not_assigned_to_source": true,
+    "returned_leg_requires_own_answer": true,
+    "sql_default_zero_is_not_duration_evidence": true,
+    "lab_source_sha256": "c940250d4d4e691377f5895394d7555cd2ad8c1817b7627bcca9e4808111a270",
+    "reception_audio_first_group_link_removed": false,
     "full_call_acceptance": false,
     "production_changed": false
   }

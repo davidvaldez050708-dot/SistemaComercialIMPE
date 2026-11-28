@@ -402,6 +402,7 @@ try {
     $disposicion = strtoupper(trim((string)($fin['disposition'] ?? '')));
     $raw=array_map(static function(array $e):array{$e['evento']=$e['event']??'';return $e;},$eventosLlamada);
     $hechos=TelefoniaPbxSegmentosService::hechos($raw,$extension,'',max(0,(int)($inicio['id']??0)-1));
+    $fechaFin=fechaMysqlDesdeIso($hechos['end_at']!==''?$hechos['end_at']:null);
     $huboRespuesta=$hechos['conectada']||($estadistica!==null&&in_array($disposicion,['ANSWERED','ANSWER','CONNECTED','SUCCESS'],true));
 
     /*
