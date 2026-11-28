@@ -295,7 +295,7 @@ class SeguimientoVinculacionController
 
     /**
      * El Analista solicita enlazar el audio de su propia llamada interna.
-     * El servidor consulta Zadarma y sólo guarda una coincidencia única.
+     * El servidor acredita la identidad SDK/PBX y consulta su grabación exacta.
      */
     public function sincronizarGrabacionInterna()
     {

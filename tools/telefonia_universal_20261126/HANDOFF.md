@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el vigésimo checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el vigésimo primer checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -895,3 +895,34 @@ integration/interaction_recording_sql.php,lab/interaction_audio_scope.cjs.
 Persisten la conciliación interna anterior sin identidad SDK/PBX fuerte, entrega
 diferida comercial, aceptación1,000 universales/8h reales y publicador. Este
 bloque no corrige duraciones históricas positivas ni instala nada en producción.
+
+
+## Vigésimo primer checkpoint — conciliación interna por identidad exacta
+
+Base:cc0249bf. TelefoniaInternaGrabacionService.sincronizar deja de buscar CDR
+por extensiones, duración ±2s, proximidad ±90s o dos interpretaciones horarias.
+Exige diario SDK2 con PBX e inicio persistidos, mismo evento del destino, origen
+firmado, ausencia de terceros, hechos comunes de conexión/cierre y exactamente
+una referencia autorizada. Pide sólo ese call_id, verifica HTTPS y revalida la
+sesión bloqueada y los eventos antes de registrar. Una respuesta tardía no puede
+aplicar tras cambio de clasificación/vínculo/PBX. Reintentos conservan vínculo
+existente; una carrera de clave única sólo se acepta si coincide exactamente.
+El transporte de grabación es inyectable para pruebas, sin hook HTTP ni política
+distinta en producción. No hay consulta CDR, reloj heurístico ni DDL en runtime.
+
+Se conservan los vínculos históricos ya existentes: no se reescriben ni borran.
+Una sesión aún sin identidad PBX fuerte queda pendiente y no adopta audio de una
+llamada parecida. La obtención automática de esa identidad para internas que
+aún no la traigan en el diario sigue pendiente; no prometer que este bloque
+resuelve esos casos de extremo a extremo. Teléfono y captura comercial no se
+bloquean por esta conciliación.
+
+9 casos puros y11 SQL nativos pasaron: autorización exacta, copia ajena, lectura
+READ ONLY, sin DDL, confirmación por proveedor falso, idempotencia y rechazo de
+respuesta tardía sin registro huérfano. Fuente sincronizada antes del cambio
+posterior sólo de comentarios:
+94fb9827c7d9c00f70dd23f93c8c6a334234e0d7e0798111fd2fb33310641a3a.
+Reproducir:tests/internal_audio_identity.php,integration/internal_audio_sql.php.
+No es audio real ni aceptación universal. Persisten entrega comercial diferida,
+identidad interna automática, pruebas universales1,000/8h y publicador seguro.
+Producción intacta.

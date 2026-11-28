@@ -296,5 +296,17 @@
     "lab_source_sha256": "c9dd265eaee94b99888027498744e4b7bc344be30a0608233634dc55fb4665ca",
     "real_provider_audio_validated": false,
     "production_changed": false
+  },
+  "continuation_internal_audio_exact_identity": {
+    "base": "cc0249bf",
+    "actual_identity_checks": 9,
+    "native_internal_sql_checks": 11,
+    "time_duration_cdr_heuristic_removed": true,
+    "late_native_state_rechecked_before_commit": true,
+    "legacy_stored_links_preserved": true,
+    "automatic_identity_for_unbound_internal_sessions_completed": false,
+    "lab_source_sha256_before_comment_only_edits": "94fb9827c7d9c00f70dd23f93c8c6a334234e0d7e0798111fd2fb33310641a3a",
+    "real_provider_audio_validated": false,
+    "production_changed": false
   }
 }

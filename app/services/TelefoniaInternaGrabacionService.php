@@ -1,15 +1,16 @@
 <?php
 require_once __DIR__ . '/../helpers/ZadarmaPbxIdentifierHelper.php';
+require_once __DIR__.'/TelefoniaPbxSegmentosService.php';
 /**
  * Relación uno-a-uno entre sesión WebRTC interna y grabación PBX real.
  * El SDK conserva su identificador original. Nunca se asocia audio por hora
- * en una solicitud HTTP: el vínculo lo establece el diagnóstico CLI validado.
+ * en una solicitud HTTP: el vínculo exige identidad PBX persistida y eventos propios.
  */
 final class TelefoniaInternaGrabacionService
 {
     private mysqli $db;
 
-    public function __construct(mysqli $db)
+    public function __construct(mysqli $db,private ?object $recordings=null)
     {
         $this->db = $db;
     }
@@ -74,7 +75,7 @@ final class TelefoniaInternaGrabacionService
 
     /**
      * Conciliación a demanda de una llamada INTERNA ya finalizada. Sólo
-     * relaciona el audio si hay una única coincidencia PBX en la API oficial.
+     * relaciona el audio con la identidad PBX persistida en el diario SDK.
      * No crea interacciones institucionales ni expone identificadores.
      */
     public function sincronizar(int $usuarioId, string $sessionId): bool
@@ -89,7 +90,8 @@ final class TelefoniaInternaGrabacionService
         $stmt = $this->db->prepare(
             "SELECT s.extension, s.numero_origen, s.estado,
                     s.clasificacion, s.seguimiento_id, s.interaccion_id,
-                    s.fecha_inicio, s.fecha_atendida, s.fecha_fin
+                    s.fecha_inicio, s.fecha_atendida, s.fecha_fin,
+                    s.protocolo,s.pbx_call_id,s.pbx_inicio_evento
                FROM telefonia_analista_webrtc_sesiones s
               WHERE s.usuario_id = ? AND s.session_id = ?
               LIMIT 1"
@@ -122,105 +124,22 @@ final class TelefoniaInternaGrabacionService
         if ($activas !== 2) {
             throw new DomainException('Las extensiones no están ambas activas.');
         }
-        $utc = new DateTimeZone('UTC');
-        $mexico = new DateTimeZone('America/Mexico_City');
-        $start = DateTimeImmutable::createFromFormat(
-            '!Y-m-d H:i:s', (string)$session['fecha_inicio'], $utc
-        );
-        $answer = DateTimeImmutable::createFromFormat(
-            '!Y-m-d H:i:s', (string)$session['fecha_atendida'], $utc
-        );
-        $end = DateTimeImmutable::createFromFormat(
-            '!Y-m-d H:i:s', (string)$session['fecha_fin'], $utc
-        );
-        if (!$start || !$answer || !$end) {
-            throw new DomainException('La conversación interna no tiene fechas completas.');
-        }
-        $duration = $end->getTimestamp() - $answer->getTimestamp();
-        if ($duration < 1 || $duration > 7200) {
-            throw new DomainException('La duración de la sesión no es verificable.');
-        }
-        if (time() - $end->getTimestamp() < 45) {
-            throw new DomainException('Zadarma puede tardar en preparar el audio. Inténtalo en un minuto.');
-        }
-
-        $root = dirname(__DIR__, 2);
-        require_once $root . '/config/private_config.php';
-        $path = impeRutaConfigPrivada('zadarma_config.php');
-        if (!$path || !is_file($path) || !is_file($root . '/vendor/autoload.php')) {
-            throw new RuntimeException('Zadarma no está configurada.');
-        }
-        $cred = require $path;
-        $key = trim((string)($cred['api_key'] ?? ''));
-        $secret = trim((string)($cred['api_secret'] ?? ''));
-        if ($key === '' || $secret === '') {
-            throw new RuntimeException('Faltan credenciales de Zadarma.');
-        }
-        require_once $root . '/vendor/autoload.php';
-        require_once __DIR__.'/TelefoniaZadarmaApi.php';
-        $api = new TelefoniaZadarmaApi($key, $secret, false);
-        // Incluir ambos formatos horarios posibles del proveedor, pero
-        // comparar siempre cada candidata como instante real.
-        $from = $start->setTimezone($mexico)->modify('-5 minutes')->format('Y-m-d H:i:s');
-        $to = $start->modify('+5 minutes')->format('Y-m-d H:i:s');
-        $response = ZadarmaPbxIdentifierHelper::decodificarEstadisticas((string)$api->call(
-            '/v1/statistics/pbx/',
-            ['start' => $from, 'end' => $to, 'version' => 2, 'limit' => 1000],
-            'get'
-        ));
-        if (!is_array($response) || ($response['status'] ?? '') !== 'success') {
-            throw new RuntimeException('No fue posible consultar la estadística de Zadarma.');
-        }
-        $stats = is_array($response['stats'] ?? null) ? $response['stats'] : [];
-        if (count($stats) >= 1000) {
-            throw new DomainException('Hay demasiadas llamadas para asociar el audio de forma segura.');
-        }
-        $matches = [];
-        foreach ($stats as $row) {
-            if (!is_array($row)) continue;
-            $source = preg_replace('/\D+/', '', (string)($row['sip'] ?? '')) ?: '';
-            $called = preg_replace('/\D+/', '', (string)($row['destination'] ?? '')) ?: '';
-            if ($source !== $orig || $called !== $dest ||
-                abs((int)($row['seconds'] ?? -100) - $duration) > 2 ||
-                !filter_var($row['is_recorded'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                continue;
-            }
-            $pbx = trim((string)($row['pbx_call_id'] ?? ''));
-            $recordId = ZadarmaPbxIdentifierHelper::callIdDeFila($row);
-            if (!ZadarmaPbxIdentifierHelper::pbxValido($pbx) ||
-                $recordId === '') continue;
-
-            $time = trim((string)($row['callstart'] ?? ''));
-            $delta = null;
-            foreach ([$utc, $mexico] as $tz) {
-                $date = DateTimeImmutable::createFromFormat(
-                    '!Y-m-d H:i:s', $time, $tz
-                );
-                if (!$date || $date->format('Y-m-d H:i:s') !== $time) continue;
-                $difference = abs($date->getTimestamp() - $start->getTimestamp());
-                $delta = $delta === null ? $difference : min($delta, $difference);
-            }
-            if ($delta === null || $delta > 90) continue;
-            $matches[] = ['pbx' => $pbx, 'record' => $recordId];
-        }
-        if (count($matches) !== 1) {
-            throw new DomainException(
-                'La grabación no está lista o hay varias candidatas. No se vinculó ningún audio.'
-            );
-        }
-        // Comprobar que el segmento exacto existe antes de guardar su vínculo.
-        $record = $api->getPbxRecord($matches[0]['record'], null, 300);
-        $link = trim((string)($record->link ?? ''));
-        if (!str_starts_with(strtolower($link), 'https://') ||
-            !filter_var($link, FILTER_VALIDATE_URL)) {
-            throw new DomainException('La grabación todavía no está disponible en Zadarma.');
-        }
+        $pbx=(string)($session['pbx_call_id']??'');
+        if((int)($session['protocolo']??0)!==2||!ZadarmaPbxIdentifierHelper::pbxValido($pbx)||empty($session['pbx_inicio_evento']))
+            throw new DomainException('Falta acreditar la referencia PBX exacta de esta sesión. No se enlazó audio por hora o duración.');
+        $events=$this->eventos($pbx);
+        $recordId=self::referenciaVerificada($session,$events);
+        require_once __DIR__.'/ZadarmaRecordingService.php';
+        $provider=$this->recordings??new ZadarmaRecordingService(false);
+        $record=$provider->obtenerGrabacionPorCallId($recordId);
+        if(!is_array($record)||!is_string($record['link']??null)||!filter_var($record['link'],FILTER_VALIDATE_URL)||
+            !str_starts_with(strtolower($record['link']),'https://'))throw new DomainException('La grabación todavía no está disponible.');
 
         $this->db->begin_transaction();
         try {
             $lock = $this->db->prepare(
                 "SELECT clasificacion, seguimiento_id, interaccion_id, estado,
-                        extension, numero_origen
+                        extension, numero_origen, protocolo,pbx_call_id,pbx_inicio_evento
                    FROM telefonia_analista_webrtc_sesiones
                   WHERE usuario_id = ? AND session_id = ? FOR UPDATE"
             );
@@ -233,17 +152,51 @@ final class TelefoniaInternaGrabacionService
                 $rowNow['seguimiento_id'] !== null ||
                 $rowNow['interaccion_id'] !== null ||
                 $rowNow['extension'] !== $dest ||
-                $rowNow['numero_origen'] !== $orig) {
+                $rowNow['numero_origen'] !== $orig ||
+                (int)$rowNow['protocolo']!==2 || !hash_equals($pbx,(string)$rowNow['pbx_call_id']) ||
+                (int)$rowNow['pbx_inicio_evento']!==(int)$session['pbx_inicio_evento']) {
                 throw new DomainException('El estado de la sesión cambió durante la búsqueda.');
             }
-            $this->registrar($usuarioId, $sessionId, $matches[0]['pbx'],
-                $matches[0]['record'], $orig, $dest);
+            if(self::referenciaVerificada($rowNow,$this->eventos($pbx))!==$recordId)
+                throw new DomainException('La evidencia del audio cambió durante la consulta.');
+            $this->registrar($usuarioId,$sessionId,$pbx,$recordId,$orig,$dest);
             $this->db->commit();
             return true;
         } catch (Throwable $e) {
             $this->db->rollback();
+            if($e instanceof mysqli_sql_exception&&$e->getCode()===1062){
+                $existing=$this->obtener($usuarioId,$sessionId);
+                if($existing&&hash_equals($pbx,(string)$existing['pbx_call_id'])&&hash_equals($recordId,(string)$existing['call_id_with_rec']))return true;
+            }
             throw $e;
         }
+    }
+
+    private function eventos(string $pbx): array
+    {
+        $q=$this->db->prepare('SELECT * FROM telefonia_zadarma_eventos WHERE pbx_call_id=BINARY ? ORDER BY id');
+        $q->bind_param('s',$pbx);$q->execute();$rows=$q->get_result()->fetch_all(MYSQLI_ASSOC);$q->close();return $rows;
+    }
+
+    public static function referenciaVerificada(array $session,array $events): string
+    {
+        $orig=(string)$session['numero_origen'];$dest=(string)$session['extension'];$ref=(string)($session['pbx_call_id']??'');$proof=false;$source=false;
+        if((int)($session['protocolo']??0)!==2||$orig===$dest||!preg_match('/^[0-9]{3,6}$/D',$orig)||!preg_match('/^[0-9]{3,6}$/D',$dest))
+            throw new DomainException('La identidad interna requiere verificación.');
+        foreach($events as $event){
+            if(!ZadarmaPbxIdentifierHelper::pbxValido($ref)||!hash_equals($ref,(string)($event['pbx_call_id']??'')))throw new DomainException('La referencia PBX no corresponde a esta sesión.');
+            $payload=json_decode((string)($event['payload_json']??''),true)?:[];
+            foreach([$event['internal']??'',$payload['last_internal']??'',$payload['transfer_from']??''] as $member)
+                if((string)$member!==''&&!in_array((string)$member,[$orig,$dest],true))throw new DomainException('La llamada tiene otros participantes; no se eligió una grabación.');
+            if((int)$event['id']===(int)$session['pbx_inicio_evento']&&(string)$event['internal']===$dest&&
+                in_array($event['evento'],['NOTIFY_INTERNAL','NOTIFY_ANSWER'],true))$proof=true;
+            if((string)$event['internal']===$orig&&in_array($event['evento'],['NOTIFY_OUT_START','NOTIFY_INTERNAL'],true))$source=true;
+        }
+        $facts=TelefoniaPbxSegmentosService::hechos($events,$dest,$orig);
+        $ids=TelefoniaPbxSegmentosService::deEventos($events,$dest,[$orig])['segmentos'];
+        if(!$proof||!$source||!$facts['conectada']||!$facts['finalizada']||count($ids)!==1)
+            throw new DomainException('Falta evidencia propia inequívoca de cierre y grabación.');
+        return $ids[0];
     }
 
     public function registrar(
