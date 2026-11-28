@@ -25,6 +25,15 @@ if (!in_array($method,['GET','POST'],true)) {header('Allow: GET, POST');responde
 try {
     $service=new TelefoniaBorradorService(Database::compartida());
     if ($method==='GET') {
+        if(($_GET['conciliaciones']??'')==='1'){
+            if((int)($_SESSION['rol_id']??0)!==4 || !tienePermiso('seguimientos_vinculacion.operar_propios') || !tienePermiso('telefonia.salientes'))
+                responderBorrador(['ok'=>false,'mensaje'=>'No tienes acceso a esta conciliación.'],403);
+            $cursor=$_GET['after']??'0';
+            if(!is_string($cursor)||!ctype_digit($cursor)||strlen($cursor)>10||(float)$cursor>PHP_INT_MAX)
+                throw new InvalidArgumentException('Cursor de conciliación inválido.');
+            require_once $root.'/app/services/TelefoniaVerificacionEvidenciaService.php';
+            responderBorrador(['ok'=>true]+(new TelefoniaVerificacionEvidenciaService(Database::compartida()))->conciliacionesSalientes($usuario,(int)$cursor));
+        }
         if (($_GET['pendientes'] ?? '')==='1') responderBorrador(['ok'=>true,'capturas'=>$service->pendientes($usuario)]);
         $id=$_GET['id'] ?? null;
         if (!is_string($id) || !TelefoniaBorradorService::validarId($id)) throw new InvalidArgumentException('Llamada inválida.');

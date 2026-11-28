@@ -5,8 +5,8 @@ const root=process.argv[process.argv.indexOf('--lab-root')+1];if(!process.argv.i
 const c=JSON.parse(fs.readFileSync(path.join(root,'credentials.json'),'utf8')),lab=JSON.parse(fs.readFileSync(path.join(root,'lab.json'),'utf8'));
 if(!lab.synthetic||c.host!=='127.0.0.1'||c.port!==3308||c.database!=='impe_telefonia_lab')throw Error('Synthetic loopback only');
 (async()=>{
- const anonymousEnd=process.argv.includes('--anonymous-end'),foreignLeg=process.argv.includes('--foreign-leg');
- const informative=process.argv.includes('--informative'),pendingDuration=process.argv.includes('--pending-duration')||anonymousEnd,zeroDuration=process.argv.includes('--zero-duration'),adapter=informative?'INFORMATIVA':'SEGUIMIENTO';
+ const anonymousEnd=process.argv.includes('--anonymous-end'),foreignLeg=process.argv.includes('--foreign-leg'),serverRecovery=process.argv.includes('--server-recovery');
+ const informative=process.argv.includes('--informative'),pendingDuration=process.argv.includes('--pending-duration')||anonymousEnd||serverRecovery,zeroDuration=process.argv.includes('--zero-duration'),adapter=informative?'INFORMATIVA':'SEGUIMIENTO';
  const action=informative?'registrarInformativa':'registrarInteraccionTrabajo';
  const origin='http://127.0.0.1:33181',endpoint='/index.php?controller='+(informative?'seguimientoInteraccion':'seguimientoVinculacion')+'&action='+action;
  let cookie='',drop=false,resultPosts=0,checks=0;
@@ -59,8 +59,28 @@ if(!lab.synthetic||c.host!=='127.0.0.1'||c.port!==3308||c.database!=='impe_telef
  assert.equal(informative?again.interaccion.id:again.interaccion_id,informative?saved.payload.interaccion.id:saved.payload.interaccion_id);checks+=2;
  const tampered=await request(endpoint,{method:'POST',body:new URLSearchParams({...saved.capture.values,observacion:'Contenido distinto'})});assert.equal(tampered.status,409);checks++;
  const inspect=await request('/fixture/inspect?pbx='+reference+'&followup='+sid,{headers:{'X-Fixture-Key':c.fixture_key}}),counts=await inspect.json();assert.equal(counts.counts.interacciones_vinculacion,2,'One setup call plus exactly one approved Seguimiento interaction');checks++;
+ let recoveredJob=null;
+ if(serverRecovery){
+  // The native receipt survives complete loss of browser storage.
+  for(const storage of [f.window.localStorage])while(storage.length)storage.removeItem(storage.key(0));
+  let after=0;
+  for(let page=0;page<10;++page){
+   const r=await request('/prueba_telefonia/api/borrador_llamada.php?'+new URLSearchParams({conciliaciones:'1',after:String(after)})),d=await r.json();
+   assert.equal(r.status,200);assert.equal(d.ok,true);checks+=2;
+   assert.equal(JSON.stringify(d).includes('fixture@example.invalid'),false);assert.equal(JSON.stringify(d).includes('5550000101'),false);checks+=2;
+   recoveredJob=d.conciliaciones.find(j=>j.interactionId===Number(informative?saved.payload.interaccion.id:saved.payload.interaccion_id));
+   if(recoveredJob||!d.has_more)break;assert(d.cursor>after);after=d.cursor;
+  }
+  assert(recoveredJob,'Server recovers the exact modern native receipt after local storage loss');
+  assert.equal(recoveredJob.metadata.pbx_call_id,reference);assert.equal(recoveredJob.metadata.seguimiento_id,sid);checks+=3;
+  const invalid=await request('/prueba_telefonia/api/borrador_llamada.php?conciliaciones=1&after=-1');assert.equal(invalid.status,422);checks++;
+  const unauth=await fetch(origin+'/prueba_telefonia/api/borrador_llamada.php?conciliaciones=1');assert.equal(unauth.status,401);checks++;
+  const salesLogin=await fetch(origin+'/fixture/login?role=VENTAS',{headers:{'X-Fixture-Key':c.fixture_key}});
+  const salesCookie=salesLogin.headers.get('set-cookie').split(';')[0];
+  const forbidden=await fetch(origin+'/prueba_telefonia/api/borrador_llamada.php?conciliaciones=1',{headers:{Cookie:salesCookie}});assert.equal(forbidden.status,403);checks++;
+ }
  const recording='17490000000000001234567890';await event(reference,'NOTIFY_RECORD',{call_id_with_rec:recording});
- const linkBody={csrf_token:account.csrf,seguimiento_id:String(sid),interaccion_id:String(informative?saved.payload.interaccion.id:saved.payload.interaccion_id),pbx_call_id:reference,session_id:session,duration_client:'9000',lookup_attempt:'1'};
+ const linkBody={csrf_token:account.csrf,seguimiento_id:String(recoveredJob?.metadata.seguimiento_id||sid),interaccion_id:String(recoveredJob?.interactionId||(informative?saved.payload.interaccion.id:saved.payload.interaccion_id)),pbx_call_id:recoveredJob?.metadata.pbx_call_id||reference,...(serverRecovery?{}:{session_id:session}),duration_client:'9000',lookup_attempt:'1'};
  const linked=await request('/prueba_telefonia/api/vincular_interaccion_zadarma.php',{method:'POST',body:new URLSearchParams(linkBody)}),linkedData=await linked.json();
  assert.equal(linked.status,200,linkedData.mensaje);assert.equal(linkedData.duracion_segundos,pendingDuration?null:zeroDuration?0:1,'Client duration must never replace unknown or actual PBX seconds');
  assert.equal(linkedData.verificacion_efectiva,false,'Answered voicemail cannot become effective');assert.equal(linkedData.call_id_with_rec,recording);checks+=4;
@@ -89,6 +109,6 @@ if(!lab.synthetic||c.host!=='127.0.0.1'||c.port!==3308||c.database!=='impe_telef
   await request('/prueba_telefonia/api/vincular_interaccion_zadarma.php',{method:'POST',body:new URLSearchParams(linkBody)});
   const repeated=await read();assert.equal(repeated.efectivas_del_dia,afterLate.efectivas_del_dia);assert.equal(repeated.interacciones_vinculacion,2);checks+=2;
  }
- fs.writeFileSync(path.join(root,(informative?'informative':'followup')+(anonymousEnd?'-anonymous-end':foreignLeg?'-foreign-leg':pendingDuration?'-pending-duration':zeroDuration?'-zero-duration':'')+'-http-validation.json'),JSON.stringify({synthetic:true,checks,native_http:true,lost_ack_recovered:true,unknown_duration:pendingDuration,anonymous_end:anonymousEnd,foreign_leg:foreignLeg,zero_duration:zeroDuration,complete_call_acceptance:false,production_changed:false},null,2));
+ fs.writeFileSync(path.join(root,(informative?'informative':'followup')+(serverRecovery?'-server-recovery':anonymousEnd?'-anonymous-end':foreignLeg?'-foreign-leg':pendingDuration?'-pending-duration':zeroDuration?'-zero-duration':'')+'-http-validation.json'),JSON.stringify({synthetic:true,checks,native_http:true,lost_ack_recovered:true,unknown_duration:pendingDuration,server_recovery:serverRecovery,anonymous_end:anonymousEnd,foreign_leg:foreignLeg,zero_duration:zeroDuration,complete_call_acceptance:false,production_changed:false},null,2));
  console.log(`PASS ${checks} native ${adapter} HTTP receipt checks: fresh CSRF, existing institutional pipeline, lost ACK, exact replay, immutable request and no duplicate interaction. Not complete-call acceptance.`);
 })().catch(error=>{console.error(error);process.exitCode=1;});

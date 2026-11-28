@@ -91,6 +91,47 @@ final class TelefoniaVerificacionEvidenciaService
         } catch (mysqli_sql_exception $e) {if ($e->getCode()===1146) return [];throw $e;}
     }
 
+    /** Recuperación de metadata ya aprobada, nunca alta/reenvío comercial.
+     * Sólo resultados modernos con recibo durable y evidencia aún pendiente. */
+    public function conciliacionesSalientes(int $usuario,int $after=0): array
+    {
+        if($usuario<1 || $after<0)throw new InvalidArgumentException('Cursor de conciliación inválido.');
+        require_once __DIR__.'/TelefoniaExtensionService.php';
+        require_once __DIR__.'/../helpers/TelefoniaAsignacionFechaHelper.php';
+        $assignment=(new TelefoniaExtensionService($this->db))->resolverParaUsuario($usuario);
+        $extension=(string)($assignment['extension']??'');
+        if(empty($assignment['permite_salientes'])||!preg_match('/^[0-9]{3,6}$/D',$extension))
+            return ['conciliaciones'=>[],'cursor'=>$after,'has_more'=>false];
+        $since=TelefoniaAsignacionFechaHelper::aMexico((string)($assignment['asignacion_desde']??''));
+        $s=$this->db->prepare("SELECT i.id,i.seguimiento_id,i.id_externo,b.datos_json
+            FROM interacciones_vinculacion i
+            JOIN seguimientos_vinculacion v ON v.id=i.seguimiento_id AND v.analista_id=i.usuario_id AND v.activo=1
+            JOIN telefonia_borradores b ON b.usuario_id=i.usuario_id AND b.referencia=BINARY i.id_externo
+            WHERE i.usuario_id=? AND i.id>? AND i.proveedor_externo='ZADARMA' AND i.canal='LLAMADA_IP'
+              AND EXISTS(SELECT 1 FROM telefonia_verificacion_evidencias e
+                WHERE e.interaccion_id=i.id AND e.usuario_id=i.usuario_id AND e.estado='PENDIENTE')
+              AND EXISTS(SELECT 1 FROM telefonia_zadarma_eventos p
+                WHERE p.pbx_call_id=BINARY i.id_externo AND p.evento='NOTIFY_OUT_START'
+                  AND p.internal=BINARY ? AND p.received_at>=?)
+            ORDER BY i.id LIMIT 20");
+        $s->bind_param('iiss',$usuario,$after,$extension,$since);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);$s->close();
+        $jobs=[];$cursor=$after;
+        foreach($rows as $row){
+            $id=(int)$row['id'];$cursor=max($cursor,$id);$pbx=(string)$row['id_externo'];
+            if(!preg_match('/^out_[a-fA-F0-9]{32,64}$/D',$pbx))continue;
+            $saved=json_decode((string)$row['datos_json'],true);$receipt=false;
+            foreach((array)($saved['aplicaciones']??[]) as $application){
+                if(is_array($application) && (int)($application['id']??0)===$id &&
+                    ($application['tipo']??'')==='INTERACCION_VINCULACION' &&
+                    in_array($application['adaptador']??'',['SEGUIMIENTO','INFORMATIVA'],true))$receipt=true;
+            }
+            if(!$receipt)continue;
+            $jobs[]=['interactionId'=>$id,'metadata'=>['call_token'=>'receipt-'.$id,
+                'seguimiento_id'=>(int)$row['seguimiento_id'],'pbx_call_id'=>$pbx,'native_receipt'=>true]];
+        }
+        return ['conciliaciones'=>$jobs,'cursor'=>$cursor,'has_more'=>count($rows)===20];
+    }
+
     public function confirmarSalida(int $usuario,int $interaccion,string $pbx,bool $huboRespuesta): void
     {
         $estado=$huboRespuesta?'CONFIRMADA':'RECHAZADA';

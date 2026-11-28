@@ -145,10 +145,12 @@ if (!preg_match('/^\d{3,6}$/', $extension)) {
     ], 422);
 }
 $asignacionDesde=TelefoniaAsignacionFechaHelper::aMexico((string)$asignacionTelefonica['asignacion_desde']);
-if($sessionId!==''){
+if($sessionId!==''||array_key_exists('csrf_token',$_POST)){
     $csrf=(string)($_SESSION['csrf_token']??'');
     if($csrf===''||!is_string($_POST['csrf_token']??null)||!hash_equals($csrf,$_POST['csrf_token']))
         responderJson(['ok'=>false,'mensaje'=>'Actualiza la sesión para conciliar esta llamada.'],403);
+}
+if($sessionId!==''){
     try{
         require_once dirname(__DIR__,2).'/app/services/TelefoniaSesionLocalService.php';
         $resolved=(new TelefoniaSesionLocalService($connection))->resolverSalientePreparada($usuarioId,$sessionId);

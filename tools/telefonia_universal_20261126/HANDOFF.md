@@ -1,4 +1,4 @@
-> Relevo actualizado: leer el décimo checkpoint al final, VALIDATION.json y
+> Relevo actualizado: leer el undécimo checkpoint al final, VALIDATION.json y
 > OUTGOING_1000.json. Los1,000 ciclos son salientes sintéticos; la aceptación
 > universal y las ocho horas reales siguen pendientes. Producción intacta.
 
@@ -568,3 +568,49 @@ forma selectiva, regresión visual3roles, Supervisión selectiva, aceptación
 universal1,000 y8h, contraste Hostinger y publicador CHECK/respaldo/ROLLBACK.
 Nada de este trabajo se publicó en producción. No hay publicador universal
 terminado; no reutilizar paquetes viejos para instalar esta intervención.
+
+
+## Undécimo checkpoint — restaurar conciliaciones desde recibos del servidor
+
+Base:`48d72478`. Al abrir Seguimiento se lee una pasada acotada en el endpoint
+existente borrador_llamada.php?conciliaciones=1. No se añade un timer ni un sondeo
+periódico. Páginas de20 y máximo10 por pasada; IMPE_ZADARMA_LINKS.restore permite
+repetir explícitamente. La consulta usa la conexión compartida existente.
+
+Sólo devuelve IDs de interacciones salientes modernas de SEGUIMIENTO/INFORMATIVA
+con recibo durable de ese ID y alguna evidencia PENDIENTE (una o dos
+confirmaciones), expediente activo aún propio e inicio PBX de la extensión/
+asignación actual. Relee permisos: Analista y operar_propios/salientes. No
+expone teléfonos, notas, nombres ni respuestas guardadas. Una fila manual/legacy
+sin recibo, recibo de otro ID, otro usuario o expediente reasignado se excluyen.
+
+El lector repone trabajos técnicos en la cola ya existente cuando desapareció
+todo el almacenamiento local. Conserva el SDK/backoff/feedback de un trabajo que
+ya estaba en ella. La recuperación por PBX exacto no inventa una sesión SDK,
+no reenvía el alta comercial ni cierra/borra un borrador nuevo. La llamada
+activa permanece aislada. Los reintentos usan la cola existente, sin cascadas
+inmediatas por no tener SDK. El POST técnico valida un CSRF suministrado también
+cuando no hay session_id; la compatibilidad antigua sin token no cambia aquí.
+No afirmar que se eliminó toda esa compatibilidad de producción.
+
+Validación:24/24 suites JS (19 checks del lector real y25 del reconciliador).
+HTTP49 Seguimiento y50 Informativa con --server-recovery: borra el storage,
+recupera ID nativo/PBX desde servidor, comprueba401/403/cursor, entrega sólo
+metadata y confirma después la evidencia, una sola efectiva y sin duplicar
+interacciones.9 checks SQL de recibos/propiedad/confirmación parcial/cursor y
+rechazo de recibos ausentes o de otro ID. Mutaciones sintéticas revertidas;
+el método también se ejecutó completo en READ ONLY. Sintaxis de3 PHP y JS
+correcta. Fuentes del laboratorio:
+67f080dc6012e2e57384ff2c21d3a0aeb92dd636590a78ebdaa56f9d9bfde080.
+
+Reproducir:lab/followup_receipt.cjs --server-recovery [--informative] --lab-root
+<raíz>; después integration/server_recovery_sql.php con IMPE_PHONE_LAB_ROOT.
+El test SQL requiere esas filas sintéticas modernas y no está en run_sql.py,
+para no depender silenciosamente de un ensayo HTTP previo en el runner básico.
+
+**Límite de alcance:** no restaura resultados sin ninguna evidencia pendiente,
+ni las atenciones entrantes/SDK/otras clases de recibo. No es entrega diferida
+de comandos comerciales aún no aplicados: eso sigue siendo el próximo bloque.
+Continúan pendientes integración universal entrantes/transferencias/audio,
+regresión visual, Supervisión selectiva, aceptación universal1,000,8h reales y
+publicador Hostinger con CHECK/respaldo/ROLLBACK. Producción sin cambios.

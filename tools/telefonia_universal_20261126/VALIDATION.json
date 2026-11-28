@@ -3,7 +3,7 @@
   "status": "autonomous_continuation_in_progress",
   "installed_baseline": "1d8f7da23907fabce398c13d924ef5996d839473",
   "portable_unit_suites": {
-    "passed": 23,
+    "passed": 24,
     "failed": 0,
     "runner": "run_unit.cjs"
   },
@@ -171,6 +171,22 @@
     "additional_outgoing_http_cycles": 15,
     "unit_suites_passed": 23,
     "lab_source_sha256": "f015412efca1e0af23883cb130cc3d9b0d4eb954927f794d7fa3e50510711f72",
+    "full_call_acceptance": false,
+    "production_changed": false
+  },
+  "continuation_server_receipt_recovery": {
+    "base": "48d72478",
+    "actual_reader_js_checks": 19,
+    "technical_reconciler_checks": 25,
+    "native_sql_checks": 9,
+    "followup_http_checks": 49,
+    "informative_http_checks": 50,
+    "lost_browser_storage_covered": true,
+    "automatic_commercial_resubmission": false,
+    "new_periodic_poll": false,
+    "read_only_sql_verified": true,
+    "scope": "Modern Seguimiento/Informativa outgoing receipts with pending verification evidence only",
+    "lab_source_sha256": "67f080dc6012e2e57384ff2c21d3a0aeb92dd636590a78ebdaa56f9d9bfde080",
     "full_call_acceptance": false,
     "production_changed": false
   }

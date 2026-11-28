@@ -385,6 +385,7 @@
         // Capturar antes del await: otro expediente o una nueva llamada no puede
         // cambiar la identidad del resultado ya aprobado y confirmado por SQL.
         window.IMPE_ZADARMA_LINKS = Object.freeze({
+            restore:()=>restoreConfirmedLinks(),
             submission(form) {
                 const rules = reglasPorFormulario.get(form);
                 if (!rules || rules.cancelada || !rules.metadata?.call_token ||
@@ -1134,6 +1135,7 @@
                 );
                 formData.set('csrf_token',String(window.IMPE_PHONE_HTTP.csrfToken?.()||''));
                 const persistedSession=Number(metadata.session_protocol)===2&&/^sdk-[a-z0-9-]{12,94}$/.test(String(metadata.sdk_session_id||''));
+                const durableIdentity=persistedSession||metadata.native_receipt===true;
                 if(persistedSession)formData.set('session_id',String(metadata.sdk_session_id));
                 formData.set(
                     'pbx_call_id',
@@ -1146,8 +1148,9 @@
                     'destination',
                     String(
                         metadata.to ||
+                        (metadata.native_receipt===true?'':
                         currentPhone ||
-                        ''
+                        '')
                     )
                 );
                 formData.set(
@@ -1219,7 +1222,7 @@
                             [404, 409].includes(response.status) ||
                             response.status >= 500
                         ) &&
-                        !persistedSession&&attempt < 24
+                        !durableIdentity&&attempt < 24
                     ) {
                         linkingMetadata = false;
                         await sleep(
@@ -1328,7 +1331,7 @@
                     const notice = Number(offcanvas.dataset.flowSeguimientoId) === Number(metadata.seguimiento_id)
                         && ownsForm ? form?.querySelector('[data-telephony-call-summary]') : null;
                     if (notice) notice.remove();
-                    void window.IMPE_CALL_DRAFTS?.remove(usuarioId,
+                    if(metadata.native_receipt!==true)void window.IMPE_CALL_DRAFTS?.remove(usuarioId,
                         [metadata.pbx_call_id,metadata.call_token,token].filter(Boolean),
                         form?.querySelector('[name="csrf_token"]')?.value||'').catch(()=>{});
                     if(!job.evidencePending||data.verificacion_pendiente!==true)mostrarToast(
@@ -1358,7 +1361,7 @@
                     );
                 } catch (error) {
                     if (
-                        !persistedSession&&attempt < 10 &&
+                        !durableIdentity&&attempt < 10 &&
                         Number(error?.status || 0) === 0
                     ) {
                         linkingMetadata = false;
@@ -1798,12 +1801,43 @@
                 item.metadata?.call_token && Number(item.metadata.seguimiento_id) > 0 &&
                 Number(item.retryAt || 0) <= Date.now());
             if (job) {
-                secureResult(job, false);
+                if(job.metadata.native_receipt!==true)secureResult(job, false);
                 void vincularMetadata(0, job);
             }
         };
         window.setTimeout(resumeQueue, 500);
         window.setInterval(resumeQueue, 15000);
+        let restoreFlight=null;
+        const restoreConfirmedLinks=()=>{
+            if(restoreFlight)return restoreFlight;
+            restoreFlight=(async()=>{
+                let after=0;
+                // Una lectura de recuperación al abrir el módulo, sin timer ni
+                // sondeo nuevo. Acotar la pasada; el usuario puede repetirla.
+                for(let page=0;page<10;++page){
+                    const params=new URLSearchParams({conciliaciones:'1',after:String(after)});
+                    const response=await fetchTechnical('prueba_telefonia/api/borrador_llamada.php?'+params,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+                    const data=await response.json();
+                    if(!response.ok||data.ok!==true||Number(window.IMPE_CURRENT_USER_ID)!==usuarioId)return false;
+                    try{queue=JSON.parse(localStorage.getItem(queueKey)||'{}')||{};}catch(_){return false;}
+                    for(const job of data.conciliaciones||[]){
+                        const meta=job?.metadata,id=Number(job?.interactionId);
+                        if(!Number.isSafeInteger(id)||id<1||meta?.native_receipt!==true||meta.call_token!=='receipt-'+id||
+                            !Number.isSafeInteger(meta.seguimiento_id)||meta.seguimiento_id<1||!/^out_[a-fA-F0-9]{32,64}$/.test(String(meta.pbx_call_id||'')))continue;
+                        // Conservar reintentos/SDK/feedback del trabajo original;
+                        // no crear otra entrada por el mismo recibo y PBX.
+                        if(Object.values(queue).some(old=>Number(old?.interactionId)===id&&old.metadata?.pbx_call_id===meta.pbx_call_id))continue;
+                        if(queue[meta.call_token]||!writeQueue(meta.call_token,job))return false;
+                    }
+                    if(data.has_more!==true)return true;
+                    if(!Number.isSafeInteger(data.cursor)||data.cursor<=after)return false;
+                    after=data.cursor;
+                }
+                return true;
+            })().catch(()=>false).finally(()=>{restoreFlight=null;});
+            return restoreFlight;
+        };
+        void restoreConfirmedLinks();
 
         const probe = function () {
             if (

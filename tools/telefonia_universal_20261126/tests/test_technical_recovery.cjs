@@ -32,5 +32,9 @@ function fixture(status=200){
  stored.set(key,JSON.stringify({[token]:job,[other]:saved[other]}));
  const delayed=fixture(409);await delayed.box.invoke(0,delayed.box.queue[token]);
  assert.equal(delayed.posts.length,1,'Modern journal uses the durable queue, not an immediate request waterfall');assert.equal(delayed.box.linkingMetadata,false);assert.equal(JSON.parse(stored.get(key))[token].interactionId,13);assert.equal(delayed.box.activeCall,true);checks+=4;
+ const recovered={interactionId:13,metadata:{call_token:'receipt-13',native_receipt:true,pbx_call_id:job.metadata.pbx_call_id,seguimiento_id:7}};
+ stored.set(key,JSON.stringify({'receipt-13':recovered}));const exact=fixture(409);
+ await exact.box.invoke(0,recovered);assert.equal(exact.posts.length,1);assert.equal(exact.posts[0].session,null);checks+=2;
+ assert.equal(JSON.parse(stored.get(key))['receipt-13'].interactionId,13);assert.equal(exact.box.activeCall,true);checks+=2;
  console.log(`PASS ${checks} actual technical reconciliation checks: native result remains released, pending evidence retained across reload with backoff, exact SDK/CSRF, late completion isolated from active call and unrelated jobs. Mock HTTP; no native result POST replay.`);
 })().catch(error=>{console.error(error);process.exitCode=1;});
